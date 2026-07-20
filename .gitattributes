@@ -1,0 +1,2 @@
+# Parallel agent/branch appends merge cleanly (papercuts journal)
+.papercuts.jsonl merge=union

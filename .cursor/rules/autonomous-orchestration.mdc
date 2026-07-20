@@ -1,0 +1,16 @@
+---
+description: Autonomous task routing, evidence gates, and premium escalation
+alwaysApply: true
+---
+
+# Autonomous orchestration
+
+- For `change` / `build` / `fix`, apply `autonomous-task` automatically; `/autonomous-task` is the fallback.
+- Main classifies once using `.cursor/skills/autonomous-task/tier-rubric.md` and declares user-facing completion.
+- Evaluate T4 overrides first, then Minimum T3 signs, then choose the lowest T0–T2 tier. T0/T1 skip Grok orchestration; T2/T3 use `operational-orchestrator`; T4 stops with a Human Gate Packet.
+- T3: obtain `principal-arbiter` approval before production writes. T4/destructive/external writes require explicit human approval.
+- Only `implementer` writes owned product paths. Main and orchestrator do not compete with it.
+- Nesting limit: Main -> L1 -> L2. L2 agents never spawn Task/subagents.
+- Findings require path, lines, requirement reference, and reproducible evidence. Model votes are not evidence.
+- Never claim done without all acceptance criteria passing, required commands exiting 0, and no open blocker.
+- Routing, model pins, and policy gates are best-effort in normal Cursor chat; do not describe them as platform-enforced.

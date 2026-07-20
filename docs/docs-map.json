@@ -1,0 +1,191 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "path": "README.md",
+      "title": "Repository entrypoint",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0a", "navigation"]
+    },
+    {
+      "path": "docs/README.md",
+      "title": "Documentation index",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0a", "navigation"]
+    },
+    {
+      "path": "docs/STATUS.yaml",
+      "title": "Project status (SSOT)",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0a", "state"]
+    },
+    {
+      "path": "docs/VISION.md",
+      "title": "Product vision and boundaries",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0a", "architecture"]
+    },
+    {
+      "path": "docs/CANONICAL.md",
+      "title": "Canonical legacy and NC-1812 facts",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0a", "architecture"]
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "title": "Architecture and trust boundaries",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0a", "architecture"]
+    },
+    {
+      "path": "docs/DOMAIN_MODEL.md",
+      "title": "Domain model and invariants",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0a", "architecture"]
+    },
+    {
+      "path": "docs/COMPATIBILITY.md",
+      "title": "Firmware and capability matrix",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0a", "hardware"]
+    },
+    {
+      "path": "docs/LEGACY_MAP.md",
+      "title": "Legacy code classification",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0a", "legacy"]
+    },
+    {
+      "path": "docs/adrs/0001-python-package-fastapi-host.md",
+      "title": "ADR-0001 Python package and FastAPI host",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0a", "adr"]
+    },
+    {
+      "path": "docs/adrs/0002-persistence-jobs-sqlite.md",
+      "title": "ADR-0002 Persistence, jobs, SQLite",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0a", "adr"]
+    },
+    {
+      "path": "docs/adrs/0003-security-auth-secrets.md",
+      "title": "ADR-0003 Security, auth, secrets",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0a", "adr"]
+    },
+    {
+      "path": "docs/adrs/0004-product-capability-scope.md",
+      "title": "ADR-0004 Product capability scope",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0a", "adr"]
+    },
+    {
+      "path": "docs/project-state.md",
+      "title": "Project state (living projection)",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["state", "harness"]
+    },
+    {
+      "path": "docs/docs-map.json",
+      "title": "Documentation map",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["docs", "harness"]
+    },
+    {
+      "path": "docs/docs-map-schema.md",
+      "title": "docs-map.json schema",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["docs", "schema"]
+    },
+    {
+      "path": "docs/living-documentation.md",
+      "title": "Living documentation",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["docs", "harness"]
+    },
+    {
+      "path": "docs/project-environment.md",
+      "title": "Project environment",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["environment", "harness"]
+    },
+    {
+      "path": "docs/papercuts.md",
+      "title": "Papercuts workflow",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["harness", "papercuts"]
+    },
+    {
+      "path": "docs/bootstrap-scaffold.md",
+      "title": "Bootstrap scaffold reference",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["harness", "bootstrap"]
+    },
+    {
+      "path": "docs/project-integrations.md",
+      "title": "Project integrations",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["integrations", "harness"]
+    },
+    {
+      "path": "docs/autonomous-agent-orchestration.md",
+      "title": "Autonomous agent orchestration",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["harness", "orchestration"]
+    },
+    {
+      "path": "docs/cursor-native-controls.md",
+      "title": "Cursor native controls",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["cursor", "harness"]
+    },
+    {
+      "path": "docs/cursor-agent-best-practices.md",
+      "title": "Cursor agent best practices",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["cursor", "harness"]
+    },
+    {
+      "path": "docs/cursor-primitives.md",
+      "title": "Cursor primitives",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["cursor", "harness"]
+    },
+    {
+      "path": "docs/skills-russian-descriptions.md",
+      "title": "Skill descriptions (Russian)",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["harness", "skills"]
+    }
+  ],
+  "rules": {
+    "update_on_change": true,
+    "validate_on_commit": false
+  }
+}

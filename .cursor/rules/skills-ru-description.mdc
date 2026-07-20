@@ -1,0 +1,15 @@
+---
+description: У project skills поле description в меню / должно быть на русском
+globs: .cursor/skills/**/SKILL.md, rules-and-skills/**/*.md
+alwaysApply: false
+---
+
+# Skills: русские описания
+
+При создании или правке skills этого репо:
+
+1. `description` в frontmatter — **только на русском** (видно в меню `/`).
+2. В `description`: что делает + когда вызывать + русские фразы-триггеры.
+3. `name` и папка — латиница kebab-case; не переводить.
+4. Тело skill — по-русски; пути/команды (`git`, `SOURCES.md`) как есть.
+5. Полный стандарт: `@docs/skills-russian-descriptions.md`.

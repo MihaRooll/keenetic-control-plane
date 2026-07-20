@@ -1,0 +1,137 @@
+schema_version: 1
+updated: "2026-07-20"
+
+project:
+  name: "Router Control"
+  documentation_root: "docs"
+  prototype_home: "."
+  canonical_repository: "keenetic-control-plane"
+  legacy_source:
+    kind: "external"
+    repository: "vpn"
+    path: "ScanCursorIP"
+  target_integration: "module_3.0"
+
+current_phase:
+  id: "0a"
+  name: "architecture evidence"
+  status: "complete"
+  complete: true
+  reason: "Все Phase 0a документы написаны, исправлены после независимого cross-document review и прошли Definition of Done."
+
+deliverables:
+  completed:
+    - path: "README.md"
+      purpose: "Точка входа, порядок чтения и границы текущей phase."
+    - path: "STATUS.yaml"
+      purpose: "Машиночитаемое состояние работ и canonical facts."
+    - path: "VISION.md"
+      purpose: "Event-booth scenario, product boundaries и explicit non-goals."
+    - path: "CANONICAL.md"
+      purpose: "Code-truth legacy и подтверждённые model-specific facts NC-1812."
+    - path: "ARCHITECTURE.md"
+      purpose: "Bounded contexts, trust zones и integration contract prototype-to-Hub."
+    - path: "DOMAIN_MODEL.md"
+      purpose: "Entities, invariants, desired/observed state, revisions и ownership."
+    - path: "COMPATIBILITY.md"
+      purpose: "NC-1812 firmware/capability matrix и AWG certification unknowns."
+    - path: "LEGACY_MAP.md"
+      purpose: "Классификация legacy C#/PowerShell: Port, Golden behavior, Do-not-reuse."
+    - path: "adrs/0001-python-package-fastapi-host.md"
+      purpose: "Решение о Python package, FastAPI dev-host и последующей Hub integration."
+    - path: "adrs/0002-persistence-jobs-sqlite.md"
+      purpose: "Решение о SQLite state, revisions, durable jobs и failure recovery."
+    - path: "adrs/0003-security-auth-secrets.md"
+      purpose: "Решение об auth, DPAPI, trust boundaries и secret lifecycle."
+    - path: "adrs/0004-product-capability-scope.md"
+      purpose: "Решение о NC-1812/AWG scope, capability order, route benchmark и strangler cutover."
+  pending: []
+
+blockers:
+  - id: "nc1812-live-certification"
+    scope: "future_writes"
+    description: "AmneziaWG/RCI write semantics, Safe Configuration и rollback должны быть подтверждены на выделенном Netcraze Ultra NC-1812."
+    resolution_gate: "Recorded read-only evidence, allowlisted router identity и отдельный laboratory mutation gate."
+  - id: "firmware-capability-matrix"
+    scope: "future_writes"
+    description: "Точный firmware/build/channel/component tuple NC-1812 и граница supported writes должны быть подтверждены read-only certification."
+    resolution_gate: "Identity snapshot и recorded fixtures exact tuple; unknown firmware остаётся fail-closed."
+
+next_task:
+  id: "phase-0b-contracts"
+  path: "."
+  action: "Начать Phase 0b: API, RCI policy, persistence contract, security/ops, test strategy, scenarios, roadmap и AI handoff."
+  constraints:
+    - "Не выполнять mutation живого роутера."
+    - "Не включать passwords, private keys, raw sessions или startup-config."
+    - "Не начинать production code до завершения Phase 0b."
+
+canonical_facts:
+  product:
+    scenario: "Локальный event booth с заказами и производственным Hub."
+    first_certified_router: "Netcraze Ultra NC-1812"
+    event_network_zones:
+      - "Guest"
+      - "Promo"
+      - "Staff"
+      - "Admin/Server"
+    guest_access: "Guest Wi-Fi получает только локальную HTTPS order page; management surfaces недоступны."
+  implementation:
+    language: "Python 3.11"
+    core_package: "router_control"
+    prototype_host: "Будущий отдельный FastAPI dev-host в canonical repository keenetic-control-plane; implementation ещё не создана."
+    final_host: "FastAPI Hub module_3.0 на общем listener."
+    final_api_prefix: "/api/router-control/v1/*"
+    final_ui_location: "/settings"
+    persistence: "Отдельная data/router_control.sqlite3; JSON только import/export/artifacts."
+    failure_isolation: "Router Control не блокирует kiosk, board, printing или Hub startup."
+  security:
+    operator: "Только локальный operator в v1."
+    confirmation: "Redacted plan/diff, затем Confirm, затем Apply."
+    local_secret_store: "DPAPI CurrentUser под постоянным Windows user Hub."
+    ownership: "Managed merge: изменяются и удаляются только owned resources."
+    disruptive_write_guard: "Mandatory Safe Configuration и post-apply verification."
+    unknown_capability_policy: "Fail closed for writes."
+  vpn_and_routes:
+    vpn_v1: "AmneziaWG only."
+    profile_catalog: "Неограниченный каталог; deployment policy разрешает один active assignment на router."
+    routes_goal: 5000
+    routes_limit_policy: "Production limit определяется laboratory benchmark, а не предположением."
+    capture_policy: "Future bounded context создаёт proposals; auto-apply разрешён только trusted policy."
+  lifecycle:
+    prototype_before_integration: true
+    module_3_integration_phase: "8"
+    legacy_strategy: "Strangler до parity, field rehearsal и подтверждённого cutover."
+
+phase_0a_exit_criteria:
+  all_deliverables_complete: true
+  decisions_reflected_in_adrs: true
+  legacy_runtime_behavior_resolved: true
+  model_facts_separated_from_domain_invariants: true
+  live_awg_blockers_documented: true
+  cross_document_review_complete: true
+  definition_of_done_complete: true
+  phase_may_advance: true
+
+links:
+  entrypoint: "README.md"
+  vision: "VISION.md"
+  canonical: "CANONICAL.md"
+  architecture: "ARCHITECTURE.md"
+  domain_model: "DOMAIN_MODEL.md"
+  compatibility: "COMPATIBILITY.md"
+  legacy_map: "LEGACY_MAP.md"
+  adr_001: "adrs/0001-python-package-fastapi-host.md"
+  adr_002: "adrs/0002-persistence-jobs-sqlite.md"
+  adr_003: "adrs/0003-security-auth-secrets.md"
+  adr_004: "adrs/0004-product-capability-scope.md"
+
+reviews:
+  authoring_agents: 5
+  independent_reviewers: 4
+  critical_corrections_applied:
+    - "Stale status/navigation corrected."
+    - "NDMS 5.01/5.1 claims made evidence-safe."
+    - "Hub HTTPS separated from router RCI transport certification."
+    - "Fail-safe Configuration described without transactional atomicity claim."
+    - "Product/capability scope accepted in ADR-004."

@@ -1,0 +1,11 @@
+---
+description: After doc or user-facing changes, update docs-map and run maintain-project-docs
+alwaysApply: true
+---
+
+# Project docs lifecycle
+
+- Material change to `docs/`, `AGENTS.md`, onboarding, or user-facing copy → update `docs/docs-map.json` per `docs/docs-map-schema.md`.
+- Invoke `/maintain-project-docs` or follow its checklist when map entries are stale or missing.
+- change/build/fix touching docs → include Docs Impact Record (`.cursor/skills/autonomous-task/contracts.md`).
+- Validate: `scripts/validate-project-docs.ps1` (exit 0) before claiming doc work done.

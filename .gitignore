@@ -1,0 +1,52 @@
+# Python environments and bytecode
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Tests, coverage, and type/tool caches
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+
+# Packaging
+build/
+dist/
+*.egg-info/
+
+# Local runtime data and sensitive artifacts
+data/*.sqlite*
+data/secrets/
+data/artifacts/
+data/backups/
+data/logs/
+
+# Environment and secret files
+.env
+.env.*
+!.env.example
+
+# IDE and OS metadata
+.idea/
+.vscode/
+*.code-workspace
+.DS_Store
+Thumbs.db
+
+# Obsidian local vault metadata
+.obsidian/
+
+# Cursor harness local runtime (keep rules/skills; ignore state/cache/plans)
+.cursor/hooks/state/
+.cursor/projects/
+.cursor/**/*.log
+.cursor/plans/
+
+# Papercuts journal (optional commit; merge=union in .gitattributes)
+.papercuts.jsonl

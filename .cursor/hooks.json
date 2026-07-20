@@ -1,0 +1,23 @@
+{
+    "version":  1,
+    "hooks":  {
+                  "sessionStart":  [
+                                       {
+                                           "command":  "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .cursor/hooks/session-start.ps1",
+                                           "timeout":  15
+                                       }
+                                   ],
+                  "stop":  [
+                               {
+                                   "command":  "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .cursor/hooks/stop-papercuts-nudge.ps1",
+                                   "timeout":  15
+                               }
+                           ],
+                  "afterShellExecution":  [
+                                              {
+                                                  "command":  "powershell.exe -NoProfile -ExecutionPolicy Bypass -File .cursor/hooks/after-shell-papercuts.ps1",
+                                                  "timeout":  20
+                                              }
+                                          ]
+              }
+}

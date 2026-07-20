@@ -1,0 +1,16 @@
+---
+description: Product harness core - papercuts, AI-first docs, safe ship
+alwaysApply: true
+---
+
+# Product harness core
+
+- This repo has an **AI-agent harness** (rules/skills/hooks/papercuts) bootstrapped from cursor-project-toolkit.
+- Prefer project `AGENTS.md` + `.cursor/rules|skills` over inventing process.
+- Docs under `docs/` are **AI-first** when present: start with `## For agents`, tables/checklists.
+- Friction: hooks auto-log failed shells; otherwise `papercuts add` / `scripts/papercuts.ps1` (`docs/papercuts.md`).
+- Do not commit secrets, `.env`, or credentials.
+- Prefer small reviewable changes; no force-push to `main`.
+- For change/build/fix, follow `.cursor/skills/autonomous-task` automatically; T4/destructive/external writes require human approval.
+- Prompt/role patterns (if present): `prompting/`, `roles/`; isolation → `subagents/` + Cursor Subagents docs.
+- Optional plugins: `/add-plugin cursor-team-kit`, `/add-plugin continual-learning`.
