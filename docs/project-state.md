@@ -44,4 +44,6 @@ phase-0b-complete
 
 - Doctor advisory: `pwsh` missing; Windows PowerShell 5.1 runs harness hooks — do not install `pwsh` only for exit 0.
 - Target runtime for later implementation: Python 3.11 / FastAPI Hub.
+- Windows Python 3.11 verified (2026-07-20): `py.exe -3.11 --version` → Python 3.11.9; executable under `%LOCALAPPDATA%\Programs\Python\Python311\`.
+- WSL: `python3` is 3.12.3; `python3.11` absent — choose Windows Python 3.11 for implementation or install WSL 3.11 only after separate approval.
 - Local plugin renamed to `cursor-project-harness.disabled-0.1.0` under `%USERPROFILE%\.cursor\plugins\local`.
