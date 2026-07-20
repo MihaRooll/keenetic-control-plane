@@ -22,7 +22,7 @@ phase-0b-contracts
 |-----------|--------|-------|
 | Phase 0a architecture evidence | done | Frozen in baseline commit `c15ef56` |
 | Harness bootstrapped (Essential) | done | On-disk Essential; stale local plugin 0.1.0 disabled |
-| Phase 0b contracts | in progress | API, RCI policy, persistence, security/ops, test strategy, scenarios, roadmap, AI handoff |
+| Phase 0b contracts | in progress | Wave 1 done: RCI policy, hardware gates, security/ops ([`contracts/`](contracts/)); Wave 2+: API, persistence, test strategy, scenarios, roadmap, AI handoff |
 | Implementation / prototype code | pending | Blocked until Phase 0b complete; prepare Python 3.11 before code |
 
 ## next_checks
@@ -30,7 +30,8 @@ phase-0b-contracts
 - [x] Atomically open Phase 0b in `docs/STATUS.yaml` and this file
 - [x] Run `scripts\project-doctor.ps1` on this machine
 - [x] Disable stale `cursor-project-harness` 0.1.0 (Essential sufficient; need 0.5.0 to re-enable)
-- [ ] Write Phase 0b contract docs only — no package/API/UI, no router mutations
+- [x] Write Phase 0b Wave 1 contracts (RCI policy, hardware gates, security/ops) — no package/API/UI, no router mutations
+- [ ] Write Phase 0b Wave 2+ contract docs (API, persistence, test strategy, scenarios, roadmap, AI handoff)
 - [ ] Prepare Python 3.11 before implementation (not required for contracts)
 
 ## toolchain_notes

@@ -93,6 +93,34 @@
       "tags": ["phase-0a", "adr"]
     },
     {
+      "path": "docs/contracts/README.md",
+      "title": "Contracts program index",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0b", "contracts", "navigation"]
+    },
+    {
+      "path": "docs/contracts/RCI_POLICY.md",
+      "title": "RCI policy contract",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0b", "contracts", "rci"]
+    },
+    {
+      "path": "docs/contracts/HARDWARE_GATES.md",
+      "title": "Hardware safety gates contract",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0b", "contracts", "hardware"]
+    },
+    {
+      "path": "docs/contracts/SECURITY_OPS.md",
+      "title": "Security and operations contract",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0b", "contracts", "security"]
+    },
+    {
       "path": "docs/project-state.md",
       "title": "Project state (living projection)",
       "status": "active",

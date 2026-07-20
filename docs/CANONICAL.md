@@ -83,14 +83,14 @@ Collect-only остаётся фактическим fallback:
 2. capability + current-state read;
 3. непустой backup artifact с hash и router identity;
 4. immutable redacted `ChangePlan`;
-5. plan/diff → normal operator `Confirm`;
-6. mandatory Netcraze Fail-safe Configuration для VPN, Wi-Fi, VLAN и firewall writes; это global safety mode, а не транзакционный commit-confirm;
+5. plan-preconditions → normal operator `Confirm` (plan digest + expiry + session binding — [`contracts/SECURITY_OPS.md`](contracts/SECURITY_OPS.md));
+6. mandatory **Fail-safe Configuration** (vendor alias **Safe Configuration**) для VPN, Wi-Fi, VLAN и firewall writes; это global safety mode, а не транзакционный commit-confirm;
 7. минимальные idempotent steps;
 8. read-back и functional verification, включая AWG handshake/application reachability;
 9. startup configuration save только после успешной verification;
 10. при failure — best-effort compensation, а при потере всех management sessions — Fail-safe timeout/reboot rollback к последней saved startup configuration.
 
-Rollback является compensating operation, а не транзакционной атомарностью. Все mutation requests используют `Idempotency-Key`; plan связан с observed resource version и digest, stale plan отклоняется.
+Rollback является compensating operation, а не транзакционной атомарностью. Терминология: **Fail-safe Configuration** — primary name в Router Control contracts; **Safe Configuration** — accepted vendor/UI alias ([`contracts/RCI_POLICY.md`](contracts/RCI_POLICY.md)). Все mutation requests используют `Idempotency-Key`; plan связан с observed resource version и digest, stale plan отклоняется.
 
 Firmware/components в v1 — только detect + operator instructions. Auto-install и auto-update запрещены.
 
