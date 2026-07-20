@@ -73,7 +73,7 @@ Timestamped snapshot возможностей конкретного `Router`.
 - `observed_at`, `valid_until`, `source`;
 - `certification_status`: `Unknown | ReadOnlyCertified | WriteCertified | Unsupported`.
 
-Новая или неизвестная firmware не наследует write certification автоматически. Отсутствующая, просроченная или неподтверждённая capability приводит к fail-closed для write.
+Переходы и gates: [`contracts/HARDWARE_GATES.md`](contracts/HARDWARE_GATES.md). Gate A → `ReadOnlyCertified`; Gate B per family → `WriteCertified`; negative evidence → `Unsupported`; expiry/revocation → downgrade toward `Unknown`. Отсутствующая, просроченная или неподтверждённая capability приводит к fail-closed для write.
 
 ### `CredentialRef`
 
@@ -83,6 +83,8 @@ Opaque ссылка на секрет в `CredentialVault`.
 - `provider` (локально — `DPAPI.CurrentUser`);
 - непрозрачный provider locator;
 - `created_at`, `rotated_at`, `revoked_at`.
+
+**Secret-kind vocabulary** (без DDL): `router_management_password`, `router_session_envelope`, `awg_private_key`, `awg_preshared_key`, `backup_encryption_key`, `hub_enrollment_key` — см. [`contracts/SECURITY_OPS.md`](contracts/SECURITY_OPS.md).
 
 Домен не получает функцию «прочитать секрет для UI». Plaintext password, RCI session, AWG private key и recovery material запрещены в API DTO, SQLite payload, logs, plans, jobs, audit и diagnostics. На удаление/ротацию ссылающихся credentials действуют явные lifecycle checks.
 
@@ -160,7 +162,7 @@ Immutable redacted diff между `DesiredRevision` и fresh `RouterObservation
 - risk classification, backup requirement, safe-configuration requirement;
 - expiry, actor, `created_at`, confirmation state.
 
-Plan не содержит raw RCI-команд или секретов. Confirm не делает stale plan актуальным: перед запуском сверяются identity, desired revision, observation version, digest и expiry. Любое расхождение требует нового observation и plan.
+Plan не содержит raw RCI-команд или секретов. **Confirm** привязывает plan digest, expiry и actor session — не password re-entry ([`contracts/SECURITY_OPS.md`](contracts/SECURITY_OPS.md)). Confirm не делает stale plan актуальным: перед запуском сверяются identity, desired revision, observation version, digest и expiry. Любое расхождение требует нового observation и plan.
 
 ### `Operation`, `Job`, `Step`
 
@@ -176,7 +178,11 @@ Plan не содержит raw RCI-команд или секретов. Confirm
 
 Execution lifecycle детальнее различает `Queued`, `Leased`, `Running`, `Succeeded`, `Failed`, `Cancelled`, `Lost` и `RecoveryRequired`. Terminal status не возвращается в running.
 
-Шаги проектируются идемпотентными: `preflight`, `identity-check`, `observe`, `backup`, `begin-safe-configuration`, `apply`, `read-back`, `verify`, `commit`, `compensate`. Checkpoint сохраняется после подтверждённого результата шага, а не до него. Неизвестный исход внешней mutation после crash нельзя автоматически считать failed или повторять вслепую: сначала выполняется read-back и выбирается resume, compensate либо `RecoveryRequired`.
+Шаги проектируются идемпотентными в **едином порядке** ([`contracts/RCI_POLICY.md`](contracts/RCI_POLICY.md)):
+
+`preflight` → `identity-check` → `observe` → `backup` → `plan-preconditions` → `Confirm` → `begin-fail-safe-configuration` → `apply` → `read-back` → `verify` → `save` | `compensate`.
+
+Legacy step names `begin-safe-configuration` эквивалентны **Fail-safe Configuration** (primary term; vendor alias Safe Configuration). Checkpoint сохраняется после подтверждённого результата шага, а не до него. Неизвестный исход внешней mutation после crash нельзя автоматически считать failed или повторять вслепую: сначала выполняется read-back и выбирается resume, compensate либо `RecoveryRequired`.
 
 Одновременно может исполняться не более одного mutation job на `RouterId`. Read-only jobs допустимы параллельно, если не нарушают active safe-configuration session. Lease и атомарный claim обеспечивают правило между workers/processes; in-process lock сам по себе недостаточен.
 

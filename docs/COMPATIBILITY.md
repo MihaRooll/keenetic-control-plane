@@ -35,6 +35,19 @@ Certification is keyed by exact model + exact firmware/build + update channel +
 component-set digest. A different tuple is detect-only until its compatibility
 lane passes.
 
+## Hardware certification gate ladder
+
+Formal gates (Phase 0b opens **none**): [`contracts/HARDWARE_GATES.md`](contracts/HARDWARE_GATES.md).
+
+| Gate | Purpose |
+|---|---|
+| **A** | Read-only RCI transport + identity certification |
+| **B** | Per-capability-family write certification |
+| **C** | Explicit laboratory mutation window |
+| **D** | Production enablement on event tuple |
+
+`RouterCapability.certification_status` transitions: `Unknown → ReadOnlyCertified → WriteCertified | Unsupported`, with expiry/revocation fail-closed for writes.
+
 ## Capability matrix
 
 | Capability | Product/model evidence | Router Control v1 status | Write gate |
@@ -48,7 +61,7 @@ lane passes.
 | RCI | **Verified:** Netcraze documents JSON GET/POST commands under `/rci`, CLI-like command shape, user access rights, and Digest auth through its HTTP Proxy service. | Lab required | Local HTTPS endpoint, auth challenge/session behavior, command errors, async continuation, timeout, and one synchronized re-auth must be captured. Public HTTP-proxy RCI is not the deployment design. |
 | WireGuard | **Verified:** NC-1812 documentation supports the WireGuard component and NDMS 5.0 server UI. | **Unsupported in v1** | Detect/report only; Router Control v1 accepts AmneziaWG profiles only. |
 | AmneziaWG (AWG) | NDMS 5.1 release notes confirm WireGuard import with advanced ASC parameters, but do not enumerate the complete accepted field set, call it full AmneziaWG compatibility, or document the RCI object shape. Availability on raw `5.01` is unverified. | **Lab required; v1's only VPN type** | **All AWG writes remain blocked** until every accepted profile field imports without semantic loss and create/switch, read-back, live handshake, application reachability, save, reboot, compensation, and baseline restore pass. Unknown or dropped fields fail closed. |
-| Safe Configuration | **Verified:** model help documents fail-safe mode: applied changes remain outside startup configuration until saved; timeout can reboot and restore the saved configuration. | Lab required; mandatory for disruptive writes | Prove activation/status/confirm/rollback over the selected management path and test loss of connectivity. A best-effort compensating rollback is still required. |
+| Safe Configuration | **Verified:** model help documents fail-safe mode: applied changes remain outside startup configuration until saved; timeout can reboot and restore the saved configuration. | Lab required; mandatory for disruptive writes | Prove activation/status/confirm/rollback over the selected management path and test loss of connectivity. Primary term: **Fail-safe Configuration** ([`contracts/RCI_POLICY.md`](contracts/RCI_POLICY.md)). A best-effort compensating rollback is still required. |
 | Routes | **Verified:** model help documents IPv4/IPv6 static routes and NDMS 5.0 DNS-based routes. | Lab required | Only managed routes may be changed. Production ceiling is set by the benchmark gate below. |
 | Backups / restore | **Verified:** product and update guidance document saving `startup-config.txt`; firmware/component backup is recommended before risky updates. | Lab required | Validate non-empty artifact, hash and router identity; perform restore + reboot + baseline verification. Backup existence alone is not proof of restorability. |
 | Firmware/components | **Verified:** NDMS is modular, and changing components can rebuild/update NDMS and reboot the router. | **Detect-only** | Automated install, removal, channel change, update, downgrade, or firmware restore is unsupported in v1. |
@@ -111,4 +124,3 @@ Official/model-specific sources, accessed 2026-07-19:
 - [RCI through the HTTP Proxy service](https://support.netcraze.ru/ultra/nc-1812/en/55035-using-api-methods-through-the-http-proxy-service.html)
 - [NDMS component installation/removal](https://support.netcraze.ru/ultra/nc-1812/en/16326-os-components-installation-removal.html)
 - [Updating NDMS online](https://support.netcraze.ru/ultra/nc-1812/en/16054-updating-os-online.html)
-

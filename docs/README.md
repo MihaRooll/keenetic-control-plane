@@ -4,7 +4,7 @@ Router Control — проектируемый модуль локального 
 
 ## Текущий статус
 
-**Phase 0a — complete.** Все документы Phase 0a подготовлены, исправлены после независимого перекрёстного ревью и прошли Definition of Done. Следующая работа — Phase 0b (API, persistence, security/operations и testing contracts). Машиночитаемый источник текущего состояния — [`STATUS.yaml`](STATUS.yaml).
+**Phase 0a — complete.** **Phase 0b — in progress.** Wave 1 contracts готовы: [`contracts/RCI_POLICY.md`](contracts/RCI_POLICY.md), [`contracts/HARDWARE_GATES.md`](contracts/HARDWARE_GATES.md), [`contracts/SECURITY_OPS.md`](contracts/SECURITY_OPS.md) (индекс — [`contracts/README.md`](contracts/README.md)). Остаются API, persistence, test strategy, scenarios, roadmap и AI handoff. Машиночитаемый источник — [`STATUS.yaml`](STATUS.yaml).
 
 Этот репозиторий — текущий дом проекта и будущего лабораторного prototype. Целевая интеграция — существующий Python 3.11 / FastAPI Hub `module_3.0`, но только после проверки ядра и hardware gates. `ScanCursorIP` остаётся legacy behavioral evidence и рабочим strangler-контуром до достижения parity и отдельного решения о cutover; новую реализацию там не создаём.
 
@@ -20,7 +20,8 @@ Router Control — проектируемый модуль локального 
 6. [`DOMAIN_MODEL.md`](DOMAIN_MODEL.md) — entities, revisions, desired/observed state, ownership и invariants.
 7. [`LEGACY_MAP.md`](LEGACY_MAP.md) — что переносить из C#/PowerShell, что считать golden behavior и что не переиспользовать.
 8. [`COMPATIBILITY.md`](COMPATIBILITY.md) — firmware/capability matrix и hardware certification gates.
-9. ADR:
+9. [`contracts/README.md`](contracts/README.md) — Phase 0b contracts program и Wave 1–7 navigation.
+10. ADR:
    - [`adrs/0001-python-package-fastapi-host.md`](adrs/0001-python-package-fastapi-host.md)
    - [`adrs/0002-persistence-jobs-sqlite.md`](adrs/0002-persistence-jobs-sqlite.md)
    - [`adrs/0003-security-auth-secrets.md`](adrs/0003-security-auth-secrets.md)
@@ -33,7 +34,7 @@ Router Control — проектируемый модуль локального 
 - В Hub API будет жить на общем listener под `/api/router-control/v1/*`, а UI — только в защищённом блоке существующего `/settings`.
 - Router Control использует отдельную SQLite database `data/router_control.sqlite3`; JSON допускается для import/export и redacted artifacts, но не как основное state storage.
 - Первая VPN capability — только **AmneziaWG**. Unknown firmware, capability или profile field запрещает write operation.
-- Любое изменение роутера проходит preflight → redacted plan/diff → operator Confirm → Safe Configuration → apply → read-back verification → commit либо compensation.
+- Любое изменение роутера проходит unified lifecycle: preflight → identity → observe → backup → plan-preconditions → Confirm → Fail-safe Configuration → apply → read-back → verify → save/compensate ([`contracts/RCI_POLICY.md`](contracts/RCI_POLICY.md)).
 - Mutation jobs сериализуются по стабильному `RouterId`; модуль изменяет или удаляет только ресурсы с собственной ownership record.
 - Degraded/disabled Router Control не должен блокировать kiosk, order board, printing или запуск Hub.
 
@@ -49,7 +50,7 @@ Phase 0a создаёт только architecture evidence: code-truth, domain m
 - перенос в `module_3.0`;
 - размещение passwords, private keys, session data или иных secrets в документации.
 
-Phase 0a закрыта после готовности всех deliverables из [`STATUS.yaml`](STATUS.yaml), перекрёстного review и проверки Definition of Done. Следующий исполнитель начинает **Phase 0b**, не переходя к implementation до завершения её контрактов.
+Phase 0a закрыта после готовности всех deliverables из [`STATUS.yaml`](STATUS.yaml), перекрёстного review и проверки Definition of Done. **Phase 0b in progress** — Wave 1 contracts complete; implementation не начинается до закрытия всех Phase 0b deliverables.
 
 ## Harness и living docs
 

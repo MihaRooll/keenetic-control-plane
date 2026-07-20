@@ -20,7 +20,7 @@ Router Control разрабатывается в два этапа без сме
 - Unknown model, firmware, capability или unsupported profile field запрещают write, но не read-only диагностику.
 - Router identity определяется по устойчивому fingerprint (model + serial/MAC/vendor evidence), а не по IP, hostname, default gateway или имени `Wireguard0`.
 - Router Control меняет и удаляет только ресурсы, для которых существует его ownership record.
-- Любая mutation проходит `preflight → observe → plan/diff → confirm → safe apply → read-back/verify → commit`; ошибка приводит к compensation, а потеря связи полагается на router Safe Configuration.
+- Любая mutation проходит unified lifecycle `preflight → identity → observe → backup → plan-preconditions → Confirm → Fail-safe Configuration → apply → read-back → verify → save/compensate`; ошибка приводит к compensation, а потеря связи полагается на router Fail-safe Configuration ([`contracts/RCI_POLICY.md`](contracts/RCI_POLICY.md)).
 - Private keys, passwords, raw sessions и startup configuration не попадают в API response, plan diff, job payload, audit или diagnostics.
 - Firmware/components в v1 только обнаруживаются; автоматические install/update не входят в boundary.
 
@@ -109,7 +109,7 @@ NetworkPolicy реализуется после VPN/routes и не входит 
 | `RouterInventory` | `RouterId`, endpoint, fingerprint, model/firmware, capabilities, timestamped observations | Хранение credentials и применение config |
 | `CredentialVault` | Opaque `CredentialRef`, create/rotate/delete secret, local DPAPI adapter | Возврат plaintext через API |
 | `VpnLifecycle` | `VpnProfileArtifact`, profile validation, `TunnelAssignment`, desired/observed health | Vendor commands и firmware update |
-| `Provisioning` | Preflight, immutable `ChangePlan`, confirmation, Safe Configuration, apply, verify, compensation | Решение о network segmentation |
+| `Provisioning` | Preflight, immutable `ChangePlan`, confirmation, Fail-safe Configuration (primary; Safe Configuration vendor alias), apply, verify, compensation | Решение о network segmentation |
 | `RoutingPolicy` | Managed `RouteSet`, public-destination validation, diff/ensure, ownership | Raw RCI commands и TrafficDiscovery |
 | `JobsAudit` | Durable jobs, steps/checkpoints, leases, idempotency, append-only audit | Domain policy |
 | `TrafficDiscovery` | Evidence, confidence/TTL и `RouteProposal` | Прямое изменение routes |
@@ -224,7 +224,7 @@ Failure policy:
 - Ожидаемые Router Control composition, DB migration/recovery и worker startup failures перехватываются на feature boundary: facade переходит в `Degraded`, route registration и Hub startup продолжаются. Global Settings validation и ошибки вне этой границы сохраняют существующую семантику Hub; cancellation, interpreter-level failures и programming errors нельзя перехватывать без разбора.
 - Router timeout, auth failure или wrong fingerprint влияют на конкретный router/job. Они не завершают Hub process.
 - Ожидаемая feature-local Router Control exception не должна выходить из lifespan startup/shutdown. Ошибка логируется redacted и отражается в health state. Runtime recovery из `Degraded` начинается только по explicit operator retry или после process restart.
-- Writes в `Degraded`/`SecurityBlocked` запрещены. Read-only health может сообщить только безопасный status и reason code.
+- Writes в `Degraded`/`SecurityBlocked` запрещены. **`SecurityBlocked`**: все `/api/router-control/v1/*` отвечают **`503`** до handler. **`Degraded`**: только ограниченный health/status (без mutations); read-only diagnostics redacted.
 
 Не допускается ловить ошибку и продолжать mutation с частично собранными adapters. Composition возвращает либо целостный `Ready` runtime, либо явный disabled/degraded facade.
 
@@ -314,3 +314,13 @@ Mutation lease и lock привязаны к `RouterId`. `applied_revision` ме
 - В API/domain отсутствуют RCI JSON, raw command endpoints и invented promo scopes.
 - Four-zone policy отделена от HTTP auth и описывает `Guest`, `Promo`, `Staff`, `Admin/Server`.
 - Legacy остаётся strangler fallback до parity, restore rehearsal и явного cutover.
+
+## 13. Phase 0b contracts (Wave 1)
+
+| Contract | Scope |
+|---|---|
+| [`contracts/RCI_POLICY.md`](contracts/RCI_POLICY.md) | Capability-family allowlist, transport hypotheses, unified lifecycle |
+| [`contracts/HARDWARE_GATES.md`](contracts/HARDWARE_GATES.md) | Gates A/B/C/D, certification tuple, fail-closed table |
+| [`contracts/SECURITY_OPS.md`](contracts/SECURITY_OPS.md) | `hub_admin` fail-closed, Confirm, CredentialRef/DPAPI, audit, zones |
+
+Index: [`contracts/README.md`](contracts/README.md). Phase 0b opens **no** hardware gates.
