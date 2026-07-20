@@ -10,7 +10,7 @@
 | Lifecycle | Unified order in §5; **Confirm** before apply; **Fail-safe Configuration** mandatory for disruptive writes — **not** transactional atomicity |
 | Serialization | One mutation job per `RouterId`; read-only may parallelize outside active Fail-safe session |
 | Evidence | Legacy fixtures from [`LEGACY_MAP.md`](../LEGACY_MAP.md) are old-device behavioral evidence only |
-| Trace | [`CANONICAL.md`](../CANONICAL.md), [`ARCHITECTURE.md`](../ARCHITECTURE.md), [`DOMAIN_MODEL.md`](../DOMAIN_MODEL.md), [`COMPATIBILITY.md`](../COMPATIBILITY.md), ADR-0002/0004 |
+| Trace | [`CANONICAL.md`](../CANONICAL.md), [`ARCHITECTURE.md`](../ARCHITECTURE.md), [`DOMAIN_MODEL.md`](../DOMAIN_MODEL.md), [`COMPATIBILITY.md`](../COMPATIBILITY.md), ADR-0002/0004, [`SCENARIOS.md`](SCENARIOS.md) |
 
 ---
 
@@ -99,8 +99,8 @@ On failure after apply: best-effort **compensate**; if all management sessions l
 
 - **Managed merge** — planner изменяет/удаляет только resources с ownership record Router Control; `prune=false` default ([`DOMAIN_MODEL.md`](../DOMAIN_MODEL.md)).
 - **Stale plan rejection** — перед lease/apply сверяются: identity, desired `If-Match`/revision, observation version, plan digest, expiry, certification still valid. Любое расхождение → reject, new observe + plan.
-- **Idempotency** — каждый mutation request несёт `Idempotency-Key`; duplicate digest returns same operation; same key + different digest → conflict (ADR-0002).
-- **Per-RouterId serialization** — не более одного active mutation job; durable lease/claim across workers.
+- **Idempotency** — каждый mutation request несёт `Idempotency-Key`; duplicate digest returns same operation; same key + different digest → conflict (ADR-0002). SQLite records and retention — [`PERSISTENCE_CONTRACT.md`](PERSISTENCE_CONTRACT.md) §6.
+- **Per-RouterId serialization** — не более одного active mutation job; durable lease/claim across workers ([`PERSISTENCE_CONTRACT.md`](PERSISTENCE_CONTRACT.md) §4–5).
 
 ## 7. Backup policy
 
@@ -122,6 +122,8 @@ On failure after apply: best-effort **compensate**; if all management sessions l
 
 ## 9. Links
 
+- Test strategy and evidence lanes: [`TEST_STRATEGY.md`](TEST_STRATEGY.md)
+- HTTP/API surface: [`API_CONTRACT.md`](API_CONTRACT.md)
 - Hardware certification: [`HARDWARE_GATES.md`](HARDWARE_GATES.md)
 - Security, Confirm, secrets: [`SECURITY_OPS.md`](SECURITY_OPS.md)
 - Index: [`README.md`](README.md)

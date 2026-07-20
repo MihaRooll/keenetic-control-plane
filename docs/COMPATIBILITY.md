@@ -124,3 +124,5 @@ Official/model-specific sources, accessed 2026-07-19:
 - [RCI through the HTTP Proxy service](https://support.netcraze.ru/ultra/nc-1812/en/55035-using-api-methods-through-the-http-proxy-service.html)
 - [NDMS component installation/removal](https://support.netcraze.ru/ultra/nc-1812/en/16326-os-components-installation-removal.html)
 - [Updating NDMS online](https://support.netcraze.ru/ultra/nc-1812/en/16054-updating-os-online.html)
+
+Test strategy and evidence lanes (route benchmark, gates): [`contracts/TEST_STRATEGY.md`](contracts/TEST_STRATEGY.md).

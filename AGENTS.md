@@ -7,8 +7,10 @@
 1. `README.md`
 2. `docs/STATUS.yaml`
 3. `docs/CANONICAL.md`
-
-Затем откройте документы, относящиеся к текущей задаче.
+4. `docs/contracts/README.md`
+5. `docs/contracts/AI_HANDOFF.md` — cold-start extensions, SSOT, task template
+6. Task-specific contracts as needed
+7. `docs/project-state.md` (non-competing harness projection)
 
 ## Обязательные правила
 

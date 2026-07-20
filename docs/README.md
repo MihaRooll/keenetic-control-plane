@@ -4,7 +4,7 @@ Router Control — проектируемый модуль локального 
 
 ## Текущий статус
 
-**Phase 0a — complete.** **Phase 0b — in progress.** Wave 1 contracts готовы: [`contracts/RCI_POLICY.md`](contracts/RCI_POLICY.md), [`contracts/HARDWARE_GATES.md`](contracts/HARDWARE_GATES.md), [`contracts/SECURITY_OPS.md`](contracts/SECURITY_OPS.md) (индекс — [`contracts/README.md`](contracts/README.md)). Остаются API, persistence, test strategy, scenarios, roadmap и AI handoff. Машиночитаемый источник — [`STATUS.yaml`](STATUS.yaml).
+**Phase 0a — complete.** **Phase 0b — complete** (Wave 7 closeout). Все eight contract deliverables согласованы: `rci-policy`, `security-ops`, `persistence-contract`, `api-contract`, `test-strategy`, `scenarios`, `roadmap`, `ai-handoff` ([`contracts/`](contracts/), [`contracts/ROADMAP.md`](contracts/ROADMAP.md), [`contracts/AI_HANDOFF.md`](contracts/AI_HANDOFF.md)). Supporting: hardware safety gates ([`contracts/HARDWARE_GATES.md`](contracts/HARDWARE_GATES.md)); индекс — [`contracts/README.md`](contracts/README.md). Implementation **не начата** — заблокирована `implementation_transition_gate`. Машиночитаемый источник — [`STATUS.yaml`](STATUS.yaml).
 
 Этот репозиторий — текущий дом проекта и будущего лабораторного prototype. Целевая интеграция — существующий Python 3.11 / FastAPI Hub `module_3.0`, но только после проверки ядра и hardware gates. `ScanCursorIP` остаётся legacy behavioral evidence и рабочим strangler-контуром до достижения parity и отдельного решения о cutover; новую реализацию там не создаём.
 
@@ -31,7 +31,7 @@ Router Control — проектируемый модуль локального 
 
 - Domain core создаётся как переносимый Python package `router_control` без зависимости от FastAPI.
 - Prototype получает отдельный FastAPI dev-host; позже package механически встраивается в lifecycle и dependency wiring `module_3.0`.
-- В Hub API будет жить на общем listener под `/api/router-control/v1/*`, а UI — только в защищённом блоке существующего `/settings`.
+- In Hub API будет жить на общем listener под `/api/router-control/v1/*` ([`contracts/API_CONTRACT.md`](contracts/API_CONTRACT.md)), а UI — только в защищённом блоке существующего `/settings`.
 - Router Control использует отдельную SQLite database `data/router_control.sqlite3`; JSON допускается для import/export и redacted artifacts, но не как основное state storage.
 - Первая VPN capability — только **AmneziaWG**. Unknown firmware, capability или profile field запрещает write operation.
 - Любое изменение роутера проходит unified lifecycle: preflight → identity → observe → backup → plan-preconditions → Confirm → Fail-safe Configuration → apply → read-back → verify → save/compensate ([`contracts/RCI_POLICY.md`](contracts/RCI_POLICY.md)).
@@ -50,7 +50,7 @@ Phase 0a создаёт только architecture evidence: code-truth, domain m
 - перенос в `module_3.0`;
 - размещение passwords, private keys, session data или иных secrets в документации.
 
-Phase 0a закрыта после готовности всех deliverables из [`STATUS.yaml`](STATUS.yaml), перекрёстного review и проверки Definition of Done. **Phase 0b in progress** — Wave 1 contracts complete; implementation не начинается до закрытия всех Phase 0b deliverables.
+Phase 0a закрыта после готовности всех deliverables из [`STATUS.yaml`](STATUS.yaml), перекрёстного review и проверки Definition of Done. **Phase 0b complete** — Wave 7 closeout; implementation **не начата** до `implementation_transition_gate.human_approved=true` и `code_may_start=true`.
 
 ## Harness и living docs
 

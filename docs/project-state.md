@@ -14,7 +14,7 @@
 
 ## phase
 
-phase-0b-contracts
+phase-0b-complete
 
 ## milestones
 
@@ -22,8 +22,8 @@ phase-0b-contracts
 |-----------|--------|-------|
 | Phase 0a architecture evidence | done | Frozen in baseline commit `c15ef56` |
 | Harness bootstrapped (Essential) | done | On-disk Essential; stale local plugin 0.1.0 disabled |
-| Phase 0b contracts | in progress | Wave 1 done: RCI policy, hardware gates, security/ops ([`contracts/`](contracts/)); Wave 2+: API, persistence, test strategy, scenarios, roadmap, AI handoff |
-| Implementation / prototype code | pending | Blocked until Phase 0b complete; prepare Python 3.11 before code |
+| Phase 0b contracts | done | Wave 7 closeout complete; eight STATUS deliverable IDs + supporting artifacts ([`contracts/`](contracts/)) |
+| Implementation / prototype code | blocked | Pending `implementation_transition_gate.human_approved=true` and `code_may_start=true` |
 
 ## next_checks
 
@@ -31,8 +31,14 @@ phase-0b-contracts
 - [x] Run `scripts\project-doctor.ps1` on this machine
 - [x] Disable stale `cursor-project-harness` 0.1.0 (Essential sufficient; need 0.5.0 to re-enable)
 - [x] Write Phase 0b Wave 1 contracts (RCI policy, hardware gates, security/ops) — no package/API/UI, no router mutations
-- [ ] Write Phase 0b Wave 2+ contract docs (API, persistence, test strategy, scenarios, roadmap, AI handoff)
-- [ ] Prepare Python 3.11 before implementation (not required for contracts)
+- [x] Write Phase 0b Wave 2 persistence contract — no package/API/UI, no router mutations
+- [x] Write Phase 0b Wave 3 HTTP/API contract — no package/API/UI/OpenAPI, no router mutations
+- [x] Write Phase 0b Wave 4 test strategy contract — no package/API/UI, no router mutations, no hardware tests
+- [x] Write Phase 0b Wave 5 scenarios contract — no package/API/UI, no router mutations, no hardware tests
+- [x] Write Phase 0b Wave 6 contract docs (roadmap, AI handoff)
+- [x] Wave 7 cross-document review/closeout (Phase 0b exit)
+- [ ] Obtain explicit human approval for Phase 1 / SLICE-1 (`implementation_transition_gate`)
+- [ ] Prepare Python 3.11 before implementation (blocked until human gate open)
 
 ## toolchain_notes
 

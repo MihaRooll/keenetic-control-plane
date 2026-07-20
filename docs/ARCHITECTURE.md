@@ -158,7 +158,7 @@ flowchart LR
   AuditPort --> AuditStore
 ```
 
-Минимальные inbound ports — inventory/enroll, preflight, profile validation, plan/create, plan/confirm и job status/cancel. Outbound ports:
+Минимальные inbound ports — inventory/enroll, preflight, profile validation, plan/create, plan/confirm, plan/apply и job status/cancel. Normative HTTP paths и DTOs — [`contracts/API_CONTRACT.md`](contracts/API_CONTRACT.md). Outbound ports:
 
 - `RouterControlPort`: identity, capabilities, observed state, safe-configuration lifecycle и allowlisted vendor-neutral mutations;
 - `RepositoryPort`: routers, revisions, observations, ownership, plans, jobs и idempotency;
@@ -315,12 +315,18 @@ Mutation lease и lock привязаны к `RouterId`. `applied_revision` ме
 - Four-zone policy отделена от HTTP auth и описывает `Guest`, `Promo`, `Staff`, `Admin/Server`.
 - Legacy остаётся strangler fallback до parity, restore rehearsal и явного cutover.
 
-## 13. Phase 0b contracts (Wave 1)
+## 13. Phase 0b contracts (complete)
 
 | Contract | Scope |
 |---|---|
 | [`contracts/RCI_POLICY.md`](contracts/RCI_POLICY.md) | Capability-family allowlist, transport hypotheses, unified lifecycle |
 | [`contracts/HARDWARE_GATES.md`](contracts/HARDWARE_GATES.md) | Gates A/B/C/D, certification tuple, fail-closed table |
 | [`contracts/SECURITY_OPS.md`](contracts/SECURITY_OPS.md) | `hub_admin` fail-closed, Confirm, CredentialRef/DPAPI, audit, zones |
+| [`contracts/PERSISTENCE_CONTRACT.md`](contracts/PERSISTENCE_CONTRACT.md) | SQLite schema v0, revisions, jobs, idempotency, audit |
+| [`contracts/API_CONTRACT.md`](contracts/API_CONTRACT.md) | HTTP v0 surface, auth matrix, endpoints, DTOs, async/cancel |
+| [`contracts/TEST_STRATEGY.md`](contracts/TEST_STRATEGY.md) | Verification lanes, fake/recorded/hardware evidence, pyramid matrix |
+| [`contracts/SCENARIOS.md`](contracts/SCENARIOS.md) | Operator/event scenarios, four zones, trace matrix to API and test lanes |
+| [`contracts/ROADMAP.md`](contracts/ROADMAP.md) | Dependency-ordered implementation slices; human gate before code |
+| [`contracts/AI_HANDOFF.md`](contracts/AI_HANDOFF.md) | AI cold-start, SSOT, task template, safe resumption |
 
-Index: [`contracts/README.md`](contracts/README.md). Phase 0b opens **no** hardware gates.
+Index: [`contracts/README.md`](contracts/README.md). Phase 0b **complete** — opens **no** hardware gates. Implementation blocked pending `implementation_transition_gate` (human approval required).
