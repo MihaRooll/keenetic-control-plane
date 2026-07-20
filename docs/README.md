@@ -4,7 +4,7 @@ Router Control — проектируемый модуль локального 
 
 ## Текущий статус
 
-**Phase 0a — complete.** **Phase 0b — complete** (Wave 7 closeout). Все eight contract deliverables согласованы: `rci-policy`, `security-ops`, `persistence-contract`, `api-contract`, `test-strategy`, `scenarios`, `roadmap`, `ai-handoff` ([`contracts/`](contracts/), [`contracts/ROADMAP.md`](contracts/ROADMAP.md), [`contracts/AI_HANDOFF.md`](contracts/AI_HANDOFF.md)). Supporting: hardware safety gates ([`contracts/HARDWARE_GATES.md`](contracts/HARDWARE_GATES.md)); индекс — [`contracts/README.md`](contracts/README.md). Implementation **не начата** — заблокирована `implementation_transition_gate`. Машиночитаемый источник — [`STATUS.yaml`](STATUS.yaml).
+**Phase 0a — complete.** **Phase 0b — complete** (Wave 7 closeout). **Phase 1 / SLICE-1 — in_progress** — human approval 2026-07-21; `implementation_transition_gate.code_may_start=true` **только для SLICE-1** (portable core, application ports, FakeRouterAdapter, fake-only tests). Все eight contract deliverables согласованы: `rci-policy`, `security-ops`, `persistence-contract`, `api-contract`, `test-strategy`, `scenarios`, `roadmap`, `ai-handoff` ([`contracts/`](contracts/), [`contracts/ROADMAP.md`](contracts/ROADMAP.md), [`contracts/AI_HANDOFF.md`](contracts/AI_HANDOFF.md)). Supporting: hardware safety gates ([`contracts/HARDWARE_GATES.md`](contracts/HARDWARE_GATES.md)) — **gates A–D closed**; индекс — [`contracts/README.md`](contracts/README.md). Python package **ещё не создан**. Машиночитаемый источник — [`STATUS.yaml`](STATUS.yaml).
 
 Этот репозиторий — текущий дом проекта и будущего лабораторного prototype. Целевая интеграция — существующий Python 3.11 / FastAPI Hub `module_3.0`, но только после проверки ядра и hardware gates. `ScanCursorIP` остаётся legacy behavioral evidence и рабочим strangler-контуром до достижения parity и отдельного решения о cutover; новую реализацию там не создаём.
 
@@ -50,7 +50,7 @@ Phase 0a создаёт только architecture evidence: code-truth, domain m
 - перенос в `module_3.0`;
 - размещение passwords, private keys, session data или иных secrets в документации.
 
-Phase 0a закрыта после готовности всех deliverables из [`STATUS.yaml`](STATUS.yaml), перекрёстного review и проверки Definition of Done. **Phase 0b complete** — Wave 7 closeout; implementation **не начата** до `implementation_transition_gate.human_approved=true` и `code_may_start=true`.
+Phase 0a закрыта после готовности всех deliverables из [`STATUS.yaml`](STATUS.yaml), перекрёстного review и проверки Definition of Done. **Phase 0b complete** — Wave 7 closeout. **Phase 1 / SLICE-1 in_progress** — human approval 2026-07-21; SLICE-1 code allowed; package ещё не создан; hardware gates A–D closed.
 
 ## Harness и living docs
 

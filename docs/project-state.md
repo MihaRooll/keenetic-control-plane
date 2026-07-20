@@ -14,7 +14,7 @@
 
 ## phase
 
-phase-0b-complete
+phase-1-slice-1
 
 ## milestones
 
@@ -23,7 +23,7 @@ phase-0b-complete
 | Phase 0a architecture evidence | done | Frozen in baseline commit `c15ef56` |
 | Harness bootstrapped (Essential) | done | On-disk Essential; stale local plugin 0.1.0 disabled |
 | Phase 0b contracts | done | Wave 7 closeout complete; eight STATUS deliverable IDs + supporting artifacts ([`contracts/`](contracts/)) |
-| Implementation / prototype code | blocked | Pending `implementation_transition_gate.human_approved=true` and `code_may_start=true` |
+| Implementation / SLICE-1 (portable core + FakeRouterAdapter) | in_progress | Human approval 2026-07-21; `code_may_start=true` for SLICE-1 only; package not yet present |
 
 ## next_checks
 
@@ -37,8 +37,9 @@ phase-0b-complete
 - [x] Write Phase 0b Wave 5 scenarios contract — no package/API/UI, no router mutations, no hardware tests
 - [x] Write Phase 0b Wave 6 contract docs (roadmap, AI handoff)
 - [x] Wave 7 cross-document review/closeout (Phase 0b exit)
-- [ ] Obtain explicit human approval for Phase 1 / SLICE-1 (`implementation_transition_gate`)
-- [ ] Prepare Python 3.11 before implementation (blocked until human gate open)
+- [x] Obtain explicit human approval for Phase 1 / SLICE-1 (`implementation_transition_gate`, 2026-07-21)
+- [ ] Implement SLICE-1 only: portable core, application ports, FakeRouterAdapter, fake-only tests (no FastAPI/SQLite/live/hardware)
+- [ ] Prepare Python 3.11 before SLICE-1 code (Windows `py.exe -3.11` verified 2026-07-20)
 
 ## toolchain_notes
 

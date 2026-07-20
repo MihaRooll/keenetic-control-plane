@@ -4,7 +4,7 @@
 
 | Check | Action |
 |---|---|
-| Phase | Phase **0b complete** — contracts only; no package/API/UI/router mutations; implementation blocked pending human gate |
+| Phase | Phase **0b complete**; Phase **1 / SLICE-1 in progress** (authorized) — implementation scope: portable core + `FakeRouterAdapter` only; hardware gates A–D **closed**; no live adapter |
 | Wave 1 | RCI policy, hardware gates, security/operations — **complete** |
 | Wave 2 | SQLite persistence, revisions, durable jobs, audit — **complete** |
 | Wave 3 | HTTP/API contract (v0) — **complete** |
@@ -14,7 +14,7 @@
 | Wave 7 | Cross-document review/closeout — **complete** |
 | Read order | This index → [`RCI_POLICY.md`](RCI_POLICY.md) + [`HARDWARE_GATES.md`](HARDWARE_GATES.md) → [`SECURITY_OPS.md`](SECURITY_OPS.md) → [`PERSISTENCE_CONTRACT.md`](PERSISTENCE_CONTRACT.md) → [`API_CONTRACT.md`](API_CONTRACT.md) → [`TEST_STRATEGY.md`](TEST_STRATEGY.md) → [`SCENARIOS.md`](SCENARIOS.md) → [`ROADMAP.md`](ROADMAP.md) → [`AI_HANDOFF.md`](AI_HANDOFF.md) |
 | Trace | [`CANONICAL.md`](../CANONICAL.md), [`ARCHITECTURE.md`](../ARCHITECTURE.md), [`DOMAIN_MODEL.md`](../DOMAIN_MODEL.md), [`COMPATIBILITY.md`](../COMPATIBILITY.md), ADR-0002/0003/0004, [`LEGACY_MAP.md`](../LEGACY_MAP.md) for RCI evidence limits |
-| Do not | Invent certified RCI JSON bodies; normalize raw `5.01` to `5.1`; open hardware gates in Phase 0b |
+| Do not | Invent certified RCI JSON bodies; normalize raw `5.01` to `5.1`; open hardware gates A–D |
 
 ---
 
@@ -70,7 +70,7 @@
 
 | Файл | Назначение |
 |---|---|
-| [`ROADMAP.md`](ROADMAP.md) | Dependency-ordered implementation slices, entry/exit gates, verification evidence, rollback/stop — no code until post-Phase 0b human approval |
+| [`ROADMAP.md`](ROADMAP.md) | Dependency-ordered implementation slices, entry/exit gates, verification evidence, rollback/stop — SLICE-1 authorized per [`STATUS.yaml`](../STATUS.yaml) `implementation_transition_gate` |
 | [`AI_HANDOFF.md`](AI_HANDOFF.md) | AI cold-start, SSOT hierarchy, invariants, task template, atomic doc updates, safe resumption |
 
 ## Зависимости
@@ -86,14 +86,14 @@ Wave 1 опирается на:
 - [`docs/adrs/0003-security-auth-secrets.md`](../adrs/0003-security-auth-secrets.md) — auth, DPAPI, trust boundaries
 - [`docs/adrs/0004-product-capability-scope.md`](../adrs/0004-product-capability-scope.md) — NC-1812 scope, AWG, route benchmark
 
-## Phase 0b Definition of Done (Wave 7 closeout)
+## Phase 0b Definition of Done (Wave 7 closeout — historical snapshot)
 
-Phase 0b is **closed** when:
+**Historical closeout snapshot (2026-07-20):** Phase 0b is **closed** when:
 
 1. **All eight** STATUS contract deliverable IDs complete with `id` fields: `rci-policy`, `security-ops`, `persistence-contract`, `api-contract`, `test-strategy`, `scenarios`, `roadmap`, `ai-handoff` — plus supporting `hardware-gates` and `contracts-index`.
-2. [`STATUS.yaml`](../STATUS.yaml): `current_phase.complete: true`; `pending: []`; `phase_0b_exit_criteria` all true; `implementation_transition_gate.human_approved: false`, `code_may_start: false`.
+2. At Wave 7 closeout: `previous_phase.id: 0b`, `pending: []`, `phase_0b_exit_criteria` all true; `implementation_transition_gate` installed pending separate human approval.
 3. Navigation synchronized across READMEs, `project-state.md`, `docs-map.json`, contracts index, and cross-links.
 4. No implementation artifacts, secrets, or opened hardware gates.
 5. Cross-document review complete; reviewer blockers clear.
 
-Implementation entry requires **separate** human approval via `implementation_transition_gate` — Phase 0b complete does **not** grant it.
+**Current state:** see [`STATUS.yaml`](../STATUS.yaml) — Phase 1 / SLICE-1 authorized (`implementation_transition_gate` open for portable core + `FakeRouterAdapter` only); hardware gates A–D remain closed.

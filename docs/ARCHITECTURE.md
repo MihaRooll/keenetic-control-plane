@@ -329,4 +329,4 @@ Mutation lease и lock привязаны к `RouterId`. `applied_revision` ме
 | [`contracts/ROADMAP.md`](contracts/ROADMAP.md) | Dependency-ordered implementation slices; human gate before code |
 | [`contracts/AI_HANDOFF.md`](contracts/AI_HANDOFF.md) | AI cold-start, SSOT, task template, safe resumption |
 
-Index: [`contracts/README.md`](contracts/README.md). Phase 0b **complete** — opens **no** hardware gates. Implementation blocked pending `implementation_transition_gate` (human approval required).
+Index: [`contracts/README.md`](contracts/README.md). Phase 0b **complete**; **Phase 1 / SLICE-1 in_progress** (authorized 2026-07-21) — portable core + `FakeRouterAdapter`, fake-only; package not yet created; hardware gates A–D **closed**. See [`STATUS.yaml`](STATUS.yaml) and [`contracts/ROADMAP.md`](contracts/ROADMAP.md).

@@ -6,7 +6,7 @@
 
 Модуль не является универсальной панелью администрирования роутеров. Его задача — поддержать конкретный event-booth deployment, где потеря сети или ошибочная маршрутизация останавливают приём заказов и производство. Поэтому безопасный отказ важнее автоматического «исправления любой ценой».
 
-Текущий статус проекта — **Phase 0a complete**, **Phase 0b complete** (Wave 7 closeout). Implementation **не начата** — заблокирована `implementation_transition_gate`. Актуальное состояние deliverables, gate и blockers — в [`STATUS.yaml`](STATUS.yaml); порядок чтения — в [`README.md`](README.md).
+Текущий статус проекта — **Phase 0a complete**, **Phase 0b complete** (Wave 7 closeout), **Phase 1 / SLICE-1 in_progress** (authorized 2026-07-21). Scope SLICE-1: portable core + `FakeRouterAdapter`, fake-only tests; **no** live router or network I/O; hardware gates A–D **closed**. Python package **ещё не создан**. Актуальное состояние — [`STATUS.yaml`](STATUS.yaml); порядок slices — [`contracts/ROADMAP.md`](contracts/ROADMAP.md); порядок чтения — [`README.md`](README.md).
 
 ## Event scenario
 

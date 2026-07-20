@@ -6,21 +6,21 @@
       "title": "Repository entrypoint; eight STATUS deliverable IDs",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "navigation", "complete"]
+      "tags": ["phase-1", "slice-1", "navigation", "in_progress"]
     },
     {
       "path": "docs/README.md",
       "title": "Documentation index; eight STATUS deliverable IDs",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "navigation", "complete"]
+      "tags": ["phase-1", "slice-1", "navigation", "in_progress"]
     },
     {
       "path": "docs/STATUS.yaml",
       "title": "Project status (SSOT)",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "state", "complete"]
+      "tags": ["phase-1", "slice-1", "state", "in_progress"]
     },
     {
       "path": "docs/VISION.md",
@@ -153,21 +153,21 @@
       "title": "Implementation roadmap contract",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "contracts", "roadmap", "complete"]
+      "tags": ["phase-0b", "phase-1", "slice-1", "contracts", "roadmap", "in_progress"]
     },
     {
       "path": "docs/contracts/AI_HANDOFF.md",
       "title": "AI agent handoff contract; eight STATUS deliverable catalog",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "contracts", "handoff", "complete"]
+      "tags": ["phase-0b", "phase-1", "slice-1", "contracts", "handoff", "in_progress"]
     },
     {
       "path": "docs/project-state.md",
       "title": "Project state (living projection)",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "state", "harness", "complete"]
+      "tags": ["phase-1", "slice-1", "state", "harness", "in_progress"]
     },
     {
       "path": "docs/docs-map.json",

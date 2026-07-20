@@ -1,5 +1,5 @@
 schema_version: 1
-updated: "2026-07-20"
+updated: "2026-07-21"
 
 project:
   name: "Router Control"
@@ -13,18 +13,18 @@ project:
   target_integration: "module_3.0"
 
 previous_phase:
-  id: "0a"
-  name: "architecture evidence"
-  status: "complete"
-  complete: true
-  reason: "Все Phase 0a документы написаны, исправлены после независимого cross-document review и прошли Definition of Done."
-
-current_phase:
   id: "0b"
   name: "contracts"
   status: "complete"
   complete: true
   reason: "Wave 7 cross-document review закрыл Phase 0b contracts. Все eight contract deliverables согласованы; package/API/UI implementation и router mutations по-прежнему запрещены до implementation_transition_gate."
+
+current_phase:
+  id: "1"
+  name: "Phase 1 / SLICE-1 — portable core + FakeRouterAdapter"
+  status: "in_progress"
+  complete: false
+  reason: "Explicit human approval 2026-07-21 for Phase 1 / SLICE-1 only; implementation_transition_gate open for SLICE-1 code. Hardware gates A–D remain closed; no live router or network I/O."
 
 deliverables:
   completed:
@@ -117,15 +117,15 @@ blockers:
     resolution_gate: "Identity snapshot и recorded fixtures exact tuple; unknown firmware остаётся fail-closed."
 
 next_task:
-  id: "phase-1-implementation-human-approval"
+  id: "slice-1-portable-core-fake-adapter"
   path: "docs/contracts/ROADMAP.md"
-  action: "Obtain explicit human approval to begin Phase 1 / SLICE-1 implementation. Phase 0b documentation is complete; approval is not granted automatically."
+  action: "Implement SLICE-1 only: Python package portable core, application ports, FakeRouterAdapter, fake-only tests per ROADMAP."
   constraints:
-    - "Не создавать package, API host, UI или pyproject.toml until implementation_transition_gate.human_approved=true and code_may_start=true."
-    - "Не выполнять mutation живого роутера."
+    - "SLICE-1 scope only — no FastAPI dev-host, SQLite, live adapter, Hub wiring, or hardware gates."
+    - "Не выполнять mutation живого роутера или live network I/O."
+    - "Не открывать hardware gates A–D."
     - "Не включать passwords, private keys, raw sessions или startup-config."
-    - "implementation_transition_gate.human_approved остаётся false until explicit human sets it."
-    - "implementation_transition_gate.code_may_start остаётся false until explicit human sets it after approval."
+    - "Package ещё не создан — следующий task создаёт первый owned product code."
 
 canonical_facts:
   product:
@@ -186,9 +186,11 @@ phase_0b_exit_criteria:
 
 implementation_transition_gate:
   requires_explicit_human_approval: true
-  human_approved: false
-  code_may_start: false
-  note: "Phase 0b documentation complete does not authorize implementation. Separate human approval required before SLICE-1 / Phase 1 code."
+  human_approved: true
+  code_may_start: true
+  approved_on: "2026-07-21"
+  approved_scope: "SLICE-1"
+  note: "Authorizes SLICE-1 code only (portable core, application ports, FakeRouterAdapter, fake-only tests). Does NOT open hardware gates A–D. Does NOT authorize live router or network I/O."
 
 links:
   entrypoint: "README.md"
@@ -218,6 +220,7 @@ reviews:
   authoring_agents: 5
   independent_reviewers: 4
   wave7_closeout: "2026-07-20 — cross-document consistency review closed Phase 0b contracts; implementation_transition_gate installed (human_approved=false, code_may_start=false)."
+  phase1_slice1_gate_open: "2026-07-21 — explicit human approval opened implementation_transition_gate for SLICE-1 only; package not yet created."
   critical_corrections_applied:
     - "Stale status/navigation corrected."
     - "NDMS 5.01/5.1 claims made evidence-safe."

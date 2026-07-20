@@ -4,12 +4,13 @@
 
 | Check | Action |
 |---|---|
-| Phase 0b | **Documentation/spec only** — scenarios trace API, test lanes, security, persistence, hardware; **no** package, OpenAPI, fixtures, live router I/O |
-| Gates A/B/C/D | **All closed** in Phase 0b — live observe → **403** `gate.a_closed`; write dispatch → **403** `gate.mutation_forbidden` ([`HARDWARE_GATES.md`](HARDWARE_GATES.md) §3, [`API_CONTRACT.md`](API_CONTRACT.md) §10) |
+| Phase 0b | **Contract authored and closed** — normative scenario rows preserve Phase 0b expectations (gates closed, live paths **403**) |
+| Phase 1 / SLICE-1 | **In progress** (authorized) — **L2 fake** lane is the active implementation target; portable core + `FakeRouterAdapter` only; **no** live adapter or router I/O |
+| Gates A/B/C/D | **All closed** — live observe → **403** `gate.a_closed`; write dispatch → **403** `gate.mutation_forbidden` ([`HARDWARE_GATES.md`](HARDWARE_GATES.md) §3, [`API_CONTRACT.md`](API_CONTRACT.md) §10) |
 | ID families | `SCN-EVT-*` event lifecycle; `SCN-ZONE-*` four zones; `SCN-OPS-*` operator happy path; `SCN-NEG-*` fail-closed negatives; `SCN-JOB-*` job failures/recovery; `SCN-LAB-*` future lab evidence; `SCN-CUT-*` strangler/cutover |
 | No secrets | No passwords, private keys, serial/MAC, real hostnames, startup-config, or real device IDs in scenarios or evidence examples |
 | Zone ≠ auth | Network zone **complements** `hub_admin`; zone never substitutes authentication ([`SECURITY_OPS.md`](SECURITY_OPS.md) §8) |
-| Apply/verify | Happy path through **Confirm** is L1/L2-spec; **apply dispatch remains gated closed** in Phase 0b; successful verify/`applied_revision` is **L2 fake** full lifecycle and/or future **L5–L7** hardware evidence only — never **L4** (Gate A read-only observe) |
+| Apply/verify | Happy path through **Confirm** is L1/L2-spec; **apply dispatch remains gated closed** (hardware gates A–D); **L2 fake** full lifecycle is the SLICE-1 implementation target; successful verify/`applied_revision` via fake and/or future **L5–L7** hardware evidence only — never **L4** (Gate A read-only observe) |
 | Trace | [`API_CONTRACT.md`](API_CONTRACT.md) §6, [`TEST_STRATEGY.md`](TEST_STRATEGY.md), [`SECURITY_OPS.md`](SECURITY_OPS.md), [`PERSISTENCE_CONTRACT.md`](PERSISTENCE_CONTRACT.md), [`HARDWARE_GATES.md`](HARDWARE_GATES.md), [`RCI_POLICY.md`](RCI_POLICY.md), [`DOMAIN_MODEL.md`](../DOMAIN_MODEL.md), [`VISION.md`](../VISION.md) |
 
 ---
@@ -24,7 +25,9 @@ This document is the **normative scenario catalog** for Router Control operator 
 - fail-closed negatives, job failure/recovery, future lab evidence, and strangler cutover rehearsal;
 - trace matrix mapping each scenario to API operations, TEST_STRATEGY lane, and contract references.
 
-**Phase 0b:** scenarios are specification only. No hardware gates open; no real router steps or RCI commands.
+**Phase 0b (historical):** scenarios authored as specification; gates closed; no real router steps or RCI commands.
+
+**Current (Phase 1 / SLICE-1):** normative rows unchanged; **L2 fake** scenarios drive portable core + `FakeRouterAdapter` implementation; hardware gates A–D remain closed; no live adapter. See [`STATUS.yaml`](../STATUS.yaml).
 
 ---
 
@@ -155,11 +158,9 @@ This document is the **normative scenario catalog** for Router Control operator 
 
 ---
 
-## 5. Phase 0b Definition of Done (scenarios contract)
+## 5. Phase 0b Definition of Done (scenarios contract — historical closeout snapshot)
 
-**Phase 0b closed (Wave 7 closeout).** Implementation remains blocked pending `implementation_transition_gate` (`human_approved: false`, `code_may_start: false`).
-
-This contract satisfies Phase 0b when:
+**Historical closeout snapshot (2026-07-20):** Phase 0b closed (Wave 7). This contract satisfied Phase 0b when:
 
 1. This document is AI-first; §1–§4 define zones, happy paths, negatives, and the evidence trace matrix.
 2. [`STATUS.yaml`](../STATUS.yaml) lists deliverable `scenarios` (`SCENARIOS.md`) as completed.
@@ -167,7 +168,9 @@ This contract satisfies Phase 0b when:
 4. No implementation artifacts, secrets, invented endpoints, or opened hardware gates.
 5. Operator happy paths document **Confirm** as L1/L2-spec; **apply/verify** explicitly **future-gated** or Phase 0b **403** fail-closed.
 
-**Wave 7 closeout:** All eight STATUS contract deliverable IDs complete; cross-document review done; `pending: []`. Implementation entry requires separate human approval — Phase 0b complete does not grant it.
+**Wave 7 closeout:** All eight STATUS contract deliverable IDs complete; cross-document review done; `pending: []`.
+
+**Current state:** Phase 1 / SLICE-1 authorized per [`STATUS.yaml`](../STATUS.yaml) `implementation_transition_gate` — **L2 fake** lane active for implementation; hardware gates A–D closed; no live adapter.
 
 ---
 
