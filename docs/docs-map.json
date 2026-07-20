@@ -20,7 +20,7 @@
       "title": "Project status (SSOT)",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0a", "state"]
+      "tags": ["phase-0b", "state"]
     },
     {
       "path": "docs/VISION.md",
@@ -97,7 +97,7 @@
       "title": "Project state (living projection)",
       "status": "active",
       "owners": ["team"],
-      "tags": ["state", "harness"]
+      "tags": ["phase-0b", "state", "harness"]
     },
     {
       "path": "docs/docs-map.json",

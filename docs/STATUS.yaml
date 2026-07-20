@@ -12,40 +12,83 @@ project:
     path: "ScanCursorIP"
   target_integration: "module_3.0"
 
-current_phase:
+previous_phase:
   id: "0a"
   name: "architecture evidence"
   status: "complete"
   complete: true
   reason: "Все Phase 0a документы написаны, исправлены после независимого cross-document review и прошли Definition of Done."
 
+current_phase:
+  id: "0b"
+  name: "contracts"
+  status: "in_progress"
+  complete: false
+  reason: "Phase 0a закрыта и заморожена baseline commit. Открыта формальная работа над контрактами Phase 0b без package/API/UI implementation и без router mutations."
+
 deliverables:
   completed:
     - path: "README.md"
       purpose: "Точка входа, порядок чтения и границы текущей phase."
+      phase: "0a"
     - path: "STATUS.yaml"
       purpose: "Машиночитаемое состояние работ и canonical facts."
+      phase: "0a"
     - path: "VISION.md"
       purpose: "Event-booth scenario, product boundaries и explicit non-goals."
+      phase: "0a"
     - path: "CANONICAL.md"
       purpose: "Code-truth legacy и подтверждённые model-specific facts NC-1812."
+      phase: "0a"
     - path: "ARCHITECTURE.md"
       purpose: "Bounded contexts, trust zones и integration contract prototype-to-Hub."
+      phase: "0a"
     - path: "DOMAIN_MODEL.md"
       purpose: "Entities, invariants, desired/observed state, revisions и ownership."
+      phase: "0a"
     - path: "COMPATIBILITY.md"
       purpose: "NC-1812 firmware/capability matrix и AWG certification unknowns."
+      phase: "0a"
     - path: "LEGACY_MAP.md"
       purpose: "Классификация legacy C#/PowerShell: Port, Golden behavior, Do-not-reuse."
+      phase: "0a"
     - path: "adrs/0001-python-package-fastapi-host.md"
       purpose: "Решение о Python package, FastAPI dev-host и последующей Hub integration."
+      phase: "0a"
     - path: "adrs/0002-persistence-jobs-sqlite.md"
       purpose: "Решение о SQLite state, revisions, durable jobs и failure recovery."
+      phase: "0a"
     - path: "adrs/0003-security-auth-secrets.md"
       purpose: "Решение об auth, DPAPI, trust boundaries и secret lifecycle."
+      phase: "0a"
     - path: "adrs/0004-product-capability-scope.md"
       purpose: "Решение о NC-1812/AWG scope, capability order, route benchmark и strangler cutover."
-  pending: []
+      phase: "0a"
+  pending:
+    - id: "api-contract"
+      purpose: "HTTP/API contract для Router Control (prototype host и будущий Hub prefix)."
+      phase: "0b"
+    - id: "rci-policy"
+      purpose: "RCI policy: allowlist, fail-closed unknown, preflight/plan/confirm/apply/verify."
+      phase: "0b"
+    - id: "persistence-contract"
+      purpose: "SQLite persistence contract: schema responsibilities, revisions, durable jobs."
+      phase: "0b"
+    - id: "security-ops"
+      purpose: "Security/operations contract: auth, secrets, trust boundaries, operator Confirm."
+      phase: "0b"
+    - id: "test-strategy"
+      purpose: "Testing strategy и evidence requirements без live router mutations."
+      phase: "0b"
+    - id: "scenarios"
+      purpose: "Operator/event scenarios covering Guest/Promo/Staff/Admin zones."
+      phase: "0b"
+    - id: "roadmap"
+      purpose: "Implementation roadmap after contracts; gates before code and Hub integration."
+      phase: "0b"
+    - id: "ai-handoff"
+      purpose: "AI handoff pack: cold-start order, phase constraints, verification checklist."
+      phase: "0b"
 
 blockers:
   - id: "nc1812-live-certification"
@@ -58,10 +101,11 @@ blockers:
     resolution_gate: "Identity snapshot и recorded fixtures exact tuple; unknown firmware остаётся fail-closed."
 
 next_task:
-  id: "phase-0b-contracts"
-  path: "."
-  action: "Начать Phase 0b: API, RCI policy, persistence contract, security/ops, test strategy, scenarios, roadmap и AI handoff."
+  id: "phase-0b-contract-docs"
+  path: "docs"
+  action: "Писать только контракты Phase 0b (API, RCI policy, persistence, security/ops, test strategy, scenarios, roadmap, AI handoff)."
   constraints:
+    - "Не создавать package, API host, UI или pyproject.toml."
     - "Не выполнять mutation живого роутера."
     - "Не включать passwords, private keys, raw sessions или startup-config."
     - "Не начинать production code до завершения Phase 0b."
@@ -113,6 +157,14 @@ phase_0a_exit_criteria:
   definition_of_done_complete: true
   phase_may_advance: true
 
+phase_0b_exit_criteria:
+  all_contract_deliverables_complete: false
+  no_implementation_code: true
+  no_live_router_mutations: true
+  secrets_absent_from_docs: true
+  status_and_project_state_aligned: true
+  phase_may_advance_to_implementation: false
+
 links:
   entrypoint: "README.md"
   vision: "VISION.md"
@@ -125,6 +177,7 @@ links:
   adr_002: "adrs/0002-persistence-jobs-sqlite.md"
   adr_003: "adrs/0003-security-auth-secrets.md"
   adr_004: "adrs/0004-product-capability-scope.md"
+  project_state: "project-state.md"
 
 reviews:
   authoring_agents: 5
