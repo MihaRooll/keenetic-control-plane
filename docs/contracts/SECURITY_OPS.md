@@ -34,7 +34,7 @@ Implementation touchpoint: `AdminGateMiddleware` special-case before general fai
 | State | Router Control API | Hub rest | Mutations |
 |---|---|---|---|
 | **SecurityBlocked** | All RC routes **`503`** (generic config error) | Continues | **Blocked** |
-| **Degraded** | Limited **health/status** endpoints only (contracted in future API doc) | Continues | **Blocked** |
+| **Degraded** | Limited **health/status** endpoints only (contracted in [`API_CONTRACT.md`](API_CONTRACT.md) §2) | Continues | **Blocked** |
 | **Ready** | Full contracted surface | Continues | Allowed only through lifecycle + gates |
 
 `SecurityBlocked` is feature-local: Hub is **not** required to exit startup. Kiosk, order board, and printing remain available.
@@ -73,7 +73,7 @@ Stale plan after Confirm still rejected at dispatch if identity, observation, or
 
 Provider: **`DPAPI.CurrentUser`** under stable Windows account running Hub ([`CANONICAL.md`](../CANONICAL.md) §7).
 
-**No API plaintext read-back** — GET credential endpoints return metadata only (`kind`, timestamps, `revoked_at`), never password/key material.
+**No API plaintext read-back** — GET credential endpoints return metadata only (`kind`, timestamps, `revoked_at`), never password/key material. Opaque ref columns only in SQLite — [`PERSISTENCE_CONTRACT.md`](PERSISTENCE_CONTRACT.md) §2.5, §7.
 
 ### Secret-kind vocabulary (domain, no DDL)
 
@@ -122,7 +122,7 @@ Vectors use **fake** values; never copy real operator or router material into te
 - redacted summary and request digest;
 - artifact references.
 
-Audit store is **append-only**: no in-place updates or deletes. Retention/archival may copy forward, not mutate history.
+Audit store is **append-only**: no in-place updates or deletes. Retention/archival may copy forward, not mutate history. SQLite table layout and co-creation with operations — [`PERSISTENCE_CONTRACT.md`](PERSISTENCE_CONTRACT.md) §7–8.
 
 Required events include: enroll, plan create, Confirm, apply start/end, compensate, credential rotate/revoke, gate passage/failure, `SecurityBlocked` transitions.
 
@@ -158,6 +158,8 @@ Zone policy **complements** HTTP auth; source IP/zone is not authentication.
 
 ## 9. Links
 
+- HTTP/API surface: [`API_CONTRACT.md`](API_CONTRACT.md)
+- Operator scenarios (zone matrix): [`SCENARIOS.md`](SCENARIOS.md) (`SCN-ZONE-*`)
 - RCI lifecycle: [`RCI_POLICY.md`](RCI_POLICY.md)
 - Hardware gates: [`HARDWARE_GATES.md`](HARDWARE_GATES.md)
 - Index: [`README.md`](README.md)

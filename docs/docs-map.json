@@ -3,31 +3,31 @@
   "entries": [
     {
       "path": "README.md",
-      "title": "Repository entrypoint",
+      "title": "Repository entrypoint; eight STATUS deliverable IDs",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0a", "navigation"]
+      "tags": ["phase-0b", "navigation", "complete"]
     },
     {
       "path": "docs/README.md",
-      "title": "Documentation index",
+      "title": "Documentation index; eight STATUS deliverable IDs",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0a", "navigation"]
+      "tags": ["phase-0b", "navigation", "complete"]
     },
     {
       "path": "docs/STATUS.yaml",
       "title": "Project status (SSOT)",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "state"]
+      "tags": ["phase-0b", "state", "complete"]
     },
     {
       "path": "docs/VISION.md",
       "title": "Product vision and boundaries",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0a", "architecture"]
+      "tags": ["phase-0a", "phase-0b", "architecture", "complete"]
     },
     {
       "path": "docs/CANONICAL.md",
@@ -41,7 +41,7 @@
       "title": "Architecture and trust boundaries",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0a", "architecture"]
+      "tags": ["phase-0a", "phase-0b", "architecture", "complete"]
     },
     {
       "path": "docs/DOMAIN_MODEL.md",
@@ -97,35 +97,77 @@
       "title": "Contracts program index",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "contracts", "navigation"]
+      "tags": ["phase-0b", "contracts", "navigation", "complete"]
     },
     {
       "path": "docs/contracts/RCI_POLICY.md",
       "title": "RCI policy contract",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "contracts", "rci"]
+      "tags": ["phase-0b", "contracts", "rci", "complete"]
     },
     {
       "path": "docs/contracts/HARDWARE_GATES.md",
       "title": "Hardware safety gates contract",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "contracts", "hardware"]
+      "tags": ["phase-0b", "contracts", "hardware", "complete"]
     },
     {
       "path": "docs/contracts/SECURITY_OPS.md",
       "title": "Security and operations contract",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "contracts", "security"]
+      "tags": ["phase-0b", "contracts", "security", "complete"]
+    },
+    {
+      "path": "docs/contracts/PERSISTENCE_CONTRACT.md",
+      "title": "Persistence contract; cancel idempotency MUST update 202→200 (§5.3/§6)",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0b", "contracts", "persistence", "complete"]
+    },
+    {
+      "path": "docs/contracts/API_CONTRACT.md",
+      "title": "HTTP/API contract (v0); cancel idempotency MUST update 202→200",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0b", "contracts", "api", "complete"]
+    },
+    {
+      "path": "docs/contracts/TEST_STRATEGY.md",
+      "title": "Test strategy and evidence contract",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0b", "contracts", "test-strategy", "complete"]
+    },
+    {
+      "path": "docs/contracts/SCENARIOS.md",
+      "title": "Operator/event scenarios; Wave 7 Phase 0b closed DoD",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0b", "contracts", "scenarios", "complete"]
+    },
+    {
+      "path": "docs/contracts/ROADMAP.md",
+      "title": "Implementation roadmap contract",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0b", "contracts", "roadmap", "complete"]
+    },
+    {
+      "path": "docs/contracts/AI_HANDOFF.md",
+      "title": "AI agent handoff contract; eight STATUS deliverable catalog",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-0b", "contracts", "handoff", "complete"]
     },
     {
       "path": "docs/project-state.md",
       "title": "Project state (living projection)",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "state", "harness"]
+      "tags": ["phase-0b", "state", "harness", "complete"]
     },
     {
       "path": "docs/docs-map.json",

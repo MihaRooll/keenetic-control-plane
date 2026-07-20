@@ -6,7 +6,7 @@
 
 Модуль не является универсальной панелью администрирования роутеров. Его задача — поддержать конкретный event-booth deployment, где потеря сети или ошибочная маршрутизация останавливают приём заказов и производство. Поэтому безопасный отказ важнее автоматического «исправления любой ценой».
 
-Текущий статус проекта — **Phase 0a / architecture evidence, complete**. Следующая работа — Phase 0b. Актуальное состояние deliverables и blockers находится в [`STATUS.yaml`](STATUS.yaml); порядок чтения — в [`README.md`](README.md).
+Текущий статус проекта — **Phase 0a complete**, **Phase 0b complete** (Wave 7 closeout). Implementation **не начата** — заблокирована `implementation_transition_gate`. Актуальное состояние deliverables, gate и blockers — в [`STATUS.yaml`](STATUS.yaml); порядок чтения — в [`README.md`](README.md).
 
 ## Event scenario
 
@@ -34,7 +34,7 @@
 
 Hub и локальное administrator device. Только эта trust zone может открывать защищённый `/settings` и инициировать Router Control operations. Нахождение в зоне само по себе не заменяет application authentication и operator confirmation.
 
-Подробные trust boundaries и firewall assumptions зафиксированы в [`ARCHITECTURE.md`](ARCHITECTURE.md), а model-specific support — в [`COMPATIBILITY.md`](COMPATIBILITY.md).
+Подробные trust boundaries и firewall assumptions зафиксированы в [`ARCHITECTURE.md`](ARCHITECTURE.md), а model-specific support — в [`COMPATIBILITY.md`](COMPATIBILITY.md). Normative zone allow/deny and operator scenarios: [`contracts/SCENARIOS.md`](contracts/SCENARIOS.md).
 
 ## Пользовательский результат
 

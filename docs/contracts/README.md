@@ -4,10 +4,15 @@
 
 | Check | Action |
 |---|---|
-| Phase | Phase **0b** — contracts only; no package/API/UI/router mutations |
-| Wave 1 (this slice) | RCI policy, hardware gates, security/operations — **complete** |
-| Wave 2+ pending | API, persistence, test strategy, scenarios, roadmap, AI handoff — see [`STATUS.yaml`](../STATUS.yaml) |
-| Read order | This index → [`RCI_POLICY.md`](RCI_POLICY.md) + [`HARDWARE_GATES.md`](HARDWARE_GATES.md) → [`SECURITY_OPS.md`](SECURITY_OPS.md) |
+| Phase | Phase **0b complete** — contracts only; no package/API/UI/router mutations; implementation blocked pending human gate |
+| Wave 1 | RCI policy, hardware gates, security/operations — **complete** |
+| Wave 2 | SQLite persistence, revisions, durable jobs, audit — **complete** |
+| Wave 3 | HTTP/API contract (v0) — **complete** |
+| Wave 4 | Test strategy and evidence lanes — **complete** |
+| Wave 5 | Operator/event scenarios — **complete** |
+| Wave 6 | Roadmap + AI handoff — **complete** |
+| Wave 7 | Cross-document review/closeout — **complete** |
+| Read order | This index → [`RCI_POLICY.md`](RCI_POLICY.md) + [`HARDWARE_GATES.md`](HARDWARE_GATES.md) → [`SECURITY_OPS.md`](SECURITY_OPS.md) → [`PERSISTENCE_CONTRACT.md`](PERSISTENCE_CONTRACT.md) → [`API_CONTRACT.md`](API_CONTRACT.md) → [`TEST_STRATEGY.md`](TEST_STRATEGY.md) → [`SCENARIOS.md`](SCENARIOS.md) → [`ROADMAP.md`](ROADMAP.md) → [`AI_HANDOFF.md`](AI_HANDOFF.md) |
 | Trace | [`CANONICAL.md`](../CANONICAL.md), [`ARCHITECTURE.md`](../ARCHITECTURE.md), [`DOMAIN_MODEL.md`](../DOMAIN_MODEL.md), [`COMPATIBILITY.md`](../COMPATIBILITY.md), ADR-0002/0003/0004, [`LEGACY_MAP.md`](../LEGACY_MAP.md) for RCI evidence limits |
 | Do not | Invent certified RCI JSON bodies; normalize raw `5.01` to `5.1`; open hardware gates in Phase 0b |
 
@@ -21,13 +26,13 @@
 
 | Wave | Фокус | Статус Phase 0b |
 |---|---|---|
-| **1** | RCI policy, hardware safety gates, security/operations | **Complete** (this slice) |
-| 2 | SQLite persistence, revisions, durable jobs, audit | Pending |
-| 3 | HTTP/API contract (prototype host + Hub prefix); based on Waves 1–2 | Pending |
-| 4 | Test strategy and evidence lanes | Pending |
-| 5 | Operator/event scenarios (Guest/Promo/Staff/Admin) | Pending |
-| 6 | Implementation roadmap and cutover gates | Pending |
-| 7 | AI handoff pack | Pending |
+| **1** | RCI policy, hardware safety gates, security/operations | **Complete** |
+| **2** | SQLite persistence, revisions, durable jobs, audit | **Complete** |
+| **3** | HTTP/API contract (prototype host + Hub prefix); based on Waves 1–2 | **Complete** |
+| **4** | Test strategy and evidence lanes | **Complete** |
+| **5** | Operator/event scenarios (Guest/Promo/Staff/Admin) | **Complete** |
+| **6** | Implementation roadmap + AI handoff pack | **Complete** |
+| 7 | Cross-document review / Phase 0b closeout | **Complete** |
 
 ## Wave 1 — файлы
 
@@ -36,6 +41,37 @@
 | [`RCI_POLICY.md`](RCI_POLICY.md) | Deny-by-default capability-family allowlist, transport hypotheses, unified mutation lifecycle, managed merge, idempotency |
 | [`HARDWARE_GATES.md`](HARDWARE_GATES.md) | Certification tuple, gates A/B/C/D, fail-closed table, lab checklists — **supports** `rci-policy` deliverable (не отдельный ninth pending id) |
 | [`SECURITY_OPS.md`](SECURITY_OPS.md) | `hub_admin` fail-closed, Confirm binding, CredentialRef/DPAPI, redaction, audit, replacement/recovery, zone/HTTPS gates |
+
+## Wave 2 — файлы
+
+| Файл | Назначение |
+|---|---|
+| [`PERSISTENCE_CONTRACT.md`](PERSISTENCE_CONTRACT.md) | Authoritative SQLite store, logical schema v0, revisions/ETag, durable jobs/recovery, idempotency, audit, migration/backup policy |
+
+## Wave 3 — файлы
+
+| Файл | Назначение |
+|---|---|
+| [`API_CONTRACT.md`](API_CONTRACT.md) | Normative HTTP v0: prefix, auth/feature matrix, endpoints, DTOs, ETag/If-Match, idempotency, errors, gates, exclusions |
+
+## Wave 4 — файлы
+
+| Файл | Назначение |
+|---|---|
+| [`TEST_STRATEGY.md`](TEST_STRATEGY.md) | Verification lanes, fake/recorded/hardware evidence, pyramid matrix, AWG/route benchmark protocol, persistence fault injection, API/security negatives |
+
+## Wave 5 — файлы
+
+| Файл | Назначение |
+|---|---|
+| [`SCENARIOS.md`](SCENARIOS.md) | Operator/event scenarios: four zones, happy paths, fail-closed negatives, job recovery, lab/cutover evidence trace matrix |
+
+## Wave 6 — файлы
+
+| Файл | Назначение |
+|---|---|
+| [`ROADMAP.md`](ROADMAP.md) | Dependency-ordered implementation slices, entry/exit gates, verification evidence, rollback/stop — no code until post-Phase 0b human approval |
+| [`AI_HANDOFF.md`](AI_HANDOFF.md) | AI cold-start, SSOT hierarchy, invariants, task template, atomic doc updates, safe resumption |
 
 ## Зависимости
 
@@ -46,18 +82,18 @@ Wave 1 опирается на:
 - [`docs/DOMAIN_MODEL.md`](../DOMAIN_MODEL.md) — entities, certification status, plan/job lifecycle
 - [`docs/COMPATIBILITY.md`](../COMPATIBILITY.md) — capability matrix, gate ladder, raw `5.01` unclassified
 - [`docs/LEGACY_MAP.md`](../LEGACY_MAP.md) — limits of legacy RCI fixtures (old device shapes ≠ NC-1812 certification)
-- [`docs/adrs/0002-persistence-jobs-sqlite.md`](../adrs/0002-persistence-jobs-sqlite.md) — durable jobs, idempotency, audit
+- [`docs/adrs/0002-persistence-jobs-sqlite.md`](../adrs/0002-persistence-jobs-sqlite.md) — durable jobs, idempotency, audit (Wave 2 contract expands types/FK/indexes)
 - [`docs/adrs/0003-security-auth-secrets.md`](../adrs/0003-security-auth-secrets.md) — auth, DPAPI, trust boundaries
 - [`docs/adrs/0004-product-capability-scope.md`](../adrs/0004-product-capability-scope.md) — NC-1812 scope, AWG, route benchmark
 
-## Phase 0b Definition of Done (Wave 1 slice)
+## Phase 0b Definition of Done (Wave 7 closeout)
 
-Wave 1 satisfies partial Phase 0b exit when:
+Phase 0b is **closed** when:
 
-1. Четыре contract-файла существуют и AI-first.
-2. [`STATUS.yaml`](../STATUS.yaml) отражает `rci-policy` и `security-ops` как completed; шесть других deliverables остаются pending.
-3. ARCHITECTURE, DOMAIN_MODEL, COMPATIBILITY, CANONICAL и navigation синхронизированы ссылками и терминологией.
-4. Нет implementation artifacts, secrets или invented certified RCI command bodies.
-5. **Ни один hardware gate (A/B/C/D) не открыт** в Phase 0b.
+1. **All eight** STATUS contract deliverable IDs complete with `id` fields: `rci-policy`, `security-ops`, `persistence-contract`, `api-contract`, `test-strategy`, `scenarios`, `roadmap`, `ai-handoff` — plus supporting `hardware-gates` and `contracts-index`.
+2. [`STATUS.yaml`](../STATUS.yaml): `current_phase.complete: true`; `pending: []`; `phase_0b_exit_criteria` all true; `implementation_transition_gate.human_approved: false`, `code_may_start: false`.
+3. Navigation synchronized across READMEs, `project-state.md`, `docs-map.json`, contracts index, and cross-links.
+4. No implementation artifacts, secrets, or opened hardware gates.
+5. Cross-document review complete; reviewer blockers clear.
 
-Полное закрытие Phase 0b требует Waves 2–7.
+Implementation entry requires **separate** human approval via `implementation_transition_gate` — Phase 0b complete does **not** grant it.

@@ -10,7 +10,7 @@
 | **D** | Production enablement on event tuple | **Closed** |
 | Fail-closed | Unknown firmware/capability/profile, identity mismatch, stale/missing evidence, uncertified capability, closed window for applicable path (lab C / production D) → **no write dispatch** | Always |
 | Raw `5.01` | Preserve unclassified; **do not** normalize to `5.1` | [`COMPATIBILITY.md`](../COMPATIBILITY.md) |
-| Trace | [`RCI_POLICY.md`](RCI_POLICY.md), [`COMPATIBILITY.md`](../COMPATIBILITY.md), [`CANONICAL.md`](../CANONICAL.md), ADR-0004 |
+| Trace | [`RCI_POLICY.md`](RCI_POLICY.md), [`COMPATIBILITY.md`](../COMPATIBILITY.md), [`CANONICAL.md`](../CANONICAL.md), ADR-0004, [`SCENARIOS.md`](SCENARIOS.md) |
 
 ---
 
@@ -70,7 +70,7 @@ flowchart TB
 
 Gates are **independent switches**: opening C without B does not authorize writes; opening B without C does not authorize **lab** mutations; **production** writes require Gate D (and Gate B per family), **not** an open Gate C window; D requires B (+ successful C history where applicable) and security/ops gates.
 
-**Phase 0b opens none of A/B/C/D.** Documentation and fake/recorded tests only.
+**Phase 0b opens none of A/B/C/D.** Documentation and fake/domain strategy/spec only; recorded evidence and live Gate A–D lanes remain closed ([`TEST_STRATEGY.md`](TEST_STRATEGY.md) §2).
 
 ## 4. Certification status transitions
 
@@ -149,6 +149,8 @@ Current deployment observation uses raw string **`5.01`**. It must be stored and
 
 ## 8. Links
 
+- HTTP/API surface: [`API_CONTRACT.md`](API_CONTRACT.md)
+- Test strategy and evidence lanes: [`TEST_STRATEGY.md`](TEST_STRATEGY.md)
 - RCI allowlist and lifecycle: [`RCI_POLICY.md`](RCI_POLICY.md)
 - Security and Confirm: [`SECURITY_OPS.md`](SECURITY_OPS.md)
 - Contracts index: [`README.md`](README.md)

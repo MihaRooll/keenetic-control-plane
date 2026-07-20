@@ -22,9 +22,9 @@ previous_phase:
 current_phase:
   id: "0b"
   name: "contracts"
-  status: "in_progress"
-  complete: false
-  reason: "Phase 0a закрыта и заморожена baseline commit. Открыта формальная работа над контрактами Phase 0b без package/API/UI implementation и без router mutations."
+  status: "complete"
+  complete: true
+  reason: "Wave 7 cross-document review закрыл Phase 0b contracts. Все eight contract deliverables согласованы; package/API/UI implementation и router mutations по-прежнему запрещены до implementation_transition_gate."
 
 deliverables:
   completed:
@@ -64,37 +64,47 @@ deliverables:
     - path: "adrs/0004-product-capability-scope.md"
       purpose: "Решение о NC-1812/AWG scope, capability order, route benchmark и strangler cutover."
       phase: "0a"
-    - path: "docs/contracts/README.md"
+    - id: "contracts-index"
+      path: "docs/contracts/README.md"
       purpose: "Contracts index / Wave navigation; Phase 0b program entry."
       phase: "0b"
-    - path: "docs/contracts/RCI_POLICY.md"
+    - id: "rci-policy"
+      path: "docs/contracts/RCI_POLICY.md"
       purpose: "RCI policy: capability-family allowlist, unified lifecycle, managed merge, idempotency."
       phase: "0b"
-    - path: "docs/contracts/HARDWARE_GATES.md"
+    - id: "hardware-gates"
+      path: "docs/contracts/HARDWARE_GATES.md"
       purpose: "Hardware gates A/B/C/D, certification tuple, fail-closed table (supports rci-policy)."
       phase: "0b"
-    - path: "docs/contracts/SECURITY_OPS.md"
+    - id: "security-ops"
+      path: "docs/contracts/SECURITY_OPS.md"
       purpose: "Security/operations: hub_admin fail-closed, Confirm, CredentialRef/DPAPI, audit, zones."
       phase: "0b"
-  pending:
-    - id: "api-contract"
-      purpose: "HTTP/API contract для Router Control (prototype host и будущий Hub prefix)."
-      phase: "0b"
     - id: "persistence-contract"
-      purpose: "SQLite persistence contract: schema responsibilities, revisions, durable jobs."
+      path: "docs/contracts/PERSISTENCE_CONTRACT.md"
+      purpose: "SQLite persistence contract: schema v0, revisions, durable jobs, idempotency, audit, migration policy."
+      phase: "0b"
+    - id: "api-contract"
+      path: "docs/contracts/API_CONTRACT.md"
+      purpose: "HTTP/API contract v0: prefix, auth, endpoints, DTOs, ETag/If-Match, idempotency, errors, mutation gates."
       phase: "0b"
     - id: "test-strategy"
-      purpose: "Testing strategy и evidence requirements без live router mutations."
+      path: "docs/contracts/TEST_STRATEGY.md"
+      purpose: "Test strategy and evidence lanes: fake/recorded/hardware gates, pyramid matrix, AWG/route benchmark, persistence fault injection."
       phase: "0b"
     - id: "scenarios"
-      purpose: "Operator/event scenarios covering Guest/Promo/Staff/Admin zones."
+      path: "docs/contracts/SCENARIOS.md"
+      purpose: "Operator/event scenarios: four zones, happy paths, fail-closed negatives, job recovery, lab/cutover evidence trace."
       phase: "0b"
     - id: "roadmap"
-      purpose: "Implementation roadmap after contracts; gates before code and Hub integration."
+      path: "docs/contracts/ROADMAP.md"
+      purpose: "Implementation roadmap: dependency-ordered slices, gates before code, Hub isolation, strangler fallback."
       phase: "0b"
     - id: "ai-handoff"
-      purpose: "AI handoff pack: cold-start order, phase constraints, verification checklist."
+      path: "docs/contracts/AI_HANDOFF.md"
+      purpose: "AI handoff pack: cold-start order, phase constraints, SSOT hierarchy, verification checklist."
       phase: "0b"
+  pending: []
 
 blockers:
   - id: "nc1812-live-certification"
@@ -107,14 +117,15 @@ blockers:
     resolution_gate: "Identity snapshot и recorded fixtures exact tuple; unknown firmware остаётся fail-closed."
 
 next_task:
-  id: "phase-0b-wave2-contracts"
-  path: "docs"
-  action: "Писать оставшиеся контракты Phase 0b: API, persistence, test strategy, scenarios, roadmap, AI handoff."
+  id: "phase-1-implementation-human-approval"
+  path: "docs/contracts/ROADMAP.md"
+  action: "Obtain explicit human approval to begin Phase 1 / SLICE-1 implementation. Phase 0b documentation is complete; approval is not granted automatically."
   constraints:
-    - "Не создавать package, API host, UI или pyproject.toml."
+    - "Не создавать package, API host, UI или pyproject.toml until implementation_transition_gate.human_approved=true and code_may_start=true."
     - "Не выполнять mutation живого роутера."
     - "Не включать passwords, private keys, raw sessions или startup-config."
-    - "Не начинать production code до завершения Phase 0b."
+    - "implementation_transition_gate.human_approved остаётся false until explicit human sets it."
+    - "implementation_transition_gate.code_may_start остаётся false until explicit human sets it after approval."
 
 canonical_facts:
   product:
@@ -164,12 +175,20 @@ phase_0a_exit_criteria:
   phase_may_advance: true
 
 phase_0b_exit_criteria:
-  all_contract_deliverables_complete: false
+  all_contract_deliverables_complete: true
   no_implementation_code: true
   no_live_router_mutations: true
   secrets_absent_from_docs: true
   status_and_project_state_aligned: true
-  phase_may_advance_to_implementation: false
+  cross_document_review_complete: true
+  definition_of_done_complete: true
+  reviewer_blockers_clear: true
+
+implementation_transition_gate:
+  requires_explicit_human_approval: true
+  human_approved: false
+  code_may_start: false
+  note: "Phase 0b documentation complete does not authorize implementation. Separate human approval required before SLICE-1 / Phase 1 code."
 
 links:
   entrypoint: "README.md"
@@ -183,6 +202,12 @@ links:
   rci_policy: "contracts/RCI_POLICY.md"
   hardware_gates: "contracts/HARDWARE_GATES.md"
   security_ops: "contracts/SECURITY_OPS.md"
+  persistence_contract: "contracts/PERSISTENCE_CONTRACT.md"
+  api_contract: "contracts/API_CONTRACT.md"
+  test_strategy: "contracts/TEST_STRATEGY.md"
+  scenarios: "contracts/SCENARIOS.md"
+  roadmap: "contracts/ROADMAP.md"
+  ai_handoff: "contracts/AI_HANDOFF.md"
   adr_001: "adrs/0001-python-package-fastapi-host.md"
   adr_002: "adrs/0002-persistence-jobs-sqlite.md"
   adr_003: "adrs/0003-security-auth-secrets.md"
@@ -192,9 +217,11 @@ links:
 reviews:
   authoring_agents: 5
   independent_reviewers: 4
+  wave7_closeout: "2026-07-20 — cross-document consistency review closed Phase 0b contracts; implementation_transition_gate installed (human_approved=false, code_may_start=false)."
   critical_corrections_applied:
     - "Stale status/navigation corrected."
     - "NDMS 5.01/5.1 claims made evidence-safe."
     - "Hub HTTPS separated from router RCI transport certification."
     - "Fail-safe Configuration described without transactional atomicity claim."
     - "Product/capability scope accepted in ADR-004."
+    - "Wave 7: cancel idempotency replay (F-10), ARCHITECTURE plan/apply ports (F-11), cold-start unify, enroll Gate A semantics (B1), navigation closeout."
