@@ -4,8 +4,8 @@
 
 | Check | Action |
 |---|---|
-| Phase | **Phase 1 / SLICE-1 in_progress** — portable core + FakeRouterAdapter; **no** FastAPI, SQLite, live adapter, or router I/O |
-| Code entry | **Allowed for SLICE-1 only** when `implementation_transition_gate.human_approved=true` **and** `code_may_start=true` (human approved 2026-07-21) |
+| Phase | **Phase 1 / SLICE-1 complete**; **SLICE-2 pending** (separate human approval) — **no** FastAPI, live adapter, or router I/O |
+| Code entry | **SLICE-1 delivered**; **SLICE-2 blocked** until new human approval (`code_may_start=false`; `approved_scope` remains SLICE-1) |
 | Gates A–D | Remain **independent switches** — opening one gate does **not** imply certification of another; **no slice implies NC-1812 certification** |
 | Sequence | **11** dependency-ordered slices (SLICE-1..11) align ADR-0001/0002/0003/0004 capability ladder — do not reorder without ADR amendment |
 | Slices after routes | SLICE-8 TrafficDiscovery → SLICE-9 NetworkPolicy → SLICE-10 Hub (`module_3.0`) → SLICE-11 zone/cutover/rehearsal (ADR-0004 §Capability order) |
@@ -19,9 +19,9 @@
 
 This document is the **normative implementation roadmap** between Phase 0b contracts and future production code. It defines dependency-ordered slices, entry/exit gates, owned deliverables, verification evidence, and rollback/stop conditions.
 
-**Phase 0b:** complete (Wave 7 closeout). **Phase 1 / SLICE-1:** in_progress — human approval 2026-07-21.
+**Phase 0b:** complete (Wave 7 closeout). **Phase 1 / SLICE-1:** complete (2026-07-21). **Phase 1 / SLICE-2:** pending — separate human approval required.
 
-**Global entry gate (all slices):** Phase 0b `complete: true` **and** `implementation_transition_gate.human_approved=true` **and** `code_may_start=true` in [`STATUS.yaml`](../STATUS.yaml) before any owned product code path is created. **Gate fields are true for SLICE-1 only** (approved 2026-07-21) — scope limited to portable core, application ports, FakeRouterAdapter, and fake-only tests; does **not** open hardware gates A–D or authorize live router/network I/O.
+**Global entry gate (all slices):** Phase 0b `complete: true` **and** `implementation_transition_gate.human_approved=true` **and** `code_may_start=true` in [`STATUS.yaml`](../STATUS.yaml) before any owned product code path is created. **SLICE-1 gate satisfied and delivered** (approved 2026-07-21). **SLICE-2+** require expanded human approval; current `approved_scope` remains SLICE-1.
 
 ---
 
@@ -68,7 +68,7 @@ This document is the **normative implementation roadmap** between Phase 0b contr
 | **Prerequisites** | SLICE-1 exit; ADR-0002 accepted |
 | **Non-goals** | HTTP surface; live router; Hub integration |
 | **Owned deliverables** | `data/router_control.sqlite3` schema v0; migrations; revisions/ETag; durable jobs, leases, idempotency, audit per [`PERSISTENCE_CONTRACT.md`](PERSISTENCE_CONTRACT.md) |
-| **Entry gate** | SLICE-1 complete |
+| **Entry gate** | SLICE-1 complete **and** new human approval recorded in [`STATUS.yaml`](../STATUS.yaml) with `approved_scope: SLICE-2` **and** `code_may_start=true` (SLICE-1 approval alone does **not** authorize SLICE-2 code) |
 | **Exit gate** | Persistence fault matrix (§8.7) passes injected SQLite tests; two-worker claim + fencing demonstrated |
 | **Verification / evidence** | TEST lane **2** + fault injection; no secrets in DB dumps |
 | **Rollback / stop** | Stop on schema drift without migration; unknown migration → fail closed |
@@ -198,7 +198,7 @@ See [`HARDWARE_GATES.md`](HARDWARE_GATES.md) for tuple binding and fail-closed t
 
 ## 5. Phase 0b Definition of Done (Wave 7 — Phase 0b closed)
 
-Wave 6 satisfied partial Phase 0b exit when roadmap and AI handoff were authored. **Phase 0b is now closed** (Wave 7 closeout). **Phase 1 / SLICE-1 in_progress** — `implementation_transition_gate` human approval granted 2026-07-21 for SLICE-1 code only.
+Wave 6 satisfied partial Phase 0b exit when roadmap and AI handoff were authored. **Phase 0b is now closed** (Wave 7 closeout). **Phase 1 / SLICE-1 complete** (2026-07-21). **Phase 1 / SLICE-2 pending** — requires separate human approval before persistence code.
 
 ---
 

@@ -4,7 +4,7 @@
 
 Router Control разрабатывается в два этапа без смены языка и доменных контрактов:
 
-1. После завершения Phase 0b в этом репозитории планируется создать переносимый Python package `router_control` и отдельный FastAPI dev host. Dev host нужен для лабораторного API и UI, но не входит в domain core. `ScanCursorIP` остаётся только legacy behavioral evidence.
+1. После завершения Phase 0b в этом репозитории в Phase 1 / SLICE-1 создан переносимый Python package `router_control` (domain, application и fake-only adapter). Отдельный FastAPI dev host запланирован на SLICE-3 для лабораторного API и UI и не входит в domain core. `ScanCursorIP` остаётся только legacy behavioral evidence.
 2. После подтверждения поведения package механически переносится в `module_3.0/app/services/router_control/`. FastAPI adapter подключается к существующему Hub, его process resources и lifespan.
 
 Целевой runtime — Python 3.11, FastAPI/Uvicorn и один процесс Hub. Отдельный production listener или sidecar для Router Control не создаётся. После интеграции API обслуживается тем же LAN listener Hub под prefix `/api/router-control/v1/`.
@@ -329,4 +329,4 @@ Mutation lease и lock привязаны к `RouterId`. `applied_revision` ме
 | [`contracts/ROADMAP.md`](contracts/ROADMAP.md) | Dependency-ordered implementation slices; human gate before code |
 | [`contracts/AI_HANDOFF.md`](contracts/AI_HANDOFF.md) | AI cold-start, SSOT, task template, safe resumption |
 
-Index: [`contracts/README.md`](contracts/README.md). Phase 0b **complete**; **Phase 1 / SLICE-1 in_progress** (authorized 2026-07-21) — portable core + `FakeRouterAdapter`, fake-only; package not yet created; hardware gates A–D **closed**. See [`STATUS.yaml`](STATUS.yaml) and [`contracts/ROADMAP.md`](contracts/ROADMAP.md).
+Index: [`contracts/README.md`](contracts/README.md). Phase 0b **complete**; **Phase 1 / SLICE-1 complete** (2026-07-21) — portable core + `FakeRouterAdapter`, fake-only tests; **`router_control` package exists**; **SLICE-2 blocked** pending separate human approval; hardware gates A–D **closed**. See [`STATUS.yaml`](STATUS.yaml) and [`contracts/ROADMAP.md`](contracts/ROADMAP.md).

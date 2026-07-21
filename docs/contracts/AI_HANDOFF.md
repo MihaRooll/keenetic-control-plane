@@ -4,13 +4,13 @@
 
 | Check | Action |
 |---|---|
-| Phase | **Phase 1 / SLICE-1 in_progress** — human approval 2026-07-21; **implementation does not exist yet** |
+| Phase | **Phase 1 / SLICE-1 complete** (2026-07-21); **SLICE-2 pending** — separate human approval before persistence code |
 | SSOT | Read [`STATUS.yaml`](../STATUS.yaml) **before** any claim about deliverables, phase, or gates |
-| Code | **SLICE-1 only** when `implementation_transition_gate.human_approved=true` and `code_may_start=true` — portable core, application ports, FakeRouterAdapter, fake-only tests; **no** FastAPI, SQLite, live adapter, or router mutations |
+| Code | **SLICE-1 delivered** (`router_control/`, `tests/`, `pyproject.toml`); **SLICE-2 blocked** until new human approval (`code_may_start=false`) — **no** FastAPI, SQLite, live adapter, or router mutations without gate |
 | Gates A–D | **All closed** — live observe and write dispatch fail closed |
 | Secrets | Never add passwords, keys, sessions, startup-config, or real device IDs to repo/docs |
 | Docs update | Change STATUS + project-state + docs-map + navigation **atomically**; run `scripts/validate-project-docs.ps1` |
-| Next task | Implement SLICE-1 only — see [`STATUS.yaml`](../STATUS.yaml) `next_task` and [`ROADMAP.md`](ROADMAP.md) SLICE-1 |
+| Next task | SLICE-2 persistence/jobs — see [`STATUS.yaml`](../STATUS.yaml) `next_task` and [`ROADMAP.md`](ROADMAP.md) SLICE-2 |
 | Trace | All eight STATUS contract deliverables (§8) + [`ROADMAP.md`](ROADMAP.md) implementation sequence; supporting `hardware-gates` and `contracts-index` per [`contracts/README.md`](README.md) |
 
 ---
@@ -51,7 +51,7 @@ From [`CANONICAL.md`](../CANONICAL.md) and [`STATUS.yaml`](../STATUS.yaml) `cano
 
 - **Product:** local event booth; first certified router target Netcraze Ultra NC-1812; four zones Guest/Promo/Staff/Admin-Server; Guest gets HTTPS order page only.
 - **Identity:** stable `RouterId`; IP/hostname/gateway/interface name are not identity; identity mismatch → hard abort on mutation path.
-- **Implementation (future):** Python 3.11 package `router_control`; separate FastAPI dev-host then Hub `module_3.0`; prefix `/api/router-control/v1/*`; UI in `/settings` only.
+- **Implementation:** Python 3.11 package `router_control` **exists** (SLICE-1); separate FastAPI dev-host **not yet created**; Hub `module_3.0` later; prefix `/api/router-control/v1/*`; UI in `/settings` only.
 - **Persistence:** `data/router_control.sqlite3`; JSON import/export/artifacts only.
 - **Security:** local operator v1; Confirm after redacted plan; DPAPI `CurrentUser` vault; managed merge ownership only.
 - **Mutation lifecycle:** preflight → identity → observe → backup → plan → Confirm → Fail-safe Configuration → apply → read-back → verify → save/compensate ([`RCI_POLICY.md`](RCI_POLICY.md)).
@@ -67,10 +67,10 @@ From [`CANONICAL.md`](../CANONICAL.md) and [`STATUS.yaml`](../STATUS.yaml) `cano
 
 | Item | Value |
 |---|---|
-| Phase | **1 / SLICE-1** — `status: in_progress`, `complete: false` (human approval 2026-07-21) |
+| Phase | **1 / SLICE-1** — `status: complete`, `complete: true` (2026-07-21); **SLICE-2** — `pending`, requires separate approval |
 | Wave 7 | **Complete** — cross-document review closed Phase 0b |
-| All contract deliverables | Eight STATUS IDs complete; `pending: []` |
-| Implementation transition | `implementation_transition_gate.human_approved: true`, `code_may_start: true`, `approved_scope: SLICE-1` (2026-07-21) — **SLICE-1 code only**; does **not** open hardware gates A–D or authorize live router/network I/O |
+| All contract deliverables | Eight STATUS IDs complete; SLICE-1 product deliverables added; `pending: []` |
+| Implementation transition | `human_approved: true`, `code_may_start: false`, `approved_scope: SLICE-1` — SLICE-1 delivered; SLICE-2 needs new human approval |
 | Gates A/B/C/D | **All closed** — no live observe/write dispatch |
 | Blockers | NC-1812 live certification and firmware tuple — see STATUS `blockers` |
 
@@ -165,12 +165,12 @@ Preserve line endings (STATUS.yaml is CRLF). Minimize unrelated churn.
 |---|---|
 | New session | Cold-start §1; read STATUS `next_task` |
 | Unsure if code exists | List repo; check STATUS `implementation_transition_gate` and deliverables |
-| Phase 0b complete / gate open | Gate open 2026-07-21 for SLICE-1 only — confirm `STATUS.yaml` `implementation_transition_gate` before coding; hardware gates A–D remain closed |
-| Implementation requested | Confirm human gate open in STATUS; else stop with Human Gate Packet |
+| Phase 0b complete / gate open | SLICE-1 delivered; confirm `STATUS.yaml` before SLICE-2 — `code_may_start=false` until human expands gate; hardware gates A–D remain closed |
+| Implementation requested | Confirm human gate open for target slice in STATUS; else stop with Human Gate Packet |
 | Doc drift suspected | Run docs validator; reconcile STATUS over project-state |
 | Hardware work | Require explicit gate open for exact tuple; never infer from docs |
 
-**Next owner task:** `slice-1-portable-core-fake-adapter` — implement SLICE-1 only (portable core, application ports, FakeRouterAdapter, fake-only tests). Hardware gates A–D remain **closed**; no live router or network I/O.
+**Next owner task:** `slice-2-persistence-jobs-sqlite` — obtain separate human approval, then implement SLICE-2 only (SQLite schema v0, migrations, durable jobs). Hardware gates A–D remain **closed**; no live router or network I/O.
 
 ---
 

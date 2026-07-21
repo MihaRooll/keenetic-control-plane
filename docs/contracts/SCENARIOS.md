@@ -5,7 +5,7 @@
 | Check | Action |
 |---|---|
 | Phase 0b | **Contract authored and closed** — normative scenario rows preserve Phase 0b expectations (gates closed, live paths **403**) |
-| Phase 1 / SLICE-1 | **In progress** (authorized) — **L2 fake** lane is the active implementation target; portable core + `FakeRouterAdapter` only; **no** live adapter or router I/O |
+| Phase 1 / SLICE-1 | **Complete** (2026-07-21) — **L2 fake** implementation exists (portable core + `FakeRouterAdapter`); hardware live lanes **closed**; **no** live adapter or router I/O; **SLICE-2 blocked** pending separate human approval |
 | Gates A/B/C/D | **All closed** — live observe → **403** `gate.a_closed`; write dispatch → **403** `gate.mutation_forbidden` ([`HARDWARE_GATES.md`](HARDWARE_GATES.md) §3, [`API_CONTRACT.md`](API_CONTRACT.md) §10) |
 | ID families | `SCN-EVT-*` event lifecycle; `SCN-ZONE-*` four zones; `SCN-OPS-*` operator happy path; `SCN-NEG-*` fail-closed negatives; `SCN-JOB-*` job failures/recovery; `SCN-LAB-*` future lab evidence; `SCN-CUT-*` strangler/cutover |
 | No secrets | No passwords, private keys, serial/MAC, real hostnames, startup-config, or real device IDs in scenarios or evidence examples |
@@ -27,7 +27,7 @@ This document is the **normative scenario catalog** for Router Control operator 
 
 **Phase 0b (historical):** scenarios authored as specification; gates closed; no real router steps or RCI commands.
 
-**Current (Phase 1 / SLICE-1):** normative rows unchanged; **L2 fake** scenarios drive portable core + `FakeRouterAdapter` implementation; hardware gates A–D remain closed; no live adapter. See [`STATUS.yaml`](../STATUS.yaml).
+**Current (Phase 1 / SLICE-1 complete):** normative rows unchanged; **L2 fake** implementation exists; hardware gates A–D remain closed; no live adapter. **SLICE-2 blocked** pending separate human approval. See [`STATUS.yaml`](../STATUS.yaml).
 
 ---
 
@@ -170,7 +170,7 @@ This document is the **normative scenario catalog** for Router Control operator 
 
 **Wave 7 closeout:** All eight STATUS contract deliverable IDs complete; cross-document review done; `pending: []`.
 
-**Current state:** Phase 1 / SLICE-1 authorized per [`STATUS.yaml`](../STATUS.yaml) `implementation_transition_gate` — **L2 fake** lane active for implementation; hardware gates A–D closed; no live adapter.
+**Current state:** Phase 1 / SLICE-1 **complete** per [`STATUS.yaml`](../STATUS.yaml) — **L2 fake** implementation exists; hardware live lanes closed; hardware gates A–D closed; no live adapter. SLICE-2 **blocked** pending separate human approval.
 
 ---
 

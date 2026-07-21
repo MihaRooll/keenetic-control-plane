@@ -4,7 +4,7 @@
 
 | Check | Action |
 |---|---|
-| Phase | Phase **0b complete**; Phase **1 / SLICE-1 in progress** (authorized) — implementation scope: portable core + `FakeRouterAdapter` only; hardware gates A–D **closed**; no live adapter |
+| Phase | Phase **0b complete**; Phase **1 / SLICE-1 complete** — portable core + `FakeRouterAdapter`; **`router_control` package exists**; hardware gates A–D **closed**; **SLICE-2 blocked** pending separate human approval |
 | Wave 1 | RCI policy, hardware gates, security/operations — **complete** |
 | Wave 2 | SQLite persistence, revisions, durable jobs, audit — **complete** |
 | Wave 3 | HTTP/API contract (v0) — **complete** |
@@ -70,7 +70,7 @@
 
 | Файл | Назначение |
 |---|---|
-| [`ROADMAP.md`](ROADMAP.md) | Dependency-ordered implementation slices, entry/exit gates, verification evidence, rollback/stop — SLICE-1 authorized per [`STATUS.yaml`](../STATUS.yaml) `implementation_transition_gate` |
+| [`ROADMAP.md`](ROADMAP.md) | Dependency-ordered implementation slices, entry/exit gates, verification evidence, rollback/stop — SLICE-1 **complete**; SLICE-2 **blocked** pending separate human approval per [`STATUS.yaml`](../STATUS.yaml) |
 | [`AI_HANDOFF.md`](AI_HANDOFF.md) | AI cold-start, SSOT hierarchy, invariants, task template, atomic doc updates, safe resumption |
 
 ## Зависимости
@@ -96,4 +96,4 @@ Wave 1 опирается на:
 4. No implementation artifacts, secrets, or opened hardware gates.
 5. Cross-document review complete; reviewer blockers clear.
 
-**Current state:** see [`STATUS.yaml`](../STATUS.yaml) — Phase 1 / SLICE-1 authorized (`implementation_transition_gate` open for portable core + `FakeRouterAdapter` only); hardware gates A–D remain closed.
+**Current state:** see [`STATUS.yaml`](../STATUS.yaml) — Phase 1 / SLICE-1 **complete**; **`router_control` package exists**; Phase 1 / SLICE-2 **blocked** pending separate human approval; hardware gates A–D remain closed.
