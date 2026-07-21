@@ -3,45 +3,59 @@
   "entries": [
     {
       "path": "README.md",
-      "title": "Repository entrypoint; SLICE-1 complete",
+      "title": "Repository entrypoint; offline mega complete",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-1", "slice-1", "slice-2", "navigation", "complete"]
+      "tags": ["phase-1", "offline-mega", "navigation", "complete"]
     },
     {
       "path": "docs/README.md",
-      "title": "Documentation index; SLICE-1 complete",
+      "title": "Documentation index; offline mega complete",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-1", "slice-1", "slice-2", "navigation", "complete"]
+      "tags": ["phase-1", "offline-mega", "navigation", "complete"]
     },
     {
       "path": "docs/STATUS.yaml",
       "title": "Project status (SSOT)",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-1", "slice-1", "slice-2", "state", "complete"]
+      "tags": ["phase-1", "offline-mega", "state", "complete"]
+    },
+    {
+      "path": "docs/project-state.md",
+      "title": "Harness session projection (non-competing)",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-1", "offline-mega", "state"]
     },
     {
       "path": "pyproject.toml",
-      "title": "Python package metadata and dev tooling",
+      "title": "Python package metadata; host and dev extras",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-1", "slice-1", "package"]
+      "tags": ["phase-1", "offline-mega", "package"]
     },
     {
       "path": "router_control",
-      "title": "Portable domain core and FakeRouterAdapter",
+      "title": "Domain core, persistence, vault, traffic discovery",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-1", "slice-1", "package", "domain"]
+      "tags": ["phase-1", "offline-mega", "package", "domain"]
+    },
+    {
+      "path": "router_control_host",
+      "title": "FastAPI prototype host /api/router-control/v1",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-1", "slice-3", "host", "package"]
     },
     {
       "path": "tests",
-      "title": "Fake-only pytest suite",
+      "title": "Pytest suite: fake, persistence, vault, host",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-1", "slice-1", "tests"]
+      "tags": ["phase-1", "offline-mega", "tests"]
     },
     {
       "path": "docs/VISION.md",
@@ -115,7 +129,7 @@
     },
     {
       "path": "docs/contracts/README.md",
-      "title": "Contracts program index",
+      "title": "Contracts program index; offline mega complete, next SLICE-4",
       "status": "active",
       "owners": ["team"],
       "tags": ["phase-0b", "contracts", "navigation", "complete"]
@@ -164,7 +178,7 @@
     },
     {
       "path": "docs/contracts/SCENARIOS.md",
-      "title": "Operator/event scenarios; Wave 7 Phase 0b closed DoD",
+      "title": "Operator/event scenarios; Phase 1 offline mega complete",
       "status": "active",
       "owners": ["team"],
       "tags": ["phase-0b", "contracts", "scenarios", "complete"]
@@ -174,21 +188,14 @@
       "title": "Implementation roadmap contract",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "phase-1", "slice-1", "slice-2", "contracts", "roadmap", "complete"]
+      "tags": ["phase-0b", "phase-1", "offline-mega", "slice-4", "contracts", "roadmap", "complete"]
     },
     {
       "path": "docs/contracts/AI_HANDOFF.md",
-      "title": "AI agent handoff contract; SLICE-1 complete",
+      "title": "AI agent handoff contract; offline mega complete, next SLICE-4",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "phase-1", "slice-1", "slice-2", "contracts", "handoff", "complete"]
-    },
-    {
-      "path": "docs/project-state.md",
-      "title": "Project state (living projection)",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-1", "slice-1", "slice-2", "state", "harness", "complete"]
+      "tags": ["phase-0b", "phase-1", "offline-mega", "slice-4", "contracts", "handoff", "complete"]
     },
     {
       "path": "docs/docs-map.json",

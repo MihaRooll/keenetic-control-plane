@@ -1,11 +1,11 @@
-"""Ban network/socket/subprocess imports in package."""
+"""Ban network/socket/subprocess imports in domain package; allow sqlite3 in persistence/secrets."""
 
 from __future__ import annotations
 
 import ast
 from pathlib import Path
 
-FORBIDDEN_MODULES = {
+NETWORK_FORBIDDEN = {
     "socket",
     "subprocess",
     "urllib",
@@ -17,9 +17,16 @@ FORBIDDEN_MODULES = {
     "aiohttp",
     "ftplib",
     "telnetlib",
-    "fastapi",
-    "sqlite3",
 }
+
+# FastAPI must never appear inside router_control (host package only)
+ALWAYS_FORBIDDEN = NETWORK_FORBIDDEN | {"fastapi"}
+
+# sqlite3 allowed only under persistence and secrets adapters
+SQLITE_ALLOWED_PREFIXES = (
+    Path("router_control") / "persistence",
+    Path("router_control") / "adapters" / "secrets",
+)
 
 
 def _imports_in_file(path: Path) -> set[str]:
@@ -36,12 +43,27 @@ def _imports_in_file(path: Path) -> set[str]:
     return found
 
 
+def _sqlite_allowed(path: Path) -> bool:
+    try:
+        path.relative_to(SQLITE_ALLOWED_PREFIXES[0])
+        return True
+    except ValueError:
+        pass
+    try:
+        path.relative_to(SQLITE_ALLOWED_PREFIXES[1])
+        return True
+    except ValueError:
+        return False
+
+
 def test_router_control_has_no_forbidden_imports() -> None:
     root = Path("router_control")
     violations: list[str] = []
     for path in root.rglob("*.py"):
         imports = _imports_in_file(path)
-        blocked = imports & FORBIDDEN_MODULES
+        blocked = imports & ALWAYS_FORBIDDEN
+        if "sqlite3" in imports and not _sqlite_allowed(path):
+            blocked = set(blocked) | {"sqlite3"}
         if blocked:
             violations.append(f"{path}: {sorted(blocked)}")
     assert not violations, "\n".join(violations)
