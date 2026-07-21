@@ -4,8 +4,8 @@
 
 | Check | Action |
 |---|---|
-| Phase | **Phase 1 / SLICE-1 complete**; **SLICE-2 pending** (separate human approval) — **no** FastAPI, live adapter, or router I/O |
-| Code entry | **SLICE-1 delivered**; **SLICE-2 blocked** until new human approval (`code_may_start=false`; `approved_scope` remains SLICE-1) |
+| Phase | **Phase 1 offline mega (SLICE-2/3/5/8) complete**; **next SLICE-4** (Gate A hardware) — **no** live adapter until Gate A |
+| Code entry | Offline mega delivered under overnight autonomy (`approved_scope: SLICE-2,SLICE-3,SLICE-5,SLICE-8-offline`; `code_may_start=true`); hardware A–D **closed** |
 | Gates A–D | Remain **independent switches** — opening one gate does **not** imply certification of another; **no slice implies NC-1812 certification** |
 | Sequence | **11** dependency-ordered slices (SLICE-1..11) align ADR-0001/0002/0003/0004 capability ladder — do not reorder without ADR amendment |
 | Slices after routes | SLICE-8 TrafficDiscovery → SLICE-9 NetworkPolicy → SLICE-10 Hub (`module_3.0`) → SLICE-11 zone/cutover/rehearsal (ADR-0004 §Capability order) |
@@ -19,9 +19,9 @@
 
 This document is the **normative implementation roadmap** between Phase 0b contracts and future production code. It defines dependency-ordered slices, entry/exit gates, owned deliverables, verification evidence, and rollback/stop conditions.
 
-**Phase 0b:** complete (Wave 7 closeout). **Phase 1 / SLICE-1:** complete (2026-07-21). **Phase 1 / SLICE-2:** pending — separate human approval required.
+**Phase 0b:** complete (Wave 7 closeout). **Phase 1 / SLICE-1:** complete (2026-07-21). **Phase 1 offline mega (SLICE-2/3/5/8):** complete (2026-07-21). **Phase 1 / SLICE-4:** pending — requires Gate A open.
 
-**Global entry gate (all slices):** Phase 0b `complete: true` **and** `implementation_transition_gate.human_approved=true` **and** `code_may_start=true` in [`STATUS.yaml`](../STATUS.yaml) before any owned product code path is created. **SLICE-1 gate satisfied and delivered** (approved 2026-07-21). **SLICE-2+** require expanded human approval; current `approved_scope` remains SLICE-1.
+**Global entry gate (all slices):** Phase 0b `complete: true` **and** `implementation_transition_gate.human_approved=true` **and** `code_may_start=true` in [`STATUS.yaml`](../STATUS.yaml). Offline mega scope authorized 2026-07-21; hardware gates A–D remain independent and closed.
 
 ---
 

@@ -4,13 +4,13 @@
 
 | Check | Action |
 |---|---|
-| Phase | **Phase 1 / SLICE-1 complete** (2026-07-21); **SLICE-2 pending** — separate human approval before persistence code |
+| Phase | **Phase 1 offline mega complete** (2026-07-21); SLICE-2/3/5/8 delivered; **next SLICE-4** (hardware) — separate Gate A open |
 | SSOT | Read [`STATUS.yaml`](../STATUS.yaml) **before** any claim about deliverables, phase, or gates |
-| Code | **SLICE-1 delivered** (`router_control/`, `tests/`, `pyproject.toml`); **SLICE-2 blocked** until new human approval (`code_may_start=false`) — **no** FastAPI, SQLite, live adapter, or router mutations without gate |
+| Code | **Offline mega delivered** (`router_control/`, `router_control_host/`, SQLite, vault, traffic proposals); `code_may_start=true` for approved offline scope only — **no** live adapter or router mutations (hardware gates A–D **closed**) |
 | Gates A–D | **All closed** — live observe and write dispatch fail closed |
 | Secrets | Never add passwords, keys, sessions, startup-config, or real device IDs to repo/docs |
 | Docs update | Change STATUS + project-state + docs-map + navigation **atomically**; run `scripts/validate-project-docs.ps1` |
-| Next task | SLICE-2 persistence/jobs — see [`STATUS.yaml`](../STATUS.yaml) `next_task` and [`ROADMAP.md`](ROADMAP.md) SLICE-2 |
+| Next task | SLICE-4 hardware observe — see [`STATUS.yaml`](../STATUS.yaml) `next_task` and [`ROADMAP.md`](ROADMAP.md) SLICE-4 |
 | Trace | All eight STATUS contract deliverables (§8) + [`ROADMAP.md`](ROADMAP.md) implementation sequence; supporting `hardware-gates` and `contracts-index` per [`contracts/README.md`](README.md) |
 
 ---
@@ -67,10 +67,10 @@ From [`CANONICAL.md`](../CANONICAL.md) and [`STATUS.yaml`](../STATUS.yaml) `cano
 
 | Item | Value |
 |---|---|
-| Phase | **1 / SLICE-1** — `status: complete`, `complete: true` (2026-07-21); **SLICE-2** — `pending`, requires separate approval |
+| Phase | **1 / offline mega** — SLICE-2/3/5/8 `status: complete` (2026-07-21); **next SLICE-4** (hardware observe) |
 | Wave 7 | **Complete** — cross-document review closed Phase 0b |
-| All contract deliverables | Eight STATUS IDs complete; SLICE-1 product deliverables added; `pending: []` |
-| Implementation transition | `human_approved: true`, `code_may_start: false`, `approved_scope: SLICE-1` — SLICE-1 delivered; SLICE-2 needs new human approval |
+| All contract deliverables | Eight STATUS IDs complete; offline mega product deliverables added; `pending: []` |
+| Implementation transition | `human_approved: true`, `code_may_start: true`, `approved_scope: SLICE-2,SLICE-3,SLICE-5,SLICE-8-offline` — offline mega delivered; SLICE-4+ needs hardware gate open |
 | Gates A/B/C/D | **All closed** — no live observe/write dispatch |
 | Blockers | NC-1812 live certification and firmware tuple — see STATUS `blockers` |
 
@@ -78,16 +78,16 @@ From [`CANONICAL.md`](../CANONICAL.md) and [`STATUS.yaml`](../STATUS.yaml) `cano
 
 ## 5. Prohibited operations
 
-Outside SLICE-1 scope, or without applicable gate open:
+Outside approved offline scope, or without applicable gate open:
 
 | Prohibited | Reason |
 |---|---|
-| FastAPI dev-host, SQLite, live adapter, Hub wiring | SLICE-2+ or later slices; not SLICE-1 |
 | Live router writes, network I/O, or gate opening | Hardware gates A–D closed |
+| SLICE-4+ hardware observe/write without Gate A–D open | Fail-closed policy |
 | Hub `module_3.0` integration code | SLICE-10 in roadmap; not now |
 | Secrets in docs/code/fixtures/logs | SECURITY_OPS + AGENTS rules |
 | Claim certification or open gates in prose | Fail-closed policy |
-| Expand `approved_scope` beyond SLICE-1 without new human approval | Human gate scope-limited |
+| Expand `approved_scope` beyond offline mega without new human approval | Human gate scope-limited |
 
 ---
 
@@ -165,12 +165,12 @@ Preserve line endings (STATUS.yaml is CRLF). Minimize unrelated churn.
 |---|---|
 | New session | Cold-start §1; read STATUS `next_task` |
 | Unsure if code exists | List repo; check STATUS `implementation_transition_gate` and deliverables |
-| Phase 0b complete / gate open | SLICE-1 delivered; confirm `STATUS.yaml` before SLICE-2 — `code_may_start=false` until human expands gate; hardware gates A–D remain closed |
+| Phase 0b complete / gate open | Offline mega delivered; confirm `STATUS.yaml` before SLICE-4 — hardware gates A–D remain closed until explicit gate open |
 | Implementation requested | Confirm human gate open for target slice in STATUS; else stop with Human Gate Packet |
 | Doc drift suspected | Run docs validator; reconcile STATUS over project-state |
 | Hardware work | Require explicit gate open for exact tuple; never infer from docs |
 
-**Next owner task:** `slice-2-persistence-jobs-sqlite` — obtain separate human approval, then implement SLICE-2 only (SQLite schema v0, migrations, durable jobs). Hardware gates A–D remain **closed**; no live router or network I/O.
+**Next owner task:** `slice-4-hardware-observe` — obtain Gate A open for exact identity/firmware tuple, then implement read-only observe. Hardware gates A–D remain **closed** until then; no live router or network I/O without gate.
 
 ---
 

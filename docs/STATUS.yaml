@@ -13,25 +13,25 @@ project:
   target_integration: "module_3.0"
 
 previous_phase:
-  id: "0b"
-  name: "contracts"
-  status: "complete"
-  complete: true
-  reason: "Wave 7 cross-document review (2026-07-20) закрыл Phase 0b contracts: все eight contract deliverables согласованы; на момент закрытия phase implementation code и router mutations были вне scope Phase 0b."
-
-current_phase:
-  id: "1-slice-2"
-  name: "Phase 1 / SLICE-2 — persistence / jobs (SQLite)"
-  status: "pending"
-  complete: false
-  reason: "SLICE-1 exit met (portable core + FakeRouterAdapter + fake-only tests). SLICE-2 requires separate explicit human approval before code; hardware gates A–D remain closed."
-
-previous_slice:
   id: "1-slice-1"
   name: "Phase 1 / SLICE-1 — portable core + FakeRouterAdapter"
   status: "complete"
   complete: true
   reason: "Python 3.11 router_control package, vendor-neutral ports, deterministic FakeRouterAdapter, fake-only pytest; no FastAPI/SQLite/live network/hardware."
+
+current_phase:
+  id: "1-offline-mega"
+  name: "Phase 1 offline mega — SLICE-2/3/5/8 complete; next SLICE-4 (hardware)"
+  status: "complete"
+  complete: true
+  reason: "Offline slices delivered under overnight autonomy mandate (2026-07-21): SQLite persistence, FastAPI host (gates closed), CredentialVault, TrafficDiscovery proposals-only. Hardware gates A–D remain closed; SLICE-4 requires separate Gate A open."
+
+previous_slice:
+  id: "1-offline-slices-2-3-5-8"
+  name: "Phase 1 offline mega — persistence + host + vault + traffic proposals"
+  status: "complete"
+  complete: true
+  reason: "SLICE-2 persistence, SLICE-3 FastAPI host (FakeAdapter+SQLite, mutations fail-closed), SLICE-5 vault (Memory+DPAPI), SLICE-8 TrafficDiscovery proposals-only; no live router I/O."
 
 deliverables:
   completed:
@@ -113,7 +113,7 @@ deliverables:
       phase: "0b"
     - id: "pyproject"
       path: "pyproject.toml"
-      purpose: "Python 3.11 package metadata; stdlib-only runtime deps; dev tooling for pytest/ruff/mypy."
+      purpose: "Python 3.11 package metadata; optional [host] / [dev] extras; tooling."
       phase: "1-slice-1"
     - id: "router-control-package"
       path: "router_control/"
@@ -123,6 +123,26 @@ deliverables:
       path: "tests/"
       purpose: "Fake-only pytest: lifecycle happy/negative paths, import isolation, network ban."
       phase: "1-slice-1"
+    - id: "persistence"
+      path: "router_control/persistence/"
+      purpose: "SQLite schema v0 migrations, repos, claim/lease/fencing, idempotency, audit, recovery."
+      phase: "1-slice-2"
+    - id: "router-control-host"
+      path: "router_control_host/"
+      purpose: "FastAPI prototype host /api/router-control/v1; auth order; gates closed; FakeAdapter+SQLite."
+      phase: "1-slice-3"
+    - id: "credential-vault"
+      path: "router_control/ports/vault.py"
+      purpose: "CredentialVaultPort + MemoryVault + WindowsDpapiVault; no plaintext API read."
+      phase: "1-slice-5"
+    - id: "traffic-discovery"
+      path: "router_control/application/traffic_discovery.py"
+      purpose: "TrafficDiscovery proposals-only; auto-apply blocked by default; no router writes."
+      phase: "1-slice-8"
+    - id: "offline-mega-tests"
+      path: "tests/"
+      purpose: "Persistence fault matrix, vault, traffic proposals, host TestClient; SLICE-1 suite retained."
+      phase: "1-offline-mega"
   pending: []
 
 blockers:
@@ -136,14 +156,13 @@ blockers:
     resolution_gate: "Identity snapshot и recorded fixtures exact tuple; unknown firmware остаётся fail-closed."
 
 next_task:
-  id: "slice-2-persistence-jobs-sqlite"
-  path: "docs/contracts/ROADMAP.md"
-  action: "Obtain separate human approval, then implement SLICE-2 only: SQLite schema v0, migrations, durable jobs/idempotency/audit per PERSISTENCE_CONTRACT."
+  id: "slice-4-gate-a-readonly-adapter"
+  path: "docs/contracts/HARDWARE_GATES.md"
+  action: "Obtain separate hardware Gate A open for exact NC-1812 identity/firmware tuple, then implement SLICE-4 read-only live adapter (observe/enroll/preflight)."
   constraints:
-    - "SLICE-2 scope only — no FastAPI dev-host, live adapter, Hub wiring, or hardware gates."
-    - "Requires new explicit human approval — SLICE-1 gate does NOT authorize SLICE-2 code."
-    - "Не выполнять mutation живого роутера или live network I/O."
-    - "Не открывать hardware gates A–D."
+    - "Requires explicit Gate A open — offline mega approval does NOT open hardware gates A–D."
+    - "Не выполнять mutation живого роутера."
+    - "Live observe only after Gate A; writes remain fail-closed until B/C/D."
     - "Не включать passwords, private keys, raw sessions или startup-config."
 
 canonical_facts:
@@ -159,7 +178,7 @@ canonical_facts:
   implementation:
     language: "Python 3.11"
     core_package: "router_control"
-    prototype_host: "Будущий отдельный FastAPI dev-host в canonical repository keenetic-control-plane; package router_control создан (SLICE-1), FastAPI host ещё не создан."
+    prototype_host: "router_control_host FastAPI package exists under /api/router-control/v1; FakeAdapter+SQLite composition; hardware gates A–D closed (mutations fail-closed)."
     final_host: "FastAPI Hub module_3.0 на общем listener."
     final_api_prefix: "/api/router-control/v1/*"
     final_ui_location: "/settings"
@@ -206,10 +225,10 @@ phase_0b_exit_criteria:
 implementation_transition_gate:
   requires_explicit_human_approval: true
   human_approved: true
-  code_may_start: false
+  code_may_start: true
   approved_on: "2026-07-21"
-  approved_scope: "SLICE-1"
-  note: "SLICE-1 complete (2026-07-21). SLICE-2 persistence requires new explicit human approval before code; approved_scope remains SLICE-1 until human expands gate. Does NOT open hardware gates A–D or authorize live router/network I/O."
+  approved_scope: "SLICE-2,SLICE-3,SLICE-5,SLICE-8-offline"
+  note: "User overnight autonomy mandate 2026-07-21 authorized offline mega slices (persistence, FastAPI host, vault, TrafficDiscovery proposals-only). Hardware gates A–D remain CLOSED — no live router/network I/O; SLICE-4+ requires separate hardware gate."
 
 links:
   entrypoint: "README.md"
@@ -241,6 +260,8 @@ reviews:
   wave7_closeout: "2026-07-20 — cross-document consistency review closed Phase 0b contracts; implementation_transition_gate installed (human_approved=false, code_may_start=false)."
   phase1_slice1_gate_open: "2026-07-21 — explicit human approval opened implementation_transition_gate for SLICE-1 only."
   phase1_slice1_complete: "2026-07-21 — SLICE-1 portable core + FakeRouterAdapter + fake-only tests delivered; package importable (stdlib-only runtime)."
+  phase1_offline_mega_authorized: "2026-07-21 — user overnight autonomy mandate authorized SLICE-2/3/5/8 offline; principal_verdict=approve; hardware A–D CLOSED; code_may_start=true for approved_scope only."
+  phase1_offline_mega_complete: "2026-07-21 — offline mega delivered: persistence, router_control_host, vault, traffic_discovery proposals-only; next SLICE-4 Gate A (hardware)."
   critical_corrections_applied:
     - "Stale status/navigation corrected."
     - "NDMS 5.01/5.1 claims made evidence-safe."

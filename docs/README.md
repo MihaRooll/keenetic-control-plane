@@ -1,10 +1,10 @@
 # Router Control
 
-Router Control — модуль локального управления роутером **Netcraze Ultra NC-1812** для выездного event booth. **Phase 1 / SLICE-1** доставил portable Python-пакет `router_control` с vendor-neutral ports и deterministic `FakeRouterAdapter`; живой роутер по-прежнему не изменяется без открытых hardware gates.
+Router Control — модуль локального управления роутером **Netcraze Ultra NC-1812** для выездного event booth. Offline mega (SLICE-2/3/5/8) доставил persistence, FastAPI host, vault и TrafficDiscovery proposals-only; живой роутер по-прежнему не изменяется без открытых hardware gates.
 
 ## Текущий статус
 
-**Phase 0a — complete.** **Phase 0b — complete** (Wave 7 closeout). **Phase 1 / SLICE-1 — complete** (2026-07-21): portable `router_control` package, vendor-neutral ports, deterministic `FakeRouterAdapter`, fake-only tests. **Phase 1 / SLICE-2 — pending** — SQLite persistence/jobs; **требует отдельного human approval** (`implementation_transition_gate.approved_scope` остаётся SLICE-1). Hardware gates ([`contracts/HARDWARE_GATES.md`](contracts/HARDWARE_GATES.md)) — **gates A–D closed**. Машиночитаемый источник — [`STATUS.yaml`](STATUS.yaml).
+**Phase 0a / 0b — complete.** **Phase 1 offline mega (SLICE-2/3/5/8) — complete** (2026-07-21): SQLite, `router_control_host`, CredentialVault, TrafficDiscovery proposals-only. **Next: SLICE-4 Gate A** (отдельный hardware gate). Hardware gates ([`contracts/HARDWARE_GATES.md`](contracts/HARDWARE_GATES.md)) — **A–D closed**. Машиночитаемый источник — [`STATUS.yaml`](STATUS.yaml).
 
 Этот репозиторий — текущий дом проекта и будущего лабораторного prototype. Целевая интеграция — существующий Python 3.11 / FastAPI Hub `module_3.0`, но только после проверки ядра и hardware gates. `ScanCursorIP` остаётся legacy behavioral evidence и рабочим strangler-контуром до достижения parity и отдельного решения о cutover; новую реализацию там не создаём.
 
@@ -50,7 +50,7 @@ Phase 0a создаёт только architecture evidence: code-truth, domain m
 - перенос в `module_3.0`;
 - размещение passwords, private keys, session data или иных secrets в документации.
 
-Phase 0a закрыта после готовности всех deliverables из [`STATUS.yaml`](STATUS.yaml), перекрёстного review и проверки Definition of Done. **Phase 0b complete** — Wave 7 closeout. **Phase 1 / SLICE-1 complete** (2026-07-21). **Phase 1 / SLICE-2 pending** — отдельный human approval перед кодом; hardware gates A–D closed.
+Phase 0a/0b closed. **Phase 1 offline mega complete** (2026-07-21). **Next SLICE-4** requires Gate A open; hardware gates A–D closed.
 
 ## Harness и living docs
 
