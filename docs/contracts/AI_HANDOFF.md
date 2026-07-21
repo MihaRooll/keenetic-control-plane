@@ -4,13 +4,13 @@
 
 | Check | Action |
 |---|---|
-| Phase | **Phase 0b complete** — contracts documented and cross-reviewed; **implementation does not exist** |
+| Phase | **Phase 1 / SLICE-1 complete** (2026-07-21); **SLICE-2 pending** — separate human approval before persistence code |
 | SSOT | Read [`STATUS.yaml`](../STATUS.yaml) **before** any claim about deliverables, phase, or gates |
-| Code | **No** package, API host, UI, OpenAPI, tests, fixtures, or router mutations until `implementation_transition_gate.human_approved=true` and `code_may_start=true` |
+| Code | **SLICE-1 delivered** (`router_control/`, `tests/`, `pyproject.toml`); **SLICE-2 blocked** until new human approval (`code_may_start=false`) — **no** FastAPI, SQLite, live adapter, or router mutations without gate |
 | Gates A–D | **All closed** — live observe and write dispatch fail closed |
 | Secrets | Never add passwords, keys, sessions, startup-config, or real device IDs to repo/docs |
 | Docs update | Change STATUS + project-state + docs-map + navigation **atomically**; run `scripts/validate-project-docs.ps1` |
-| Next task | Explicit human approval for Phase 1 / SLICE-1 — see [`STATUS.yaml`](../STATUS.yaml) `next_task` and `implementation_transition_gate` |
+| Next task | SLICE-2 persistence/jobs — see [`STATUS.yaml`](../STATUS.yaml) `next_task` and [`ROADMAP.md`](ROADMAP.md) SLICE-2 |
 | Trace | All eight STATUS contract deliverables (§8) + [`ROADMAP.md`](ROADMAP.md) implementation sequence; supporting `hardware-gates` and `contracts-index` per [`contracts/README.md`](README.md) |
 
 ---
@@ -51,7 +51,7 @@ From [`CANONICAL.md`](../CANONICAL.md) and [`STATUS.yaml`](../STATUS.yaml) `cano
 
 - **Product:** local event booth; first certified router target Netcraze Ultra NC-1812; four zones Guest/Promo/Staff/Admin-Server; Guest gets HTTPS order page only.
 - **Identity:** stable `RouterId`; IP/hostname/gateway/interface name are not identity; identity mismatch → hard abort on mutation path.
-- **Implementation (future):** Python 3.11 package `router_control`; separate FastAPI dev-host then Hub `module_3.0`; prefix `/api/router-control/v1/*`; UI in `/settings` only.
+- **Implementation:** Python 3.11 package `router_control` **exists** (SLICE-1); separate FastAPI dev-host **not yet created**; Hub `module_3.0` later; prefix `/api/router-control/v1/*`; UI in `/settings` only.
 - **Persistence:** `data/router_control.sqlite3`; JSON import/export/artifacts only.
 - **Security:** local operator v1; Confirm after redacted plan; DPAPI `CurrentUser` vault; managed merge ownership only.
 - **Mutation lifecycle:** preflight → identity → observe → backup → plan → Confirm → Fail-safe Configuration → apply → read-back → verify → save/compensate ([`RCI_POLICY.md`](RCI_POLICY.md)).
@@ -67,10 +67,10 @@ From [`CANONICAL.md`](../CANONICAL.md) and [`STATUS.yaml`](../STATUS.yaml) `cano
 
 | Item | Value |
 |---|---|
-| Phase | **0b** contracts — `status: complete`, `complete: true` (Wave 7 closeout) |
+| Phase | **1 / SLICE-1** — `status: complete`, `complete: true` (2026-07-21); **SLICE-2** — `pending`, requires separate approval |
 | Wave 7 | **Complete** — cross-document review closed Phase 0b |
-| All contract deliverables | Eight STATUS IDs complete; `pending: []` |
-| Implementation transition | `implementation_transition_gate.human_approved: false`, `code_may_start: false` — **explicit human approval required** before SLICE-1 |
+| All contract deliverables | Eight STATUS IDs complete; SLICE-1 product deliverables added; `pending: []` |
+| Implementation transition | `human_approved: true`, `code_may_start: false`, `approved_scope: SLICE-1` — SLICE-1 delivered; SLICE-2 needs new human approval |
 | Gates A/B/C/D | **All closed** — no live observe/write dispatch |
 | Blockers | NC-1812 live certification and firmware tuple — see STATUS `blockers` |
 
@@ -78,17 +78,16 @@ From [`CANONICAL.md`](../CANONICAL.md) and [`STATUS.yaml`](../STATUS.yaml) `cano
 
 ## 5. Prohibited operations
 
-Until `implementation_transition_gate.human_approved=true` and `code_may_start=true`:
+Outside SLICE-1 scope, or without applicable gate open:
 
 | Prohibited | Reason |
 |---|---|
-| Create `router_control` package, `pyproject.toml`, source, tests | Pre-implementation; human gate closed |
-| OpenAPI, migrations, fixtures with real device data | No code phase |
-| Live router writes or gate opening | Hardware gates closed |
+| FastAPI dev-host, SQLite, live adapter, Hub wiring | SLICE-2+ or later slices; not SLICE-1 |
+| Live router writes, network I/O, or gate opening | Hardware gates A–D closed |
 | Hub `module_3.0` integration code | SLICE-10 in roadmap; not now |
 | Secrets in docs/code/fixtures/logs | SECURITY_OPS + AGENTS rules |
 | Claim certification or open gates in prose | Fail-closed policy |
-| Set `implementation_transition_gate.human_approved` or `code_may_start` without human | Human gate |
+| Expand `approved_scope` beyond SLICE-1 without new human approval | Human gate scope-limited |
 
 ---
 
@@ -166,12 +165,12 @@ Preserve line endings (STATUS.yaml is CRLF). Minimize unrelated churn.
 |---|---|
 | New session | Cold-start §1; read STATUS `next_task` |
 | Unsure if code exists | List repo; check STATUS `implementation_transition_gate` and deliverables |
-| Phase 0b complete | Do **not** start SLICE-1 until human sets `human_approved=true` and `code_may_start=true` |
-| Implementation requested | Confirm human gate open in STATUS; else stop with Human Gate Packet |
+| Phase 0b complete / gate open | SLICE-1 delivered; confirm `STATUS.yaml` before SLICE-2 — `code_may_start=false` until human expands gate; hardware gates A–D remain closed |
+| Implementation requested | Confirm human gate open for target slice in STATUS; else stop with Human Gate Packet |
 | Doc drift suspected | Run docs validator; reconcile STATUS over project-state |
 | Hardware work | Require explicit gate open for exact tuple; never infer from docs |
 
-**Next owner task:** `phase-1-implementation-human-approval` — obtain explicit human approval before any Phase 1 / SLICE-1 code. `implementation_transition_gate.human_approved` and `code_may_start` remain **false**.
+**Next owner task:** `slice-2-persistence-jobs-sqlite` — obtain separate human approval, then implement SLICE-2 only (SQLite schema v0, migrations, durable jobs). Hardware gates A–D remain **closed**; no live router or network I/O.
 
 ---
 

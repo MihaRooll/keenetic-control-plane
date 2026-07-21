@@ -1,10 +1,10 @@
 # Router Control
 
-Router Control — проектируемый модуль локального управления роутером **Netcraze Ultra NC-1812** для выездного event booth. На текущем этапе здесь фиксируются проверяемые контракты и границы безопасности; программный модуль ещё не реализуется и живой роутер не изменяется.
+Router Control — модуль локального управления роутером **Netcraze Ultra NC-1812** для выездного event booth. **Phase 1 / SLICE-1** доставил portable Python-пакет `router_control` с vendor-neutral ports и deterministic `FakeRouterAdapter`; живой роутер по-прежнему не изменяется без открытых hardware gates.
 
 ## Текущий статус
 
-**Phase 0a — complete.** **Phase 0b — complete** (Wave 7 closeout). Все eight contract deliverables согласованы: `rci-policy`, `security-ops`, `persistence-contract`, `api-contract`, `test-strategy`, `scenarios`, `roadmap`, `ai-handoff` ([`contracts/`](contracts/), [`contracts/ROADMAP.md`](contracts/ROADMAP.md), [`contracts/AI_HANDOFF.md`](contracts/AI_HANDOFF.md)). Supporting: hardware safety gates ([`contracts/HARDWARE_GATES.md`](contracts/HARDWARE_GATES.md)); индекс — [`contracts/README.md`](contracts/README.md). Implementation **не начата** — заблокирована `implementation_transition_gate`. Машиночитаемый источник — [`STATUS.yaml`](STATUS.yaml).
+**Phase 0a — complete.** **Phase 0b — complete** (Wave 7 closeout). **Phase 1 / SLICE-1 — complete** (2026-07-21): portable `router_control` package, vendor-neutral ports, deterministic `FakeRouterAdapter`, fake-only tests. **Phase 1 / SLICE-2 — pending** — SQLite persistence/jobs; **требует отдельного human approval** (`implementation_transition_gate.approved_scope` остаётся SLICE-1). Hardware gates ([`contracts/HARDWARE_GATES.md`](contracts/HARDWARE_GATES.md)) — **gates A–D closed**. Машиночитаемый источник — [`STATUS.yaml`](STATUS.yaml).
 
 Этот репозиторий — текущий дом проекта и будущего лабораторного prototype. Целевая интеграция — существующий Python 3.11 / FastAPI Hub `module_3.0`, но только после проверки ядра и hardware gates. `ScanCursorIP` остаётся legacy behavioral evidence и рабочим strangler-контуром до достижения parity и отдельного решения о cutover; новую реализацию там не создаём.
 
@@ -50,7 +50,7 @@ Phase 0a создаёт только architecture evidence: code-truth, domain m
 - перенос в `module_3.0`;
 - размещение passwords, private keys, session data или иных secrets в документации.
 
-Phase 0a закрыта после готовности всех deliverables из [`STATUS.yaml`](STATUS.yaml), перекрёстного review и проверки Definition of Done. **Phase 0b complete** — Wave 7 closeout; implementation **не начата** до `implementation_transition_gate.human_approved=true` и `code_may_start=true`.
+Phase 0a закрыта после готовности всех deliverables из [`STATUS.yaml`](STATUS.yaml), перекрёстного review и проверки Definition of Done. **Phase 0b complete** — Wave 7 closeout. **Phase 1 / SLICE-1 complete** (2026-07-21). **Phase 1 / SLICE-2 pending** — отдельный human approval перед кодом; hardware gates A–D closed.
 
 ## Harness и living docs
 

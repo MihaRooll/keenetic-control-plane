@@ -3,24 +3,45 @@
   "entries": [
     {
       "path": "README.md",
-      "title": "Repository entrypoint; eight STATUS deliverable IDs",
+      "title": "Repository entrypoint; SLICE-1 complete",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "navigation", "complete"]
+      "tags": ["phase-1", "slice-1", "slice-2", "navigation", "complete"]
     },
     {
       "path": "docs/README.md",
-      "title": "Documentation index; eight STATUS deliverable IDs",
+      "title": "Documentation index; SLICE-1 complete",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "navigation", "complete"]
+      "tags": ["phase-1", "slice-1", "slice-2", "navigation", "complete"]
     },
     {
       "path": "docs/STATUS.yaml",
       "title": "Project status (SSOT)",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "state", "complete"]
+      "tags": ["phase-1", "slice-1", "slice-2", "state", "complete"]
+    },
+    {
+      "path": "pyproject.toml",
+      "title": "Python package metadata and dev tooling",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-1", "slice-1", "package"]
+    },
+    {
+      "path": "router_control",
+      "title": "Portable domain core and FakeRouterAdapter",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-1", "slice-1", "package", "domain"]
+    },
+    {
+      "path": "tests",
+      "title": "Fake-only pytest suite",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["phase-1", "slice-1", "tests"]
     },
     {
       "path": "docs/VISION.md",
@@ -153,21 +174,21 @@
       "title": "Implementation roadmap contract",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "contracts", "roadmap", "complete"]
+      "tags": ["phase-0b", "phase-1", "slice-1", "slice-2", "contracts", "roadmap", "complete"]
     },
     {
       "path": "docs/contracts/AI_HANDOFF.md",
-      "title": "AI agent handoff contract; eight STATUS deliverable catalog",
+      "title": "AI agent handoff contract; SLICE-1 complete",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "contracts", "handoff", "complete"]
+      "tags": ["phase-0b", "phase-1", "slice-1", "slice-2", "contracts", "handoff", "complete"]
     },
     {
       "path": "docs/project-state.md",
       "title": "Project state (living projection)",
       "status": "active",
       "owners": ["team"],
-      "tags": ["phase-0b", "state", "harness", "complete"]
+      "tags": ["phase-1", "slice-1", "slice-2", "state", "harness", "complete"]
     },
     {
       "path": "docs/docs-map.json",

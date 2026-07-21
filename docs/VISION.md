@@ -6,7 +6,7 @@
 
 Модуль не является универсальной панелью администрирования роутеров. Его задача — поддержать конкретный event-booth deployment, где потеря сети или ошибочная маршрутизация останавливают приём заказов и производство. Поэтому безопасный отказ важнее автоматического «исправления любой ценой».
 
-Текущий статус проекта — **Phase 0a complete**, **Phase 0b complete** (Wave 7 closeout). Implementation **не начата** — заблокирована `implementation_transition_gate`. Актуальное состояние deliverables, gate и blockers — в [`STATUS.yaml`](STATUS.yaml); порядок чтения — в [`README.md`](README.md).
+Текущий статус проекта — **Phase 0a complete**, **Phase 0b complete** (Wave 7 closeout), **Phase 1 / SLICE-1 complete** (2026-07-21). Portable core + `FakeRouterAdapter`, fake-only tests delivered; Python package **`router_control` exists**; **no** live router or network I/O; hardware gates A–D **closed**. **Phase 1 / SLICE-2 blocked** pending separate human approval. Актуальное состояние — [`STATUS.yaml`](STATUS.yaml); порядок slices — [`contracts/ROADMAP.md`](contracts/ROADMAP.md); порядок чтения — [`README.md`](README.md).
 
 ## Event scenario
 
@@ -69,7 +69,7 @@ Browser/iPad никогда не должен получать router password, 
 
 ## Путь к module_3.0
 
-До интеграции ядро будет разрабатываться в canonical repository `keenetic-control-plane` как переносимый Python package `router_control`. Код ещё не создан. Domain и planner не импортируют FastAPI; отдельный dev-host понадобится только для prototype и contract tests. `ScanCursorIP` остаётся legacy behavioral evidence, а не домом новой реализации.
+До интеграции ядро разрабатывается в canonical repository `keenetic-control-plane` как переносимый Python package `router_control` (Phase 1 / SLICE-1 complete: domain, application и fake-only adapter). Domain и planner не импортируют FastAPI; отдельный FastAPI dev host — будущий SLICE-3 для prototype и contract tests. `ScanCursorIP` остаётся legacy behavioral evidence, а не домом новой реализации.
 
 После прохождения fake, recorded и live hardware gates package будет перенесён в `module_3.0`:
 

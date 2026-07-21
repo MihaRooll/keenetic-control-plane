@@ -14,7 +14,7 @@
 
 ## phase
 
-phase-0b-complete
+phase-1-slice-2-pending
 
 ## milestones
 
@@ -23,7 +23,8 @@ phase-0b-complete
 | Phase 0a architecture evidence | done | Frozen in baseline commit `c15ef56` |
 | Harness bootstrapped (Essential) | done | On-disk Essential; stale local plugin 0.1.0 disabled |
 | Phase 0b contracts | done | Wave 7 closeout complete; eight STATUS deliverable IDs + supporting artifacts ([`contracts/`](contracts/)) |
-| Implementation / prototype code | blocked | Pending `implementation_transition_gate.human_approved=true` and `code_may_start=true` |
+| Phase 1 / SLICE-1 (portable core + FakeRouterAdapter) | done | `router_control` package, fake-only tests, stdlib-only runtime (2026-07-21) |
+| Phase 1 / SLICE-2 (persistence / jobs) | pending | Requires separate human approval; `code_may_start=false` until gate expanded |
 
 ## next_checks
 
@@ -37,8 +38,10 @@ phase-0b-complete
 - [x] Write Phase 0b Wave 5 scenarios contract — no package/API/UI, no router mutations, no hardware tests
 - [x] Write Phase 0b Wave 6 contract docs (roadmap, AI handoff)
 - [x] Wave 7 cross-document review/closeout (Phase 0b exit)
-- [ ] Obtain explicit human approval for Phase 1 / SLICE-1 (`implementation_transition_gate`)
-- [ ] Prepare Python 3.11 before implementation (blocked until human gate open)
+- [x] Obtain explicit human approval for Phase 1 / SLICE-1 (`implementation_transition_gate`, 2026-07-21)
+- [x] Implement SLICE-1: portable core, application ports, FakeRouterAdapter, fake-only tests (no FastAPI/SQLite/live/hardware)
+- [ ] Obtain separate human approval for SLICE-2 persistence before any SQLite/jobs code
+- [ ] Prepare Python 3.11 before SLICE-2 code (Windows `py.exe -3.11` verified 2026-07-20)
 
 ## toolchain_notes
 
@@ -47,3 +50,4 @@ phase-0b-complete
 - Windows Python 3.11 verified (2026-07-20): `py.exe -3.11 --version` → Python 3.11.9; executable under `%LOCALAPPDATA%\Programs\Python\Python311\`.
 - WSL: `python3` is 3.12.3; `python3.11` absent — choose Windows Python 3.11 for implementation or install WSL 3.11 only after separate approval.
 - Local plugin renamed to `cursor-project-harness.disabled-0.1.0` under `%USERPROFILE%\.cursor\plugins\local`.
+- SLICE-1 verify (2026-07-21): `pytest`, `ruff`, `mypy`, `compileall` pass on `router_control` + `tests`.
