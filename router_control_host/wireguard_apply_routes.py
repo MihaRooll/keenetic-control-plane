@@ -880,6 +880,9 @@ def wireguard_apply(request: Request, body: WireguardApplyBody) -> JSONResponse:
                     sealed_apply_params=trail_params,
                 ),
             )
+        except StartupBackupError as exc:
+            _ = exc
+            return _live_backup_unavailable_error(request)
         except SealedApplyTrailBeginError as exc:
             _record_wireguard_sealed_audit(
                 host,

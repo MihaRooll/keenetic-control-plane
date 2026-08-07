@@ -391,6 +391,45 @@ def test_live_teardown_backup_error_maps_code_and_skips_write(
     assert session_transport.write_commands == []
 
 
+def test_live_apply_backup_error_maps_code_and_skips_write(
+    wg_client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from router_control.adapters.netcraze.startup_backup import StartupBackupError
+
+    wg_client.test_app.state.host.gate_a_certification = _open_gate_a()
+    session_transport = ApiFakeWireguardTransport(readback=_baseline_readback())
+
+    @contextmanager
+    def _mock_live(**_kwargs: object):
+        tunnel = MagicMock()
+        yield WifiLiveSession(transport=session_transport, tunnel=tunnel)
+
+    def _mock_backup(**_kwargs: object) -> StartupBackupMetadata:
+        raise StartupBackupError("backup vault unavailable")
+
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.open_wifi_live_session",
+        _mock_live,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.is_win32_live_capable",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.backup_startup_config",
+        _mock_backup,
+    )
+
+    resp = wg_client.post(
+        "/api/router-control/v1/wireguard/apply",
+        json=_intent_payload(**_LIVE_CONN),
+    )
+    assert resp.status_code == 503
+    assert resp.json()["error"]["code"] == "wireguard.live_backup_unavailable"
+    assert session_transport.write_commands == []
+
+
 def test_wireguard_apply_live_intent_platform_unsupported_apply(
     wg_client, monkeypatch: pytest.MonkeyPatch
 ) -> None:
