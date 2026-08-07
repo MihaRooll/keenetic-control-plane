@@ -17,6 +17,7 @@ import {
   createInlineState,
   createSkeleton,
   createStatePanel,
+  getStateDescriptor,
 } from '../core/states.js';
 import { buildLiveConnectionParams, describeLiveConnectionAdvancedStatus, isConnectionRestoreFailed, liveCapabilitySubscriptionKey, needsManagementUsernameRecovery } from '../features/live-connection-params.js';
 import {
@@ -2258,7 +2259,11 @@ export function render(container, ctx) {
       persistedMutationVerdict = lastVerdict;
       if (lastVerdict) {
         ctx.showToast({
-          tone: lastVerdict.success ? 'success' : 'warning',
+          tone: lastVerdict.success
+            ? 'success'
+            : (lastVerdict.hubState && Object.values(HubState).includes(lastVerdict.hubState)
+              ? getStateDescriptor(lastVerdict.hubState).tone
+              : 'warning'),
           title: lastVerdict.title,
           message: lastVerdict.message,
         });

@@ -2100,7 +2100,7 @@ def test_overview_networks_guest_off_teardown_verdict_intent() -> None:
 
 
 def test_overview_networks_run_mutation_toast_from_verdict() -> None:
-    """AC-4: runMutation shows toast only when verdict exists; tone from verdict.success."""
+    """AC-4: runMutation shows toast only when verdict exists; tone from verdict hubState."""
     source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
     run_mutation_body = _extract_function_body(source, "async function runMutation(")
     assert run_mutation_body is not None
@@ -2108,7 +2108,10 @@ def test_overview_networks_run_mutation_toast_from_verdict() -> None:
     assert "verdict = await runStaffApplyDefaults(signal)" in run_mutation_body
     assert "verdict = await runGuestApply(targetEnabled, signal)" in run_mutation_body
     assert "if (verdict && typeof options.showToast === 'function')" in run_mutation_body
-    assert "tone: verdict.success ? 'success' : 'warning'" in run_mutation_body
+    assert "getStateDescriptor" in source
+    assert "getStateDescriptor(verdict.hubState).tone" in run_mutation_body
+    assert "Object.values(HubState).includes(verdict.hubState)" in run_mutation_body
+    assert "tone: verdict.success ? 'success' : 'warning'" not in run_mutation_body
     assert "title: verdict.title" in run_mutation_body
     assert "message: verdict.message" in run_mutation_body
     assert "title: 'Готово'" not in run_mutation_body

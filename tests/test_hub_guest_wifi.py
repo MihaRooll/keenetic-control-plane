@@ -1412,3 +1412,15 @@ def test_guest_run_mutation_password_clear_uses_final_verdict_gate() -> None:
     assert "shouldClearGuestWifiFormPasswordAfterMutation" in source
     assert "succeeded && shouldResetGuestWifiFormAfterMutation" not in source
 
+
+def test_guest_wifi_run_mutation_toast_tone_from_hub_state() -> None:
+    """Apply toast tone uses getStateDescriptor(hubState) when !success."""
+    source = GUEST_WIFI_SCREEN_JS.read_text(encoding="utf-8")
+    assert "getStateDescriptor" in source
+    run_mutation_start = source.find("async function runMutation(")
+    assert run_mutation_start != -1
+    run_mutation_region = source[run_mutation_start : run_mutation_start + 4000]
+    assert "getStateDescriptor(lastVerdict.hubState).tone" in run_mutation_region
+    assert "Object.values(HubState).includes(lastVerdict.hubState)" in run_mutation_region
+    assert "tone: lastVerdict.success ? 'success' : 'warning'" not in run_mutation_region
+

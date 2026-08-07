@@ -15,6 +15,7 @@ import {
   createInlineState,
   createSkeleton,
   createStatePanel,
+  getStateDescriptor,
 } from '../core/states.js';
 import {
   buildLiveConnectionParams,
@@ -1184,7 +1185,11 @@ export function render(container, ctx) {
       if (disposed || gen !== generation) return;
       if (lastVerdict) {
         ctx.showToast({
-          tone: lastVerdict.success ? 'success' : 'warning',
+          tone: lastVerdict.success
+            ? 'success'
+            : (lastVerdict.hubState && Object.values(HubState).includes(lastVerdict.hubState)
+              ? getStateDescriptor(lastVerdict.hubState).tone
+              : 'warning'),
           title: lastVerdict.title,
           message: lastVerdict.message,
         });

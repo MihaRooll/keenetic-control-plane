@@ -12,7 +12,13 @@ import {
 } from '../components/index.js';
 import { readInputEventValue } from '../core/form-submit-sync.js';
 import { HubApiError, ERROR_KIND, describeError } from '../core/errors.js';
-import { HubState, createInlineState, createProgressPanel, createStatePanel } from '../core/states.js';
+import {
+  HubState,
+  createInlineState,
+  createProgressPanel,
+  createStatePanel,
+  getStateDescriptor,
+} from '../core/states.js';
 import {
   GUEST_WIFI_REMEMBER_DEFAULT_HINT,
   GUEST_WIFI_REMEMBER_DEFAULT_LABEL,
@@ -699,7 +705,11 @@ export function mountOverviewSimpleNetworks(options) {
       }
       if (verdict && typeof options.showToast === 'function') {
         options.showToast({
-          tone: verdict.success ? 'success' : 'warning',
+          tone: verdict.success
+            ? 'success'
+            : (verdict.hubState && Object.values(HubState).includes(verdict.hubState)
+              ? getStateDescriptor(verdict.hubState).tone
+              : 'warning'),
           title: verdict.title,
           message: verdict.message,
         });

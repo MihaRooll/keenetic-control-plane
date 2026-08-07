@@ -3747,3 +3747,14 @@ def test_staff_run_mutation_password_clear_uses_final_verdict_gate() -> None:
     source = STAFF_WIFI_SCREEN_JS.read_text(encoding="utf-8")
     assert "shouldClearStaffWifiFormPasswordAfterMutation" in source
     assert "succeeded && shouldResetStaffWifiFormAfterMutation" not in source
+
+
+def test_staff_wifi_run_mutation_toast_tone_from_hub_state() -> None:
+    """Apply toast tone uses getStateDescriptor(hubState) when !success."""
+    source = STAFF_WIFI_SCREEN_JS.read_text(encoding="utf-8")
+    assert "getStateDescriptor" in source
+    body = _extract_function_body_from_staff_screen(source, "async function runMutation(")
+    assert body is not None
+    assert "getStateDescriptor(lastVerdict.hubState).tone" in body
+    assert "Object.values(HubState).includes(lastVerdict.hubState)" in body
+    assert "tone: lastVerdict.success ? 'success' : 'warning'" not in body
