@@ -244,3 +244,23 @@ documentation addresses.
   documents the RCI command/API shape; its public HTTP transport is evidence of
   capability, not an approved deployment topology.
 
+## Prototype host note (2026-07-22, amended)
+
+The FastAPI dev-host (`router_control_host`) reuses the `hub_admin` cookie family
+but is **not** Hub `module_3.0`. For local operator commissioning:
+
+- Optional **standalone loopback authority profile** (`RC_STANDALONE_LOOPBACK_AUTH=1`
+  + canonical `RC_PUBLIC_BASE_URL`) pins Host/Origin to a single loopback
+  authority, rejects DNS-rebinding/forged Host and X-Forwarded-* headers, and
+  accepts exact singleton `Origin: null` on login/logout under bounded Fetch
+  Metadata gates (Cursor Browser embedded webview).
+- Hub admin password may be supplied via process env or Windows DPAPI ciphertext
+  at `%LOCALAPPDATA%\RouterControlDev\hub-admin.dpapi` through
+  `scripts/run-prototype-host.ps1` (plaintext never persisted to disk or repo).
+- Login throttle: 10 failed credential attempts per 60s sliding window;
+  origin/authority rejects skip password verification.
+- Default profile OFF preserves existing TestClient and non-loopback lab flows.
+
+Hub integration remains subject to §1–§6 above; this note does not relax zone
+or HTTPS requirements for production.
+

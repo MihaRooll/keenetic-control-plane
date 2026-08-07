@@ -56,7 +56,7 @@ class WindowsDpapiVault:
             raise VaultError("secret must be non-empty")
         ref_id = f"cred_{secrets.token_hex(16)}"
         locator = str(self._blob_path(ref_id))
-        protected = _protect(secret.encode("utf-8"))
+        protected = protect_bytes(secret.encode("utf-8"))
         self._blob_path(ref_id).write_bytes(protected)
         self._kinds[ref_id] = kind
         self._save_kinds()
@@ -67,13 +67,19 @@ class WindowsDpapiVault:
             provider_locator=locator,
         )
 
+    def get_kind(self, credential_ref_id: str) -> str:
+        try:
+            return self._kinds[credential_ref_id]
+        except KeyError as exc:
+            raise VaultError("credential not found") from exc
+
     def use(self, credential_ref_id: str) -> str:
         if credential_ref_id in self._revoked:
             raise VaultError("credential revoked")
         path = self._blob_path(credential_ref_id)
         if not path.exists():
             raise VaultError("credential not found")
-        return _unprotect(path.read_bytes()).decode("utf-8")
+        return unprotect_bytes(path.read_bytes()).decode("utf-8")
 
     def rotate(self, credential_ref_id: str, *, secret: str) -> CredentialRefHandle:
         if credential_ref_id not in self._kinds:
@@ -82,7 +88,7 @@ class WindowsDpapiVault:
             raise VaultError("credential revoked")
         if not secret:
             raise VaultError("secret must be non-empty")
-        protected = _protect(secret.encode("utf-8"))
+        protected = protect_bytes(secret.encode("utf-8"))
         self._blob_path(credential_ref_id).write_bytes(protected)
         kind = self._kinds[credential_ref_id]
         return CredentialRefHandle(
@@ -107,7 +113,25 @@ class WindowsDpapiVault:
         self._save_kinds()
 
 
+def protect_bytes(data: bytes) -> bytes:
+    """Encrypt bytes with DPAPI CurrentUser scope."""
+    return _crypt_protect(data)
+
+
+def unprotect_bytes(data: bytes) -> bytes:
+    """Decrypt bytes with DPAPI CurrentUser scope."""
+    return _crypt_unprotect(data)
+
+
 def _protect(data: bytes) -> bytes:
+    return protect_bytes(data)
+
+
+def _unprotect(data: bytes) -> bytes:
+    return unprotect_bytes(data)
+
+
+def _crypt_protect(data: bytes) -> bytes:
     if sys.platform != "win32":
         raise VaultError("DPAPI unavailable")
 
@@ -132,7 +156,7 @@ def _protect(data: bytes) -> bytes:
         ctypes.windll.kernel32.LocalFree(blob_out.pbData)
 
 
-def _unprotect(data: bytes) -> bytes:
+def _crypt_unprotect(data: bytes) -> bytes:
     if sys.platform != "win32":
         raise VaultError("DPAPI unavailable")
 

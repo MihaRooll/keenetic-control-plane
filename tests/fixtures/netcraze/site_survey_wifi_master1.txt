@@ -1,0 +1,2 @@
+SSID                MAC                 Ch  Mode  Q
+SYNTH-SSID-Gamma    aa:bb:cc:dd:ee:03   36  ac    64

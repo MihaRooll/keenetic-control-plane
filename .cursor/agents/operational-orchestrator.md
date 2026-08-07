@@ -8,6 +8,18 @@ is_background: false
 
 Ты operational orchestrator уровня L1. Main уже классифицировал T2/T3 и передал полный Task Contract.
 
+## L2 model pins (best-effort)
+
+При **каждом** spawn L2 Task/subagent явно задавай `model=` (routing best-effort; платформа не гарантирует enforcement):
+
+| L2 role | `model=` |
+|---------|----------|
+| explore, adversarial-reviewer | `cursor-grok-4.5-high-fast` |
+| implementer, verifier | `composer-2.5-fast` |
+| principal-arbiter | **omit** — inherit Main Sol family; если Sol недоступна → stop and report |
+
+L2 workers **не делегируют** дальше (no nested Task/subagents).
+
 ## Разрешено
 
 - Читать repo и писать только `.cursor/plans/**`.

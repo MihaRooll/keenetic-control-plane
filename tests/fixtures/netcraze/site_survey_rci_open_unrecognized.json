@@ -1,0 +1,31 @@
+[
+  {
+    "parse": {
+      "ap_cell": [
+        {
+          "essid": "SYNTH-SSID-Open",
+          "address": "aa:bb:cc:dd:ee:10",
+          "channel": 6,
+          "quality": 70,
+          "ieee": "11b/g/n",
+          "rssi": -50,
+          "bandwidth": 20,
+          "encryption": "disabled",
+          "encryption-mode": "none"
+        },
+        {
+          "essid": "SYNTH-SSID-Unmapped",
+          "address": "aa:bb:cc:dd:ee:11",
+          "channel": 11,
+          "quality": 55,
+          "ieee": "11b/g/n",
+          "rssi": -62,
+          "bandwidth": 20,
+          "encryption": "vendor-cipher-x9",
+          "encryption-mode": "opaque"
+        }
+      ],
+      "prompt": "SYNTH-PROMPT"
+    }
+  }
+]

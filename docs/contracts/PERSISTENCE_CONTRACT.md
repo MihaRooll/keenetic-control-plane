@@ -6,14 +6,16 @@
 |---|---|
 | Authoritative store | `data/router_control.sqlite3` only; **never** `studio.sqlite3` or JSON sidecars as SSOT |
 | Isolation | RC DB failure/degradation **must not** block kiosk, board, printing, or Hub startup |
-| Migrations | Independent `PRAGMA user_version` and contiguous migration chain; shipped migrations immutable |
+| Migrations | Independent `PRAGMA user_version` and contiguous migration chain; shipped migrations 1–3 immutable; **M4 (P1-A)** adds live-safe substrate tables (`user_version=4`): fences, effects, recovery CAS, artifact staging, safety/boot; **M5 (P2)** adds immutable deployment tables (`user_version=5`): `published_presets`, `router_deployment_revisions`, `router_family_certifications`, `plan_verify_reports`, `managed_resource_ownership_events`, `deployment_idempotency`; **M6** adds `router_endpoints.source_address`; **M7** adds per-router SSH host-key pin columns on `router_endpoints`; **M8** adds `idx_jobs_status_created_at`; **M9** adds `sealed_apply_runs` mid-flight trail for sync sealed apply routes; **M10** adds sealed-apply lease + `ops_pending_redacted` intent window (`user_version=10`); **M11** adds sealed-apply recovery evidence columns (`pre_apply_baseline_redacted`, `ops_evidence_redacted`, `outcome_snapshot_redacted`; `user_version=11`); **M12** adds `router_endpoints.management_username` (`user_version=12`); schema fingerprint + `schema_migrations` history |
+| P2 deployment | **Complete (2026-07-22, offline/fake):** PublishedPreset→DeploymentRevision→Desired→ChangePlan with `session_binding_hmac`, domain-separated plan digest, fenced atomic verify-success bundle (readback observation + verify report + ownership + `runtime_applied`); Save/`startup_saved` separate; live dispatch still **MutationForbidden** |
 | Revisions | `DesiredRevision` immutable; monotonic per-router numbering; ETag/`If-Match` in same txn as pointer update |
 | Applied marker | `applied_revision_id` updates **only** in successful verify transaction after read-back |
 | Jobs | One active mutation per `RouterId`; `BEGIN IMMEDIATE` claim; leases/fencing; **no** long router I/O inside SQLite txn |
 | Recovery | Unknown external outcome → identity/read-back then resume/verify/compensate/`RecoveryRequired`; **never** blind retry |
 | Idempotency | Same key+digest → existing op; same key+different digest → conflict; retention ≥ retry/recovery window |
 | Secrets | `CredentialRef` opaque metadata only; no plaintext secrets, raw RCI, or startup-config in DB/jobs/audit |
-| Deferred | `route_sets*`, `traffic_observations`, `route_proposals` — reserved keys only; **no** API v0 write path |
+| Deferred | `route_sets*`, `traffic_observations`, `route_proposals` — reserved keys; SLICE-8 proposals offline complete; **M3** worker scope |
+| Milestones | M1–M3 offline/read-only only (2026-07-22); no signed pull in M1–M3 |
 | Trace | [`CANONICAL.md`](../CANONICAL.md), [`ARCHITECTURE.md`](../ARCHITECTURE.md), [`DOMAIN_MODEL.md`](../DOMAIN_MODEL.md), ADR-0002, [`RCI_POLICY.md`](RCI_POLICY.md), [`SECURITY_OPS.md`](SECURITY_OPS.md), [`SCENARIOS.md`](SCENARIOS.md), [`README.md`](README.md) |
 
 ---
@@ -112,6 +114,12 @@ Foreign keys **must** be enabled on every connection (`PRAGMA foreign_keys = ON`
 | `last_success_at` | TEXT | YES | |
 | `last_failure_at` | TEXT | YES | |
 | `last_error_redacted` | TEXT | YES | |
+| `source_address` | TEXT | YES | M6: optional outbound TCP bind for dual-homed labs |
+| `ssh_host_key_sha256` | TEXT | YES | M7: normalized `SHA256:<digest>` pin on connection-binding endpoint |
+| `ssh_host_key_algorithm` | TEXT | YES | M7: e.g. `ssh-ed25519` |
+| `ssh_host_key_pinned_at` | TEXT | YES | M7: ISO8601 UTC when pin recorded |
+| `ssh_host_key_provenance` | TEXT | YES | M7: `learned_confirmed` \| `operator_supplied` when set |
+| `management_username` | TEXT | YES | M12: optional management login for live SSH on the **same** endpoint row as the pin (not a secret; not exposed via API read) |
 | `created_at` | TEXT | NO | |
 | `updated_at` | TEXT | NO | |
 
@@ -658,6 +666,71 @@ The following tables reserve multi-router keys for later phases. Migrations **ma
 
 **Forbidden in v0:** hidden write path, background mutation, or plan items referencing these tables before their safety gates open.
 
+### 2.26 M1 commissioning tables (`user_version = 2`)
+
+Migration **2** (additive; `_MIGRATION_1` immutable) introduces read-only commissioning persistence:
+
+| Table | Purpose | Notes |
+|---|---|---|
+| `commissioning_runs` | Durable commissioning run aggregate | States: `Draft`, `Observing`, `Assessing`, `ReadyReadOnly`, `Blocked`, `Failed`, `Cancelled`; optimistic `version`; redacted `summary_redacted` / `report_digest` only |
+| `readiness_checks` | Append-only check attempts | `check_kind`, `outcome`, `blocking`, `write_related`; no raw probe/RCI columns |
+| `commissioning_idempotency` | Create/assess/cancel idempotency | Scope `site` or `run`; stores redacted response refs only |
+
+**Forbidden:** password/session/endpoint/raw RCI/startup-config columns; claiming `Commissioned` or `WriteCertified` in stored state.
+
+### 2.27 M2 event preset tables (`user_version = 3`)
+
+Migration **3** (additive; `_MIGRATION_1`/`_MIGRATION_2` immutable) introduces offline event preset catalog:
+
+| Table | Purpose | Notes |
+|---|---|---|
+| `event_presets` | Durable preset aggregate | Optimistic `version`; `current_revision_id` / `published_revision_id` pointers; site-scoped create idempotency |
+| `event_preset_revisions` | Immutable intent revisions | `canonical_json` + `canonical_digest` only; INSERT-only document rows; `validation_status` redacted summary |
+| `event_preset_idempotency` | Create/revision/publish idempotency | Scope `site` or `preset`; stores redacted response refs only |
+
+**Forbidden:** plaintext Wi-Fi credentials, VPN secrets, raw RCI, startup-config columns in preset tables.
+
+### 2.28 M9 sealed apply mid-flight trail (`user_version = 9`)
+
+Migration **9** (additive; prior migrations immutable) introduces durable **in-flight** state for synchronous sealed apply/teardown routes (wifi, wifi.station, wireguard). Terminal HTTP outcomes remain in append-only `audit_events` (§2.21); **must not** store mutable dispatch progress in `audit_events` (§7.1).
+
+| Column | Type | Null | Notes |
+|---|---|---|---|
+| `run_id` | TEXT | NO | PK |
+| `router_id` | TEXT | YES | FK → `routers.router_id` when enrolled |
+| `route` | TEXT | NO | e.g. `wifi`, `wifi.station`, `wireguard` |
+| `verb` | TEXT | NO | `apply` \| `teardown` |
+| `status` | TEXT | NO | `Running` \| `Succeeded` \| `Failed` \| `RolledBack` \| `Interrupted` |
+| `correlation_id` | TEXT | YES | HTTP correlation |
+| `request_digest` | TEXT | YES | Redacted intent digest |
+| `intent_summary_redacted` | TEXT | NO | Redacted JSON summary; credential refs only |
+| `checkpoint_json` | TEXT | YES | `checkpoint_redacted` shape + optional `ops_dispatched_redacted[]` |
+| `ops_planned_redacted` | TEXT | YES | JSON array of op names |
+| `ops_pending_redacted` | TEXT | YES | JSON array of ops with intent recorded **before** device dispatch but not yet confirmed (M10) |
+| `ops_dispatched_redacted` | TEXT | YES | JSON array of ops acked on device |
+| `pre_apply_baseline_redacted` | TEXT | YES | Redacted compensation baseline JSON (`pre_state`, optional `observed_redacted`, optional `device_read_redacted`); set once before first mutating dispatch (M11) |
+| `ops_evidence_redacted` | TEXT | YES | JSON map `op_name →` redacted step + bounded `device_ack` (status entries / scrubbed show-rc shape); appended in existing intent/progress writes — **SSOT for device responses** (M11) |
+| `outcome_snapshot_redacted` | TEXT | YES | Terminal JSON: `overall`, `verdict_explanation`, rollback summary; set in `finish_sealed_apply_run` — mirrors audit `outcome` (M11) |
+| `lease_owner` | TEXT | YES | Process-scoped owner (`sar:{pid}:{uuid}`); cleared on terminal/interrupt |
+| `lease_until_epoch` | INTEGER | YES | Renewed on each trail write and during bounded settle waits; default TTL 30s (mirrors job lease pattern) |
+| `overall` | TEXT | YES | Service `overall` at terminal close |
+| `error_redacted` | TEXT | YES | Sanitized error when terminal |
+| `started_at` | TEXT | NO | |
+| `updated_at` | TEXT | NO | |
+| `finished_at` | TEXT | YES | Set on terminal status only |
+
+**Indexes:** `idx_sealed_apply_runs_status`; `idx_sealed_apply_runs_router_started` ON (`router_id`, `started_at`); `idx_sealed_apply_runs_correlation_id`; `idx_sealed_apply_runs_lease_until` ON (`status`, `lease_until_epoch`) (M10).
+
+**Lifecycle:** row inserted `Running` immediately before first mutating sealed RCI dispatch; **fail-closed:** trail begin failure **must** block all device dispatch (`SealedApplyTrailBeginError`). Per op: `record_sealed_apply_op_intent` **before** device I/O (adds to `ops_pending_redacted`); `record_sealed_apply_op_progress` **after** successful ack (moves to `ops_dispatched_redacted`); `abandon_sealed_apply_op_intent` on dispatch failure before ack. Intent/progress/abandon updates **must** renew `lease_until_epoch` atomically with ownership guard (`status = 'Running' AND lease_owner = ?`) — same transaction, no orphan pending without lease. During bounded uplink/handshake settle waits (20–30s), apply services **must** call `sleep_preserving_sealed_apply_lease` (chunked sleep + `renew_sealed_apply_lease`, mirrors worker heartbeat; **fail-closed** on renew failure). Crash between intent and confirm leaves honest `ops_pending_redacted` (possible apply). Terminal row sets `Succeeded` / `Failed` / `RolledBack` + `finished_at`. `finish_sealed_apply_run` **must** be fence-guarded (`lease_owner` match); no-op when lease lost (must not overwrite `Interrupted`). Process restart **must** call `interrupt_stale_sealed_apply_runs()` (local DB only) to mark stale `Running` → `Interrupted` when `lease_until_epoch < now` **or** `lease_until_epoch IS NULL` and `started_at` older than default lease TTL (`_SEALED_APPLY_LEASE_SECONDS`); **must not** interrupt runs with valid lease — parallel runtime safe); **forbidden** auto-resume, compensate, or rollback from trail alone.
+
+**Store API:** `begin_sealed_apply_run`, `record_sealed_apply_pre_apply_baseline`, `record_sealed_apply_op_intent`, `record_sealed_apply_op_progress`, `abandon_sealed_apply_op_intent`, `renew_sealed_apply_lease`, `finish_sealed_apply_run`, `interrupt_stale_sealed_apply_runs`, `list_unfinished_sealed_applies` (status `Running` \| `Interrupted`).
+
+**Recovery evidence split (M11, no diverging copies):** `ops_evidence_redacted` + `pre_apply_baseline_redacted` are authoritative in `sealed_apply_runs` (crash-durable). Terminal `verdict_explanation` + rollback live in `outcome_snapshot_redacted` (trail finish) and audit `outcome` (HTTP append); audit `result` omits fields duplicated from trail/outcome when a trail snapshot is embedded. Full raw device sessions and startup-config remain forbidden.
+
+**DB cost (M10 intent window):** two SQLite writes per mutating op (intent + confirm) vs one previously; lease renewed on each write. **M11:** evidence merged into those same writes — no third write per op.
+
+**Forbidden:** resolved passwords/PSKs/private keys, raw RCI sessions, startup-config content in any column.
+
 ---
 
 ## 3. Revisions, concurrency, ETag, observations
@@ -756,6 +829,8 @@ Each active `Job` **must** maintain:
 
 All post-claim writes **must** verify `lease_owner`, unexpired lease (or grace policy), and matching `fencing_token`. Late stale worker reports **must** be rejected.
 
+**M3 store surface (implemented):** `renew_lease(job_id, lease_owner, fencing_token, lease_seconds, now_epoch)` extends `lease_until_epoch` and `heartbeat_at` (and mutation lock when held); `complete_job(...)` fence-guarded terminalizes job + operation aggregate + idempotency response; both are short `BEGIN IMMEDIATE` transactions with **no** handler I/O inside the txn.
+
 ### 4.6 One mutation per RouterId
 
 For mutation `operation_kind`, at most one job in `{Leased, Running}` per `router_id` **must** be enforced using `router_mutation_locks` and conditional updates, not only in-process locks. Read-only jobs **may** run in parallel when no conflicting fail-safe session exists ([`RCI_POLICY.md`](RCI_POLICY.md)).
@@ -845,7 +920,7 @@ Retention **must not** delete idempotency rows before client retry window and jo
 
 ### 7.1 Append-only audit
 
-`audit_events` **must** be insert-only in normal operation. Audit **must not** substitute for mutable job state.
+`audit_events` **must** be insert-only in normal operation. Audit **must not** substitute for mutable job state. Mid-flight sealed apply progress **must** use `sealed_apply_runs` (§2.28), not `audit_events`.
 
 ### 7.2 Atomic creation bundle
 
@@ -858,6 +933,7 @@ Aligned with [`SECURITY_OPS.md`](SECURITY_OPS.md):
 - **Forbidden in SQLite domain/job/audit fields:** router passwords, AWG private/PSK material, raw RCI sessions, startup-config full content, DPAPI plaintext/ciphertext blobs.
 - `credential_refs` stores opaque metadata and provider locator only; resolve occurs in-process via vault port for adapter use only. Profile and audit relational links **must** use `vpn_profile_secret_refs` and `audit_event_artifacts`, not JSON ID arrays.
 - Plans, steps, checkpoints, and audit summaries **must** use redacted digests and stable placeholders.
+- Offline secret-leak scans (`PersistenceStore.dump_text_for_secret_scan`) **must** include **all** columns for each scanned table. Column sets are read from `PRAGMA table_info` at runtime (not a hand-maintained list) so new migration columns (e.g. `change_plans.session_binding_hmac`) cannot be skipped silently. Rows are streamed per table to avoid loading entire audit/job tables into memory. Guard tests compare scan columns to live schema.
 
 ### 7.4 CredentialRef lifecycle
 
@@ -938,6 +1014,21 @@ Without prescribing migration code, implementation **must** demonstrate:
 10. `router_control.sqlite3` outage does not block other Hub services startup.
 
 Evidence test matrix: [`TEST_STRATEGY.md`](TEST_STRATEGY.md) §7.
+
+### 8.8 P2 immutable deployment tables (migration 5, offline/fake)
+
+| Table | Role |
+|---|---|
+| `published_presets` | Immutable ValidOffline publication lineage; idempotent by `(preset_id, source_revision_id)` |
+| `router_deployment_revisions` | Binds publication, router/site, tuple/evidence, credential ref versions, topology, canonical desired digest |
+| `router_family_certifications` | Per-family certification rows; revocation via `revoked_at`; `certification_level` CHECK |
+| `change_plans.session_binding_hmac` | HMAC-only plan session binding; never raw cookie/sid |
+| `change_plans.plan_version` | CAS ETag for Confirm/Apply |
+| `plan_verify_reports` | Structured verify result; UNIQUE `(plan_id, job_id)` |
+| `managed_resource_ownership_events` | Create/Adopt/Update/Retire audit trail per apply |
+| `deployment_idempotency` | Idempotency for publish/deployment/desired creates |
+
+Verify-success finalization **must** occur in one `BEGIN IMMEDIATE` transaction while holding `router_execution_fences` lease: readback observation, verify report, managed ownership deltas, `runtime_applied` evidence; Drifted path persists report only (no ownership/applied). `startup_saved` remains a separate Save step.
 
 ---
 

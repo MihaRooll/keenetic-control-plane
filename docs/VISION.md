@@ -6,7 +6,7 @@
 
 Модуль не является универсальной панелью администрирования роутеров. Его задача — поддержать конкретный event-booth deployment, где потеря сети или ошибочная маршрутизация останавливают приём заказов и производство. Поэтому безопасный отказ важнее автоматического «исправления любой ценой».
 
-Текущий статус проекта — **Phase 0a complete**, **Phase 0b complete** (Wave 7 closeout), **Phase 1 / SLICE-1 complete** (2026-07-21). Portable core + `FakeRouterAdapter`, fake-only tests delivered; Python package **`router_control` exists**; **no** live router or network I/O; hardware gates A–D **closed**. **Phase 1 / SLICE-2 blocked** pending separate human approval. Актуальное состояние — [`STATUS.yaml`](STATUS.yaml); порядок slices — [`contracts/ROADMAP.md`](contracts/ROADMAP.md); порядок чтения — [`README.md`](README.md).
+Текущий статус проекта — **Phase 0a/0b complete**, **Phase 1 foundation complete**, **M0–M5 + P1–P3 complete** (2026-07-22..2026-07-23), **prototype management UI presentation complete** (2026-07-22). Gate **A** open ReadOnlyCertified (post-WG rebind 2026-07-31); Gate **B** `completed_failed` (not WriteCertified); Gates **C/D** closed. **2026-08-01 offline-only sessions (NOT device-verified):** VPN policy-routing preview; network-family preview; station HTTP apply/teardown + UI panels; reliability substrate. **2026-08-05 device-verified:** first real WireGuard handshake; **`SET_IP_ADDRESS` + `wireguard_ip_global`** accepted; traffic via tunnel **reversible** (§M-24..§M-27). **Next task:** `local-hub-vpn-real-peer-autoconnect-continuation` per [`STATUS.yaml`](STATUS.yaml) `next_task`. **Parallel deferred:** VPN named policy / kill-switch live apply (offline preview only; kill-switch `permit global` **unresolved**). Active handoff: [`SESSION_HANDOFF_REAL_ROUTER_2026-08-02.md`](SESSION_HANDOFF_REAL_ROUTER_2026-08-02.md). Milestone DAG — [`contracts/ROADMAP.md`](contracts/ROADMAP.md) §3.3; ADR-0005 — [`adrs/0005-local-first-commissioning-roadmap.md`](adrs/0005-local-first-commissioning-roadmap.md).
 
 ## Event scenario
 
@@ -69,14 +69,14 @@ Browser/iPad никогда не должен получать router password, 
 
 ## Путь к module_3.0
 
-До интеграции ядро разрабатывается в canonical repository `keenetic-control-plane` как переносимый Python package `router_control` (Phase 1 / SLICE-1 complete: domain, application и fake-only adapter). Domain и planner не импортируют FastAPI; отдельный FastAPI dev host — будущий SLICE-3 для prototype и contract tests. `ScanCursorIP` остаётся legacy behavioral evidence, а не домом новой реализации.
+До интеграции ядро разрабатывается в canonical repository `keenetic-control-plane` как переносимый Python package `router_control` (Phase 1 complete: domain, persistence, fake adapter). Domain и planner не импортируют FastAPI; prototype FastAPI dev-host **`router_control_host`** exists (SLICE-3) для contract tests. `ScanCursorIP` остаётся legacy behavioral evidence, а не домом новой реализации.
 
 После прохождения fake, recorded и live hardware gates package будет перенесён в `module_3.0`:
 
 - wiring через существующие bootstrap/dependencies/lifespan patterns;
 - API на общем listener под `/api/router-control/v1/*`;
 - fail-closed admin protection всего prefix;
-- UI только как защищённый блок существующего `/settings`;
+- Prototype host UI at `/settings/router-control` (buildless SPA, 2026-07-22); Hub UI only as защищённый блок существующего `/settings` at integration time;
 - отдельная `data/router_control.sqlite3`;
 - failure isolation: Router Control не мешает запуску и основным event workflows Hub.
 

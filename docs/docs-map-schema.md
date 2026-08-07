@@ -10,6 +10,8 @@
 
 **Do not:** invent fields outside this schema; reference paths outside the product repo.
 
+**Optional fields:** `lastReviewed` (see Entry object) — safe to add/update when refreshing map metadata after doc review.
+
 ---
 
 ## Top-level object
@@ -31,6 +33,7 @@
 | `status` | string | yes | One of: `active`, `draft`, `deprecated`, `planned` |
 | `owners` | array of strings | yes | ≥1 owner; each non-empty, ≤64 chars |
 | `tags` | array of strings | no | Each non-empty, ≤32 chars |
+| `lastReviewed` | string | no | ISO date `YYYY-MM-DD`; last agent/operator review of map entry vs doc body; informational only — not enforced by validator |
 
 **`planned` semantics:** use only while the target file does **not** exist. Validator requires `planned` entries **not** exist on disk; all other statuses require the file to exist.
 
@@ -58,7 +61,8 @@
       "title": "Product brief",
       "status": "active",
       "owners": ["team"],
-      "tags": ["day-0"]
+      "tags": ["day-0"],
+      "lastReviewed": "2026-08-01"
     }
   ],
   "rules": {
@@ -79,6 +83,13 @@ Seed template: `templates/docs-map.json`.
 3. No duplicate `path`
 4. Each `entries[].path`: `planned` → must **not** exist; all other statuses → must exist under project root
 5. `-SelfTest` runs fixtures under `tests/project-docs/`
+
+Extended audit (links, unmapped doc surfaces, STATUS↔project-state sync marker):
+
+```powershell
+py -3.11 scripts\project-docs.py audit --project-root .
+py -3.11 scripts\project-docs.py sync-marker --project-root . --write
+```
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\validate-project-docs.ps1

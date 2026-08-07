@@ -1,0 +1,25 @@
+[
+  {
+    "parse": {
+      "ap_cell": [
+        {
+          "essid": "SYNTH-SSID-Good",
+          "address": "aa:bb:cc:dd:ee:10",
+          "channel": 36,
+          "quality": 90,
+          "ieee": "11a/n/ac/ax/be",
+          "encryption": "wpa2",
+          "encryption-mode": "psk"
+        },
+        {
+          "essid": "SYNTH-SSID-Broken",
+          "address": "not-a-mac",
+          "channel": 40,
+          "quality": 50,
+          "ieee": "11a/n/ac"
+        }
+      ],
+      "prompt": "SYNTH-PROMPT"
+    }
+  }
+]

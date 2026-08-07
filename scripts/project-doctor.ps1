@@ -68,11 +68,13 @@ foreach ($rel in $harnessPaths) {
 if ($harnessOk) { Write-DoctorLine "harness: summary OK" }
 
 $mapPath = Join-Path $root "docs\docs-map.json"
+$mapParseOk = $false
 if (Test-Path -LiteralPath $mapPath) {
     try {
         $raw = Read-TextUtf8 $mapPath
         $null = $raw | ConvertFrom-Json
         Write-DoctorLine "docs-map: OK parseable"
+        $mapParseOk = $true
     } catch {
         Write-DoctorLine "docs-map: FAIL parse"
         $exitCode = 2
@@ -80,6 +82,38 @@ if (Test-Path -LiteralPath $mapPath) {
 } else {
     Write-DoctorLine "docs-map: MISSING (advisory)"
     if ($exitCode -eq 0) { $exitCode = 1 }
+}
+
+if ($mapParseOk) {
+    $projectDocsPy = Join-Path $root "scripts\project-docs.py"
+    if (Test-Path -LiteralPath $projectDocsPy) {
+        Push-Location -LiteralPath $root
+        try {
+            $auditOut = & py.exe -3.11 $projectDocsPy audit --project-root $root 2>&1
+            $auditCode = $LASTEXITCODE
+            if ($null -eq $auditCode) { $auditCode = 0 }
+            $auditText = ($auditOut | Out-String).Trim()
+            if ($auditCode -eq 0) {
+                Write-DoctorLine "project-docs audit: advisory OK (not a substitute for validate-project-docs.ps1)"
+            } else {
+                Write-DoctorLine "project-docs audit: advisory findings (see summary below; not full validation)"
+                if ($exitCode -eq 0) { $exitCode = 1 }
+            }
+            foreach ($line in ($auditText -split "`r?`n")) {
+                if ($line -match '^(FAIL|WARN|PROJECT_DOCS_)') {
+                    Write-DoctorLine ("project-docs: " + $line)
+                }
+            }
+        } catch {
+            Write-DoctorLine "project-docs audit: ERROR $($_.Exception.Message) (advisory)"
+            if ($exitCode -eq 0) { $exitCode = 1 }
+        } finally {
+            Pop-Location
+        }
+    } else {
+        Write-DoctorLine "project-docs: script missing (advisory)"
+        if ($exitCode -eq 0) { $exitCode = 1 }
+    }
 }
 
 $statePath = Join-Path $root "docs\project-state.md"

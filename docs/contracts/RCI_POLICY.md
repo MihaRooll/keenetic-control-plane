@@ -10,7 +10,8 @@
 | Lifecycle | Unified order in §5; **Confirm** before apply; **Fail-safe Configuration** mandatory for disruptive writes — **not** transactional atomicity |
 | Serialization | One mutation job per `RouterId`; read-only may parallelize outside active Fail-safe session |
 | Evidence | Legacy fixtures from [`LEGACY_MAP.md`](../LEGACY_MAP.md) are old-device behavioral evidence only |
-| Trace | [`CANONICAL.md`](../CANONICAL.md), [`ARCHITECTURE.md`](../ARCHITECTURE.md), [`DOMAIN_MODEL.md`](../DOMAIN_MODEL.md), [`COMPATIBILITY.md`](../COMPATIBILITY.md), ADR-0002/0004, [`SCENARIOS.md`](SCENARIOS.md) |
+| Milestones | M0–M8 per ADR-0005; **P3 topology safety closure complete** (2026-07-23) — shared Certified registry wiring, Gate D default-deny, explicit `source_address` bind for overlapping-subnet labs; **next major phase:** full operator web UI (`operator-web-ui-full-coverage` per [`STATUS.yaml`](../STATUS.yaml) `next_task`); **parallel deferred:** VPN routing live apply (offline preview only); Gate B **completed_failed**; `write_shapes_registered` false; AWG/routes/LTE parallel deferred |
+| Trace | ADR-0002/0004/0005, [`ROADMAP.md`](ROADMAP.md), [`CANONICAL.md`](../CANONICAL.md) |
 
 ---
 
@@ -27,6 +28,8 @@
 - raw RCI в SQLite, plan diff, job payload, API response;
 - endpoint «send arbitrary RCI»;
 - silent mapping legacy KeeneticHttpHelper bodies на NC-1812 без gate B evidence.
+
+**Sealed write redaction (defense-in-depth):** `command_for` / sealed bodies may carry secrets only inside the adapter dispatch path. Operator/API/log/test surfaces use `command_redacted_for` (Wi‑Fi AP/station, WireGuard) and `redact_sealed_cli_command` / `redact_sealed_nested_body` (`sanitize.py`) at fake-transport accumulation and error classification boundaries. `FailSafeStatusEntry.message` and `SealedRciWriteRequest.body` are excluded from `repr`.
 
 ## 2. Capability-family allowlist (deny-by-default)
 
@@ -51,7 +54,7 @@ Literal RCI object names, field paths и POST bodies для NC-1812 **не фи�
 
 | Topic | Target behavior | Evidence status |
 |---|---|---|
-| Transport | Local HTTPS RCI endpoint; Hub HTTPS ≠ router RCI transport ([`ARCHITECTURE.md`](../ARCHITECTURE.md), ADR-003) | Lab required |
+| Transport | Authenticated encrypted local RCI: HTTPS with certificate validation **or** host-key-pinned SSH tunnel to verified router management HTTP (port 80); Hub HTTPS ≠ router RCI transport ([`ARCHITECTURE.md`](../ARCHITECTURE.md), ADR-003) | Lab required |
 | Auth | Digest challenge; session/cookie; **one** synchronized re-auth on 401 | Hypothesis until fixture |
 | HTTP vs command errors | Normalize command-level failure независимо от HTTP 200 | Hypothesis |
 | Async continuation | Если `"continued": true`, adapter polls до terminal state или timeout | Hypothesis ([`CANONICAL.md`](../CANONICAL.md) §4.7) |
@@ -59,6 +62,21 @@ Literal RCI object names, field paths и POST bodies для NC-1812 **не фи�
 | Identity on every mutation | Model + serial/MAC/fingerprint match enrolled `RouterId` | Domain invariant |
 
 Legacy [`LEGACY_MAP.md`](../LEGACY_MAP.md): `KeeneticHttpHelper` и PowerShell tools доказывают **старое** устройство; их JSON shapes — **recorded fixtures для strangler**, не NC-1812 certification.
+
+### Gate A frozen RCI allowlist (Netcraze read-only adapter)
+
+Deny-by-default; exactly **four** bounded reads for Gate A transport (2026-07-21 offline code):
+
+| Method | Path | Frontend bundle trace (dotted token) | Payload policy |
+|---|---|---|---|
+| GET | `/rci/show/system` | `show.system` | Legacy/telemetry; observed shape ignores for claims |
+| POST | `/rci/components/list` | `components.list` | Canonical raw firmware from `firmware.version` |
+| GET | `/rci/show/identification` | `show.identification` | Defensive top-level keys only; serial/servicetag hashed at boundary; optional `hwid` (hardware model ID, not unique physical ID); raw cid/mac not parsed |
+| GET | `/rci/show/version` | `show.version` | Defensive fields: `hw_id`, display metadata, `release`/`version` (must agree when both present), `sandbox`, `region`, nested `ndm.exact`/`bsp.exact`; canonical model = `hw_id`; NDM build from `ndm.exact` required for completeness; flat `build` display fallback only |
+
+Internal `/auth` remains transport plumbing (not counted in allowlist). Response body schemas for identification/version are **unobserved** until sanitized live fixtures; parser is runtime-defensive. Evidence never exposes raw physical IDs or physical digests — only `physical_identifier_source: show.identification_digest` when present.
+
+**Sealed write shapes (product adapter, fail-closed):** besides fixed fail-safe/system bodies and sealed `[{"parse":"<cli>"}]` templates (interface up/down, Wi-Fi AP, WireGuard path-style — **path-style peer ops compile offline only**; explicit intent `peer_rci_shape=path_style` → **422** `peer_rci_shape_unsupported` at domain/API; path-style peer grammar **REJECTED** live 2026-07-24 on NC-1812 5.01.C.1.0-0), the Netcraze adapter accepts an **additive** bounded nested JSON body for AWG peer upsert: `interface.Wireguard[5-9].wireguard.peer[]` — array of peer objects with required `"key"` (pubkey) and allowlisted nested fields: `endpoint` (`{address}`), `allow-ips` (array of `{address, mask}` with dotted IPv4 netmask), `keepalive-interval` (`{interval}`), `preshared-key` (optional string). Selected by intent `peer_rci_shape=nested_rci` (default since 2026-07-24; only accepted shape at runtime). Shape follows ivansible/ndm-wireguard show-rc write template (read≈write). Nested peer write **device-verified accepted** on NC-1812 5.01.C.1.0-0 (2026-07-24 re-verify; evidence `data/artifacts/awg-peer-nested-rci-live-reverify-192.168.2.1-20260724.json`). No generic/raw RCI passthrough. `write_shapes_registered` remains **false** — evidence toward Gate B, NOT formal registration.
 
 ## 4. Identity, capability, freshness, ownership preconditions
 
@@ -69,7 +87,7 @@ Legacy [`LEGACY_MAP.md`](../LEGACY_MAP.md): `KeeneticHttpHelper` и PowerShell t
 3. **Firmware tuple** — exact model + firmware/build/channel + component-set digest; raw `5.01` остаётся **unclassified** ([`COMPATIBILITY.md`](../COMPATIBILITY.md)).
 4. **Freshness** — plan основан на **fresh** `RouterObservation` (`now <= valid_until`, identity OK); stale observation → new observe required.
 5. **Ownership** — только `ManagedResource` или явно adopted resources; unmanaged never pruned ([`CANONICAL.md`](../CANONICAL.md) §4.9).
-6. **Mutation window** — **Lab path:** Gate C lab window open **and** operator authorization (plus Gate B per family). **Production path:** Gate D satisfied (plus Gate B per family); **does not** require an open Gate C window ([`HARDWARE_GATES.md`](HARDWARE_GATES.md)). Phase 0b: все gates closed.
+6. **Mutation window** — **Lab path:** Gate C lab window open **and** operator authorization (plus Gate B per family). **Production path:** Gate D satisfied (plus Gate B per family); **does not** require an open Gate C window ([`HARDWARE_GATES.md`](HARDWARE_GATES.md)). **Phase 0b (historical):** all gates closed. **Current posture (2026-07-22):** Gate **A** may be open for read-only observe; write mutations still require Gate **B** WriteCertified per family plus applicable **C**/**D** paths — currently Gate **B** is **completed_failed** (not WriteCertified); Gates **C** and **D** **closed** → **no write dispatch**.
 
 ## 5. Unified mutation lifecycle
 

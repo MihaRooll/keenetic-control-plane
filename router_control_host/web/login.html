@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+
+<html lang="ru">
+
+<head>
+
+  <meta charset="utf-8">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Router Control — вход</title>
+
+  <link rel="icon" href="/favicon.ico" type="image/svg+xml">
+
+  <link rel="stylesheet" href="/login.css">
+
+</head>
+
+<body>
+
+  <main class="login-card">
+
+    <h1>Router Control</h1>
+
+    <p>Введите пароль оператора для доступа к прототипу.</p>
+
+    <form method="post" action="/login" autocomplete="current-password">
+
+      <label for="password">Пароль</label>
+
+      <input id="password" name="password" type="password" required autofocus>
+
+      <button type="submit">Войти</button>
+
+    </form>
+
+  </main>
+
+  <script src="/login.js" defer></script>
+
+</body>
+
+</html>
+

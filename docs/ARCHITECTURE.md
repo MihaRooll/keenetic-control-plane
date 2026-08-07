@@ -4,8 +4,10 @@
 
 Router Control разрабатывается в два этапа без смены языка и доменных контрактов:
 
-1. После завершения Phase 0b в этом репозитории в Phase 1 / SLICE-1 создан переносимый Python package `router_control` (domain, application и fake-only adapter). Отдельный FastAPI dev host запланирован на SLICE-3 для лабораторного API и UI и не входит в domain core. `ScanCursorIP` остаётся только legacy behavioral evidence.
-2. После подтверждения поведения package механически переносится в `module_3.0/app/services/router_control/`. FastAPI adapter подключается к существующему Hub, его process resources и lifespan.
+1. В Phase 1 создан переносимый Python package `router_control` (domain, application, persistence, vault, Netcraze read-only adapter) и отдельный FastAPI dev-host `router_control_host` (SLICE-3) для лабораторного API. `ScanCursorIP` остаётся только legacy behavioral evidence.
+2. После подтверждения поведения package механически переносится в `module_3.0/app/services/router_control/` (**M7**). FastAPI adapter подключается к существующему Hub, его process resources и lifespan.
+
+**M1 (2026-07-22):** read-only commissioning (`CommissioningRun`, `ReadinessCheck`) — domain/application/persistence/API; fake + Gate A RO assess; zero router writes.
 
 Целевой runtime — Python 3.11, FastAPI/Uvicorn и один процесс Hub. Отдельный production listener или sidecar для Router Control не создаётся. После интеграции API обслуживается тем же LAN listener Hub под prefix `/api/router-control/v1/`.
 
@@ -100,7 +102,9 @@ flowchart TB
 
 NetworkPolicy определяет четыре firewall/VLAN zones: `Guest`, `Promo`, `Staff`, `Admin/Server`. Router Control API и router management plane принадлежат `Admin/Server`. Guest получает только локальную HTTPS order page; Guest, Promo и по умолчанию Staff не получают network path к management plane. Эти firewall rules дополняют, но не заменяют `hub_admin` на HTTP boundary.
 
-NetworkPolicy реализуется после VPN/routes и не входит в API v0. До её появления API всё равно обязан быть fail-closed на общем listener.
+**Network ownership (event booth):** **NC-1812** — единственный владелец L3-маршрутизации, DHCP, DNS, firewall и AP/Wi-Fi policy на event LAN. **Hub PC** — application/control plane (orders, board, printing, Router Control API); не является сетевым policy authority. **Managed L2 switch + UPS** (рекомендуется) сохраняют L2-соседство Hub–printer и других фиксированных L2 peers при reboot роутера. **Явное ограничение:** роутер остаётся network SPOF для Wi-Fi, DHCP и DNS, пока отдельно не утверждён иной дизайн.
+
+NetworkPolicy реализуется в milestone **M2–M6** и не входит в API v0. До её появления API всё равно обязан быть fail-closed на общем listener.
 
 ## 5. Bounded contexts
 
@@ -167,7 +171,7 @@ flowchart LR
 - `AuditPort`: redacted append-only events;
 - `ClockPort`: deterministic TTL, lease и test behavior.
 
-Phase 1 использует `FakeRouterAdapter` и обязан проходить offline tests с запретом network sockets. `NetcrazeRciAdapter` появляется только в read-only Phase 2.
+Phase 1 использует `FakeRouterAdapter` для offline tests и `NetcrazeRciAdapter` (read-only, Gate **A**) для live observe. Mutations fail-closed while Gates **B/C/D** closed.
 
 ## 7. Prototype layout и перенос
 
@@ -329,4 +333,4 @@ Mutation lease и lock привязаны к `RouterId`. `applied_revision` ме
 | [`contracts/ROADMAP.md`](contracts/ROADMAP.md) | Dependency-ordered implementation slices; human gate before code |
 | [`contracts/AI_HANDOFF.md`](contracts/AI_HANDOFF.md) | AI cold-start, SSOT, task template, safe resumption |
 
-Index: [`contracts/README.md`](contracts/README.md). Phase 0b **complete**; **Phase 1 / SLICE-1 complete** (2026-07-21) — portable core + `FakeRouterAdapter`, fake-only tests; **`router_control` package exists**; **SLICE-2 blocked** pending separate human approval; hardware gates A–D **closed**. See [`STATUS.yaml`](STATUS.yaml) and [`contracts/ROADMAP.md`](contracts/ROADMAP.md).
+Index: [`contracts/README.md`](contracts/README.md). Phase 0b **complete**; Phase 1 foundation **complete**; **M0–M5 complete** (2026-07-22); **P1-A/P1-B complete** (offline/fake); **P2 immutable deployment complete** (2026-07-22; offline/fake; **not live-ready**); **P3 shared executor + topology safety complete** (2026-07-23; offline/default-deny; registries empty); **current focus:** LOCAL HUB continuation (`local-hub-vpn-real-peer-autoconnect-continuation` per [`STATUS.yaml`](STATUS.yaml) `next_task`); **parallel deferred:** VPN named policy / kill-switch live apply (offline preview only; kill-switch `permit global` **unresolved**; **`SET_IP_ADDRESS` + traffic via tunnel device-verified** §M-24..§M-27; IPv6 allow-ips refused). Gate **A** open ReadOnlyCertified; Gate **B** completed_failed; Gates **C/D** closed; not WriteCertified. Prototype: durable worker + fake apply/verify; UI at `/settings/router-control` and LOCAL HUB PWA. See [`STATUS.yaml`](STATUS.yaml), [`OPERATOR_UI.md`](OPERATOR_UI.md), [`contracts/ROADMAP.md`](contracts/ROADMAP.md) §3.3.

@@ -7,8 +7,10 @@ from datetime import UTC, datetime, timedelta
 
 from router_control.domain.enums import (
     CertificationStatus,
+    ExecutionTarget,
     ManagedResourceLifecycle,
     ObservationCollectionStatus,
+    OwnershipAction,
     PlanConfirmationState,
 )
 from router_control.domain.ids import (
@@ -114,6 +116,7 @@ class DesiredRevision:
     desired_digest: str
     based_on_observation_id: ObservationId
     created_at: datetime
+    deployment_revision_id: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -122,6 +125,61 @@ class DesiredRevision:
         object.__setattr__(self, "created_at", _ensure_utc(self.created_at, "created_at"))
         if self.revision_number < 1:
             raise ValueError("revision_number must be >= 1")
+
+
+@dataclass(frozen=True, slots=True)
+class PublishedPreset:
+    published_preset_id: str
+    preset_id: str
+    source_revision_id: str
+    site_id: str
+    canonical_document_digest: str
+    schema_digest: str
+    validation_digest: str
+    published_at: datetime
+    publisher_session_binding_hmac: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "canonical_document_digest",
+            _validate_digest(self.canonical_document_digest, "canonical_document_digest"),
+        )
+        object.__setattr__(
+            self, "published_at", _ensure_utc(self.published_at, "published_at")
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class RouterDeploymentRevision:
+    deployment_revision_id: str
+    published_preset_id: str
+    router_id: RouterId
+    site_id: str
+    execution_target: ExecutionTarget
+    identity_tuple_digest: str
+    evidence_digest: str
+    canonical_desired_digest: str
+    created_at: datetime
+    actor_session_binding_hmac: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "identity_tuple_digest",
+            _validate_digest(self.identity_tuple_digest, "identity_tuple_digest"),
+        )
+        object.__setattr__(
+            self,
+            "evidence_digest",
+            _validate_digest(self.evidence_digest, "evidence_digest"),
+        )
+        object.__setattr__(
+            self,
+            "canonical_desired_digest",
+            _validate_digest(self.canonical_desired_digest, "canonical_desired_digest"),
+        )
+        object.__setattr__(self, "created_at", _ensure_utc(self.created_at, "created_at"))
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,6 +207,9 @@ class ChangePlanItem:
     resource_id: ResourceId
     intent_kind: str
     intent_digest: str
+    intent_json: dict[str, object] | None = None
+    ownership_action: OwnershipAction | None = None
+    family_cert_snapshot_json: dict[str, object] | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -169,6 +230,11 @@ class ChangePlan:
     expires_at: datetime
     created_at: datetime
     actor: str
+    deployment_revision_id: str | None = None
+    session_binding_hmac: str | None = None
+    plan_version: int = 1
+    adopt_acknowledged: bool = False
+    execution_target: ExecutionTarget | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "items", tuple(self.items))
@@ -184,6 +250,8 @@ class ChangePlan:
         )
         object.__setattr__(self, "expires_at", _ensure_utc(self.expires_at, "expires_at"))
         object.__setattr__(self, "created_at", _ensure_utc(self.created_at, "created_at"))
+        if self.plan_version < 1:
+            raise ValueError("plan_version must be >= 1")
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "path": "docs/[bracket]-тест.md",
+      "title": "Bracket unicode path",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["fixture", "unicode"]
+    }
+  ]
+}

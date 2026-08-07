@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Router Control">
+  <rect width="32" height="32" rx="6" fill="#1565c0"/>
+  <path d="M8 12h16v2H8zm0 5h11v2H8z" fill="#fff"/>
+  <circle cx="23" cy="19" r="2" fill="#90caf9"/>
+</svg>

@@ -1,0 +1,10 @@
+{
+  "sandbox": "stable",
+  "firmware": {
+    "version": "4.03.C.6.4-16"
+  },
+  "component": {
+    "ndm": {"installed": true},
+    "ssh-server": {"installed": true}
+  }
+}

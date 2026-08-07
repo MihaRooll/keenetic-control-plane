@@ -1,0 +1,26 @@
+{
+  "interface": [
+    {
+      "id": "ISP",
+      "type": "ISP",
+      "role": "wan",
+      "link": "up",
+      "connected": true,
+      "address": ["192.168.1.100/24"],
+      "bridge": null,
+      "segment": null,
+      "uplink": null
+    },
+    {
+      "id": "Home",
+      "type": "Bridge",
+      "role": "lan",
+      "link": "up",
+      "connected": true,
+      "address": ["192.168.1.1/24"],
+      "bridge": "Bridge0",
+      "segment": "Home",
+      "uplink": null
+    }
+  ]
+}

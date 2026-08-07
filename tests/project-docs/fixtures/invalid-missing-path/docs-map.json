@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "path": "does-not-exist.md",
+      "title": "Missing path",
+      "status": "active",
+      "owners": ["team"]
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "entries": [],
+  "rules": {
+    "update_on_change": true,
+    "validate_on_commit": false
+  }
+}

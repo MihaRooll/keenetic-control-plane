@@ -12,7 +12,7 @@
 - **Local plugin** (`cursor-project-harness` 0.5.0+) mirrors `maintain-project-docs`, `configure-project-integrations`, `browser-verify`, `setup-project-environment`, `project-docs-lifecycle`
 - After material doc/feature change → `/maintain-project-docs` or follow `project-docs-lifecycle` rule
 - MCP opt-in → `/configure-project-integrations` (propose/dry-run); implementer applies after confirmation
-- Validate docs: `scripts/validate-project-docs.ps1` (shipped Essential + Full) · MCP profiles: `scripts/validate-mcp-profiles.ps1` (**Full** or toolkit only)
+- Validate docs: `scripts/validate-project-docs.ps1` (normative map) · `scripts/project-docs.py audit` (advisory: links, unmapped, sync marker) · MCP profiles: `scripts/validate-mcp-profiles.ps1` (**Full** or toolkit only)
 - `/configure-project-integrations` and MCP profile templates require **Full bootstrap**, **local plugin**, or **toolkit** — not Essential alone
 
 **Do not:** add active `.cursor/mcp.json` in Essential; ship memory/mcp-security guides or MCP templates in Essential.
@@ -23,7 +23,7 @@
 
 | Surface | Living docs | Native templates | Strict hooks | Living-eval | Doctor | Stage / state | browser-verify | setup skill | MCP profiles | configure skill | Validator |
 |---------|-------------|------------------|--------------|-------------|--------|---------------|----------------|-------------|--------------|-----------------|-----------|
-| Essential bootstrap | yes (docs + maintain skill + rule) | no (docs only) | **no** | **no** | yes (`project-doctor.ps1`) | yes (`docs/project-state.md`) | yes (skill) | yes (skill + doctor) | no | **no** (requires Full bootstrap, local plugin, or toolkit) | yes (`validate-project-docs.ps1` on-disk) |
+| Essential bootstrap | yes (docs + maintain skill + rule) | no (docs only) | **no** | **no** | yes (`project-doctor.ps1` + advisory `project-docs.py audit`) | yes (`docs/project-state.md`) | yes (skill) | yes (skill + doctor) | no | **no** (requires Full bootstrap, local plugin, or toolkit) | yes (`validate-project-docs.ps1` + `project-docs.py`) |
 | new-project day-0 | yes | no | no | no | yes (script copied) | yes (seed if absent) | yes | yes | no | no | no |
 | Local plugin 0.5.0 | maintain + configure + browser + setup | — | **no** | **no** | — (on-disk script) | — (on-disk state) | yes | yes | — | yes (Cursor-loaded) | — |
 | Full bootstrap | all docs + scripts | yes (`templates/cursor`) | yes (`templates/hooks` opt-in) | yes (`tests/living-eval` + `validate-living-evals.ps1`) | yes | yes | yes (skills) | yes | yes (`templates/mcp`) | yes (on-disk skills) | yes (`validate-mcp-profiles.ps1`, `validate-living-evals.ps1`) |

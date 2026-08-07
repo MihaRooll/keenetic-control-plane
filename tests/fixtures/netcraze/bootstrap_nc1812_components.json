@@ -1,0 +1,15 @@
+{
+  "sandbox": "stable",
+  "firmware": {
+    "version": "4.03.C.6.4-16",
+    "title": "4.03"
+  },
+  "component": {
+    "ndm": {"installed": true, "version": "0-a1b2c3d4e5"},
+    "webui": {"installed": true},
+    "cloudcontrol": {"installed": true}
+  },
+  "local": {"hostname": "bootstrap-lab-host"},
+  "group": {},
+  "changelog": []
+}

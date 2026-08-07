@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keenetic-control-plane.local/schemas/netcraze-evidence-manifest.schema.json",
+  "title": "NetcrazeEvidenceManifest",
+  "type": "object",
+  "required": [
+    "manifest_id",
+    "capability_family",
+    "source_url",
+    "content_hash",
+    "retrieved_at",
+    "provenance_tier",
+    "tuple_binding",
+    "operations",
+    "adapter_version"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "manifest_id": { "type": "string", "minLength": 1 },
+    "capability_family": {
+      "type": "string",
+      "enum": [
+        "fail_safe",
+        "vlan",
+        "dhcp",
+        "dns",
+        "wifi",
+        "firewall",
+        "amneziawg",
+        "routes"
+      ]
+    },
+    "source_url": { "type": "string", "format": "uri" },
+    "content_hash": {
+      "type": "string",
+      "pattern": "^(sha256:[a-f0-9]{64}|hash_pending)$"
+    },
+    "retrieved_at": { "type": "string", "format": "date-time" },
+    "provenance_tier": {
+      "type": "string",
+      "enum": ["official_vendor", "lab_observed", "community_candidate"]
+    },
+    "adapter_version": { "type": "string", "minLength": 1 },
+    "tuple_binding": {
+      "type": "object",
+      "required": [
+        "model",
+        "firmware_version",
+        "ndm_build",
+        "bsp_build",
+        "update_channel",
+        "region",
+        "component_set_digest",
+        "device_fingerprint_digest",
+        "transport",
+        "ssh_host_key_algorithm"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "model": { "type": "string" },
+        "firmware_version": { "type": "string" },
+        "ndm_build": { "type": "string" },
+        "bsp_build": { "type": "string" },
+        "update_channel": { "type": "string" },
+        "region": { "type": "string" },
+        "component_set_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "device_fingerprint_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "transport": { "type": "string" },
+        "ssh_host_key_algorithm": { "type": "string" }
+      }
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "operation_id",
+          "semantics",
+          "method",
+          "path",
+          "body_keys",
+          "read_back",
+          "postconditions",
+          "rollback"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "operation_id": { "type": "string", "minLength": 1 },
+          "semantics": { "type": "string" },
+          "method": { "type": "string", "enum": ["GET", "POST", "PUT", "DELETE", "PATCH"] },
+          "path": { "type": "string", "pattern": "^/" },
+          "body_keys": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 1
+          },
+          "read_back": { "type": "array", "items": { "type": "string" } },
+          "postconditions": { "type": "array", "items": { "type": "string" } },
+          "rollback": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

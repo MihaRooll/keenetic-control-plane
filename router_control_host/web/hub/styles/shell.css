@@ -1,0 +1,534 @@
+/* LOCAL HUB — оболочка приложения (sidebar + topbar + content) */
+
+.hub-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  background-color: var(--hub-surface-base);
+  color: var(--hub-text-primary);
+}
+
+/* ── Глобальный индикатор сетевой активности ── */
+
+.hub-shell__request-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: calc(var(--hub-z-sidebar) + 1);
+  height: 3px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--hub-duration-normal) var(--hub-ease-standard);
+}
+
+.hub-shell__request-progress--visible {
+  opacity: 1;
+}
+
+.hub-shell__request-progress-bar {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--hub-color-primary) 35%,
+    var(--hub-color-primary-text) 50%,
+    var(--hub-color-primary) 65%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: hub-shell-progress-indeterminate var(--hub-duration-slow) linear infinite;
+  will-change: background-position;
+}
+
+@keyframes hub-shell-progress-indeterminate {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hub-shell__request-progress-bar {
+    animation: none;
+    background: var(--hub-color-primary);
+    background-size: auto;
+  }
+}
+
+/* ── Баннеры ── */
+
+.hub-shell-banner {
+  flex-shrink: 0;
+  padding: var(--hub-space-2) var(--hub-space-4);
+  border-bottom: var(--hub-border-width) solid var(--hub-border-default);
+}
+
+.hub-shell-banner--auth {
+  background-color: var(--hub-color-warning-soft);
+  border-bottom-color: var(--hub-color-warning-border);
+}
+
+.hub-shell-banner--auth .hub-shell-banner__text {
+  color: var(--hub-color-warning);
+  font-size: var(--hub-font-small);
+  font-weight: var(--hub-weight-medium);
+  text-align: center;
+}
+
+.hub-shell-banner--connection {
+  background-color: var(--hub-color-danger-soft);
+  border-bottom-color: var(--hub-color-danger-border);
+  padding: var(--hub-space-2) var(--hub-space-4);
+}
+
+.hub-shell-banner--connection .hub-state-inline {
+  justify-content: center;
+}
+
+/* ── Раскладка: sidebar + main ── */
+
+.hub-shell__sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: var(--hub-z-sidebar);
+  display: flex;
+  flex-direction: column;
+  width: 15.5rem;
+  padding-top: calc(var(--hub-safe-top) + var(--hub-space-4));
+  padding-bottom: calc(var(--hub-safe-bottom) + var(--hub-space-4));
+  padding-left: calc(var(--hub-safe-left) + var(--hub-space-3));
+  padding-right: var(--hub-space-3);
+  background-color: var(--hub-surface-nav);
+  border-right: var(--hub-border-width) solid var(--hub-border-subtle);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.hub-shell__main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  margin-left: 15.5rem;
+  min-height: 0;
+}
+
+.hub-shell__nav-overlay {
+  display: none;
+}
+
+/* ── Бренд ── */
+
+.hub-shell__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--hub-space-3);
+  padding: var(--hub-space-2) var(--hub-space-3) var(--hub-space-6);
+}
+
+.hub-shell__brand-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--hub-radius-control);
+  background-color: var(--hub-color-primary-soft);
+  color: var(--hub-color-primary);
+}
+
+.hub-shell__brand-text {
+  font-size: var(--hub-font-body);
+  font-weight: var(--hub-weight-bold);
+  letter-spacing: 0.04em;
+  color: var(--hub-text-primary);
+}
+
+/* ── Навигация ── */
+
+.hub-shell__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hub-space-1);
+}
+
+.hub-shell__nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--hub-space-3);
+  padding: var(--hub-space-3) var(--hub-space-3);
+  min-height: var(--hub-touch-min);
+  border-radius: var(--hub-radius-control);
+  color: var(--hub-text-secondary);
+  text-decoration: none;
+  position: relative;
+  transition: background-color var(--hub-duration-fast) var(--hub-ease-standard),
+    color var(--hub-duration-fast) var(--hub-ease-standard);
+}
+
+.hub-shell__nav-link:focus-visible {
+  box-shadow: var(--hub-focus-ring);
+}
+
+.hub-shell__nav-link--active {
+  background-color: var(--hub-color-primary-soft);
+  color: var(--hub-text-primary);
+}
+
+.hub-shell__nav-link--active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: var(--hub-space-2);
+  bottom: var(--hub-space-2);
+  width: 3px;
+  border-radius: var(--hub-radius-pill);
+  background-color: var(--hub-color-primary);
+}
+
+.hub-shell__nav-icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  color: inherit;
+}
+
+.hub-shell__nav-label {
+  font-size: var(--hub-font-body);
+  font-weight: var(--hub-weight-medium);
+  line-height: var(--hub-line-tight);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hub-shell__nav-link:hover:not(.hub-shell__nav-link--active) {
+    background-color: var(--hub-surface-raised);
+    color: var(--hub-text-primary);
+  }
+}
+
+/* ── Верхняя панель ── */
+
+.hub-shell__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--hub-space-4);
+  flex-shrink: 0;
+  min-height: calc(var(--hub-touch-min) + var(--hub-space-4));
+  padding-top: calc(var(--hub-safe-top) + var(--hub-space-3));
+  padding-bottom: var(--hub-space-3);
+  padding-left: calc(var(--hub-safe-left) + var(--hub-space-5));
+  padding-right: calc(var(--hub-safe-right) + var(--hub-space-5));
+  background-color: var(--hub-surface-raised);
+  border-bottom: var(--hub-border-width) solid var(--hub-border-subtle);
+}
+
+.hub-shell__topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--hub-space-4);
+  min-width: 0;
+}
+
+.hub-shell__topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--hub-space-3);
+  flex-shrink: 0;
+}
+
+.hub-shell__menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--hub-touch-min);
+  height: var(--hub-touch-min);
+  padding: 0;
+  border: var(--hub-border-width) solid var(--hub-border-default);
+  border-radius: var(--hub-radius-control);
+  background-color: var(--hub-surface-sunken);
+  color: var(--hub-text-primary);
+  cursor: pointer;
+}
+
+.hub-shell__menu-icon {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 18px;
+}
+
+.hub-shell__menu-bar {
+  display: block;
+  width: 18px;
+  height: 2px;
+  border-radius: var(--hub-radius-pill);
+  background-color: currentColor;
+}
+
+.hub-shell__event {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hub-space-2);
+  min-height: var(--hub-control-height);
+  padding: 0 var(--hub-space-3) 0 var(--hub-space-4);
+  border: var(--hub-border-width) solid var(--hub-border-default);
+  border-radius: var(--hub-radius-control);
+  background-color: var(--hub-surface-sunken);
+  color: var(--hub-text-secondary);
+  cursor: pointer;
+  font: inherit;
+}
+
+.hub-shell__event:disabled,
+.hub-shell__event[aria-disabled="true"] {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+.hub-shell__event-label {
+  font-size: var(--hub-font-body);
+  font-weight: var(--hub-weight-medium);
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hub-shell__event-chevron {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--hub-text-muted);
+}
+
+/* ── Индикатор режима ── */
+
+.hub-shell__mode {
+  display: flex;
+  align-items: center;
+  gap: var(--hub-space-2);
+  width: fit-content;
+  padding: var(--hub-space-2) var(--hub-space-3);
+  border-radius: var(--hub-radius-pill);
+  border: var(--hub-border-width) solid var(--hub-border-default);
+  background-color: var(--hub-surface-sunken);
+}
+
+.hub-shell__mode-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--hub-radius-pill);
+  background-color: var(--hub-color-neutral);
+  flex-shrink: 0;
+}
+
+.hub-shell__mode-text {
+  font-size: var(--hub-font-small);
+  font-weight: var(--hub-weight-medium);
+  color: var(--hub-text-secondary);
+  white-space: nowrap;
+}
+
+.hub-shell__mode--success {
+  border-color: var(--hub-color-success-border);
+  background-color: var(--hub-color-success-soft);
+}
+
+.hub-shell__mode--success .hub-shell__mode-dot {
+  background-color: var(--hub-color-success);
+}
+
+.hub-shell__mode--success .hub-shell__mode-text {
+  color: var(--hub-color-success);
+}
+
+.hub-shell__mode--warning {
+  border-color: var(--hub-color-warning-border);
+  background-color: var(--hub-color-warning-soft);
+}
+
+.hub-shell__mode--warning .hub-shell__mode-dot {
+  background-color: var(--hub-color-warning);
+}
+
+.hub-shell__mode--warning .hub-shell__mode-text {
+  color: var(--hub-color-warning);
+}
+
+.hub-shell__mode--neutral .hub-shell__mode-dot {
+  background-color: var(--hub-color-neutral);
+}
+
+.hub-shell__settings-btn {
+  min-width: var(--hub-touch-min);
+  min-height: var(--hub-touch-min);
+  padding: 0;
+  border-color: var(--hub-border-default);
+  background-color: var(--hub-surface-raised);
+}
+
+/* ── Область контента ── */
+
+.hub-shell__content {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--hub-space-6) var(--hub-space-5);
+  padding-bottom: calc(var(--hub-safe-bottom) + var(--hub-space-6));
+}
+
+.hub-screen {
+  /* Осознанное ограничение: на iPad 1180px контент ~877px из ~1100 доступных —
+     двум колонкам (≥901px) этого достаточно, полная ширина viewport не нужна. */
+  max-width: 56rem;
+}
+
+.hub-screen__header {
+  margin-bottom: var(--hub-space-6);
+}
+
+.hub-screen__title {
+  font-size: var(--hub-font-display);
+  font-weight: var(--hub-weight-bold);
+  line-height: var(--hub-line-display);
+  color: var(--hub-text-primary);
+  margin-bottom: var(--hub-space-2);
+}
+
+.hub-screen__subtitle {
+  font-size: var(--hub-font-body);
+  line-height: var(--hub-line-body);
+  color: var(--hub-text-secondary);
+}
+
+.hub-screen__body {
+  margin-top: var(--hub-space-4);
+}
+
+.hub-screen__features {
+  margin-top: var(--hub-space-4);
+  padding-left: var(--hub-space-5);
+  color: var(--hub-text-secondary);
+  font-size: var(--hub-font-body);
+  line-height: var(--hub-line-body);
+}
+
+.hub-screen__features li {
+  margin-bottom: var(--hub-space-2);
+}
+
+/* ── Модалка «Сведения о системе» ── */
+
+.hub-shell-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hub-space-3);
+  margin: 0;
+}
+
+.hub-shell-info-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--hub-space-2);
+  margin: 0;
+}
+
+.hub-shell-info-row__label {
+  margin: 0;
+  font-size: var(--hub-font-small);
+  color: var(--hub-text-muted);
+}
+
+.hub-shell-info-row__value {
+  margin: 0;
+  font-size: var(--hub-font-body);
+  font-weight: var(--hub-weight-medium);
+  color: var(--hub-text-primary);
+}
+
+.hub-shell-info-link-wrap {
+  margin-top: var(--hub-space-4);
+  padding-top: var(--hub-space-4);
+  border-top: var(--hub-border-width) solid var(--hub-border-subtle);
+}
+
+.hub-shell-info-link {
+  font-size: var(--hub-font-body);
+  font-weight: var(--hub-weight-medium);
+}
+
+/* ── Служебная витрина ── */
+
+.hub-showcase-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hub-space-7);
+}
+
+/* ── Адаптив: узкий экран / портрет ── */
+
+@media (max-width: 820px), (orientation: portrait) {
+  .hub-shell__sidebar {
+    transform: translateX(-100%);
+    transition: transform var(--hub-duration-normal) var(--hub-ease-standard);
+    box-shadow: var(--hub-shadow-lg);
+  }
+
+  .hub-shell[data-nav-open="true"] .hub-shell__sidebar {
+    transform: translateX(0);
+  }
+
+  .hub-shell__main {
+    margin-left: 0;
+  }
+
+  .hub-shell__menu-btn {
+    display: flex;
+  }
+
+  .hub-shell__nav-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: calc(var(--hub-z-sidebar) - 1);
+    background-color: var(--hub-overlay-backdrop);
+  }
+
+  .hub-shell__nav-overlay[hidden] {
+    display: none;
+  }
+
+  .hub-shell__topbar {
+    padding-left: calc(var(--hub-safe-left) + var(--hub-space-3));
+    padding-right: calc(var(--hub-safe-right) + var(--hub-space-3));
+  }
+
+  .hub-shell__content {
+    padding: var(--hub-space-4) var(--hub-space-4);
+    padding-bottom: calc(var(--hub-safe-bottom) + var(--hub-space-4));
+  }
+
+  .hub-shell__event-label {
+    max-width: 10rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hub-shell__sidebar {
+    transition: none;
+  }
+}

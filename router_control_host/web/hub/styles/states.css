@@ -1,0 +1,432 @@
+/* LOCAL HUB — панели, инлайн-состояния и скелетоны */
+
+/* ── Тональные переменные панели ── */
+.hub-state-panel--primary {
+  --hub-state-tone: var(--hub-color-primary);
+  --hub-state-tone-fill: var(--hub-color-primary);
+  --hub-state-tone-soft: var(--hub-color-primary-soft);
+  --hub-state-tone-border: var(--hub-color-primary-border);
+  --hub-state-tone-on: var(--hub-color-primary-on);
+}
+
+.hub-state-panel--success {
+  --hub-state-tone: var(--hub-color-success);
+  --hub-state-tone-fill: var(--hub-color-success-fill);
+  --hub-state-tone-soft: var(--hub-color-success-soft);
+  --hub-state-tone-border: var(--hub-color-success-border);
+  --hub-state-tone-on: var(--hub-color-success-on);
+}
+
+.hub-state-panel--warning {
+  --hub-state-tone: var(--hub-color-warning);
+  --hub-state-tone-fill: var(--hub-color-warning-fill);
+  --hub-state-tone-soft: var(--hub-color-warning-soft);
+  --hub-state-tone-border: var(--hub-color-warning-border);
+  --hub-state-tone-on: var(--hub-color-warning-on);
+}
+
+.hub-state-panel--danger {
+  --hub-state-tone: var(--hub-color-danger);
+  --hub-state-tone-fill: var(--hub-color-danger-fill);
+  --hub-state-tone-soft: var(--hub-color-danger-soft);
+  --hub-state-tone-border: var(--hub-color-danger-border);
+  --hub-state-tone-on: var(--hub-color-danger-on);
+}
+
+.hub-state-panel--neutral {
+  --hub-state-tone: var(--hub-color-neutral);
+  --hub-state-tone-fill: var(--hub-color-neutral);
+  --hub-state-tone-soft: var(--hub-color-neutral-soft);
+  --hub-state-tone-border: var(--hub-color-neutral-border);
+  --hub-state-tone-on: var(--hub-color-neutral-on);
+}
+
+/* ── Панель состояния ── */
+.hub-state-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 12rem;
+  padding: var(--hub-space-6) var(--hub-space-4);
+}
+
+.hub-state-panel--compact {
+  min-height: auto;
+  padding: var(--hub-space-3) var(--hub-space-4);
+  justify-content: flex-start;
+}
+
+.hub-state-panel--compact .hub-state-panel__inner {
+  flex-direction: row;
+  align-items: flex-start;
+  max-width: none;
+  text-align: left;
+  gap: var(--hub-space-3);
+}
+
+.hub-state-panel--compact .hub-state-panel__icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.hub-state-panel--compact .hub-state-panel__title {
+  font-size: var(--hub-font-body);
+}
+
+.hub-state-panel--compact .hub-state-panel__description {
+  font-size: var(--hub-font-small);
+}
+
+.hub-state-panel__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--hub-space-3);
+  max-width: 28rem;
+  width: 100%;
+  text-align: center;
+}
+
+.hub-state-panel__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: var(--hub-radius-pill);
+  color: var(--hub-state-tone);
+  background-color: var(--hub-state-tone-soft);
+  border: var(--hub-border-width) solid var(--hub-state-tone-border);
+}
+
+.hub-state-panel__title {
+  font-size: var(--hub-font-h2);
+  font-weight: var(--hub-weight-semibold);
+  line-height: var(--hub-line-heading);
+  color: var(--hub-text-primary);
+}
+
+.hub-state-panel__description {
+  font-size: var(--hub-font-body);
+  line-height: var(--hub-line-body);
+  color: var(--hub-text-secondary);
+}
+
+.hub-state-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--hub-space-3);
+  justify-content: center;
+  margin-top: var(--hub-space-2);
+  width: 100%;
+}
+
+.hub-state-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--hub-button-height);
+  padding: 0 var(--hub-space-5);
+  border-radius: var(--hub-radius-control);
+  font-size: var(--hub-font-body);
+  font-weight: var(--hub-weight-medium);
+  border: var(--hub-border-width) solid transparent;
+  cursor: pointer;
+  transition: opacity var(--hub-duration-fast) var(--hub-ease-standard);
+}
+
+.hub-state-action--primary {
+  color: var(--hub-state-tone-on);
+  background-color: var(--hub-state-tone-fill, var(--hub-state-tone));
+  border-color: var(--hub-state-tone-fill, var(--hub-state-tone));
+}
+
+.hub-state-action--secondary {
+  color: var(--hub-text-primary);
+  background-color: transparent;
+  border-color: var(--hub-border-strong);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hub-state-action--primary:hover {
+    opacity: 0.9;
+  }
+
+  .hub-state-action--secondary:hover {
+    border-color: var(--hub-state-tone-border);
+    color: var(--hub-state-tone);
+  }
+}
+
+.hub-state-panel__details {
+  margin-top: var(--hub-space-2);
+  width: 100%;
+  text-align: left;
+  border: var(--hub-border-width) solid var(--hub-border-subtle);
+  border-radius: var(--hub-radius-control);
+  background-color: var(--hub-surface-sunken);
+}
+
+.hub-state-panel__details summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--hub-touch-min);
+  padding: var(--hub-space-3) var(--hub-space-4);
+  font-size: var(--hub-font-small);
+  font-weight: var(--hub-weight-medium);
+  color: var(--hub-text-secondary);
+  cursor: pointer;
+  list-style: none;
+}
+
+.hub-state-panel__details summary::-webkit-details-marker {
+  display: none;
+}
+
+.hub-state-panel__details-body {
+  padding: 0 var(--hub-space-4) var(--hub-space-4);
+  font-size: var(--hub-font-small);
+  line-height: var(--hub-line-tight);
+  color: var(--hub-text-muted);
+  word-break: break-word;
+}
+
+/* ── Иконки ── */
+.hub-state-icon {
+  display: block;
+}
+
+.hub-state-icon--inline {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ── Спиннер ── */
+.hub-state-spinner__arc {
+  stroke-dasharray: 56;
+  stroke-dashoffset: 42;
+  transform-origin: center;
+  animation: hub-state-spin var(--hub-duration-slow) linear infinite;
+}
+
+@keyframes hub-state-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hub-state-spinner__arc {
+    animation: none;
+    stroke-dashoffset: 14;
+  }
+}
+
+/* ── Инлайн-состояние ── */
+.hub-state-inline--primary {
+  --hub-state-tone: var(--hub-color-primary);
+  --hub-state-tone-soft: var(--hub-color-primary-soft);
+  --hub-state-tone-border: var(--hub-color-primary-border);
+}
+
+.hub-state-inline--success {
+  --hub-state-tone: var(--hub-color-success);
+  --hub-state-tone-soft: var(--hub-color-success-soft);
+  --hub-state-tone-border: var(--hub-color-success-border);
+}
+
+.hub-state-inline--warning {
+  --hub-state-tone: var(--hub-color-warning);
+  --hub-state-tone-soft: var(--hub-color-warning-soft);
+  --hub-state-tone-border: var(--hub-color-warning-border);
+}
+
+.hub-state-inline--danger {
+  --hub-state-tone: var(--hub-color-danger);
+  --hub-state-tone-soft: var(--hub-color-danger-soft);
+  --hub-state-tone-border: var(--hub-color-danger-border);
+}
+
+.hub-state-inline--neutral {
+  --hub-state-tone: var(--hub-color-neutral);
+  --hub-state-tone-soft: var(--hub-color-neutral-soft);
+  --hub-state-tone-border: var(--hub-color-neutral-border);
+}
+
+.hub-state-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--hub-space-2);
+  width: fit-content;
+  max-width: 100%;
+  padding: var(--hub-space-2) var(--hub-space-3);
+  border-radius: var(--hub-radius-pill);
+  background-color: var(--hub-state-tone-soft);
+  border: var(--hub-border-width) solid var(--hub-state-tone-border);
+  color: var(--hub-text-primary);
+  font-size: var(--hub-font-small);
+  line-height: var(--hub-line-tight);
+}
+
+.hub-state-inline--full {
+  width: 100%;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.hub-state-inline--compact {
+  padding: var(--hub-space-1) var(--hub-space-2);
+  font-size: var(--hub-font-caption);
+}
+
+.hub-state-inline__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--hub-state-tone);
+}
+
+.hub-state-inline__text {
+  font-weight: var(--hub-weight-medium);
+}
+
+/* ── Скелетон ── */
+.hub-state-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hub-space-3);
+  padding: var(--hub-space-4);
+}
+
+.hub-state-skeleton__line {
+  height: 0.875rem;
+  border-radius: var(--hub-radius-control);
+  background-color: var(--hub-surface-raised);
+  background-image: linear-gradient(
+    90deg,
+    var(--hub-surface-raised) 0%,
+    var(--hub-border-subtle) 50%,
+    var(--hub-surface-raised) 100%
+  );
+  background-size: 200% 100%;
+  animation: hub-state-shimmer var(--hub-duration-slow) ease-in-out infinite;
+}
+
+.hub-state-skeleton__line--title {
+  height: 1.25rem;
+  width: 55%;
+}
+
+.hub-state-skeleton__line--short {
+  width: 70%;
+}
+
+@keyframes hub-state-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hub-state-skeleton__line {
+    animation: none;
+    background-image: none;
+  }
+}
+
+/* ── Панель прогресса ── */
+.hub-progress-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hub-space-3);
+  padding: var(--hub-space-4);
+  border-radius: var(--hub-radius-card);
+  background-color: var(--hub-surface-raised);
+  border: var(--hub-border-width) solid var(--hub-border-subtle);
+}
+
+.hub-progress-panel__label {
+  font-size: var(--hub-font-body);
+  font-weight: var(--hub-weight-medium);
+  color: var(--hub-text-primary);
+}
+
+.hub-progress-panel__bar {
+  position: relative;
+  width: 100%;
+  height: 0.375rem;
+  border-radius: var(--hub-radius-control);
+  background-color: var(--hub-surface-sunken);
+  overflow: hidden;
+}
+
+.hub-progress-panel__bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background-color: var(--hub-color-primary);
+  width: 0;
+  transition: width var(--hub-duration-normal) var(--hub-ease-standard);
+}
+
+.hub-progress-panel__bar[data-mode='indeterminate'] .hub-progress-panel__bar-fill {
+  width: 40%;
+  animation: hub-progress-indeterminate var(--hub-duration-slow) ease-in-out infinite;
+}
+
+@keyframes hub-progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+.hub-progress-panel__meta {
+  font-size: var(--hub-font-small);
+  color: var(--hub-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hub-progress-panel__bar[data-mode='indeterminate'] .hub-progress-panel__bar-fill {
+    animation: none;
+    width: 100%;
+    opacity: 0.6;
+  }
+}
+
+/* ── Витрина состояний ── */
+.hub-state-showcase {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hub-space-7);
+  padding: var(--hub-space-4);
+}
+
+.hub-state-showcase__heading {
+  font-size: var(--hub-font-h2);
+  font-weight: var(--hub-weight-semibold);
+}
+
+.hub-state-showcase__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hub-space-3);
+  padding: var(--hub-space-4);
+  border: var(--hub-border-width) solid var(--hub-border-subtle);
+  border-radius: var(--hub-radius-card);
+  background-color: var(--hub-surface-raised);
+}
+
+.hub-state-showcase__key {
+  font-size: var(--hub-font-caption);
+  font-weight: var(--hub-weight-semibold);
+  color: var(--hub-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

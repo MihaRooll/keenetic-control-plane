@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keenetic-control-plane.local/schemas/ssh-cli-discovery-authorization.schema.json",
+  "title": "SshCliDiscoveryAuthorization",
+  "type": "object",
+  "required": [
+    "contract_id",
+    "human_decision",
+    "probe_id",
+    "typed_operations",
+    "mutation_allowed",
+    "source_address",
+    "evidence_sha256",
+    "opens_at",
+    "expires_at",
+    "gates",
+    "gate_a_tuple_binding",
+    "status_source_digest",
+    "verification_receipt_sha256",
+    "verification_receipt_path"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_id": {
+      "type": "string",
+      "const": "nc1812-ssh-cli-channel-discovery-20260723"
+    },
+    "human_decision": { "type": "string", "enum": ["approve"] },
+    "probe_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "authorization_recorded_at": { "type": "string", "format": "date-time" },
+    "typed_operations": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "string",
+        "enum": [
+          "ssh_exec_show_interface_home",
+          "ssh_shell_show_interface_home"
+        ]
+      }
+    },
+    "mutation_allowed": { "type": "boolean", "const": false },
+    "source_address": { "type": "string", "const": "192.168.2.10" },
+    "evidence_sha256": {
+      "type": "string",
+      "pattern": "^([a-f0-9]{64}|sha256:[a-f0-9]{64})$"
+    },
+    "opens_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "status_source_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "verification_receipt_sha256": {
+      "type": "string",
+      "pattern": "^([a-f0-9]{64}|sha256:[a-f0-9]{64})$"
+    },
+    "verification_receipt_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^data/artifacts/verification-receipts/[^/\\\\]+$"
+    },
+    "gates": {
+      "type": "object",
+      "required": ["B", "C", "D"],
+      "additionalProperties": false,
+      "properties": {
+        "B": {
+          "type": "object",
+          "required": ["status"],
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": ["closed", "completed_failed"]
+            },
+            "not_write_certified": { "type": "boolean" }
+          }
+        },
+        "C": {
+          "type": "object",
+          "required": ["status"],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "type": "string", "enum": ["closed"] }
+          }
+        },
+        "D": {
+          "type": "object",
+          "required": ["status"],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "type": "string", "enum": ["closed"] }
+          }
+        }
+      }
+    },
+    "gate_a_tuple_binding": {
+      "type": "object",
+      "required": [
+        "model",
+        "firmware_version",
+        "ndm_build",
+        "bsp_build",
+        "update_channel",
+        "region",
+        "component_set_digest",
+        "device_fingerprint_digest",
+        "transport",
+        "ssh_host_key_algorithm"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "model": { "type": "string" },
+        "firmware_version": { "type": "string" },
+        "ndm_build": { "type": "string" },
+        "bsp_build": { "type": "string" },
+        "update_channel": { "type": "string" },
+        "region": { "type": "string" },
+        "component_set_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "device_fingerprint_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "transport": { "type": "string" },
+        "ssh_host_key_algorithm": { "type": "string" }
+      }
+    }
+  }
+}

@@ -18,6 +18,7 @@ def test_memory_vault_roundtrip() -> None:
     assert handle.credential_ref_id
     assert "s3cret" not in handle.provider_locator
     assert vault.use(handle.credential_ref_id) == "s3cret-value"
+    assert vault.get_kind(handle.credential_ref_id) == "RouterManagementPassword"
     rotated = vault.rotate(handle.credential_ref_id, secret="new-secret")
     assert rotated.credential_ref_id == handle.credential_ref_id
     assert vault.use(handle.credential_ref_id) == "new-secret"
@@ -73,6 +74,7 @@ def test_dpapi_roundtrip(tmp_path: Path) -> None:
     vault = WindowsDpapiVault(root=tmp_path / "secrets")
     handle = vault.create(kind="RouterManagementPassword", secret="dpapi-secret")
     assert vault.use(handle.credential_ref_id) == "dpapi-secret"
+    assert vault.get_kind(handle.credential_ref_id) == "RouterManagementPassword"
     vault.rotate(handle.credential_ref_id, secret="dpapi-rotated")
     assert vault.use(handle.credential_ref_id) == "dpapi-rotated"
 

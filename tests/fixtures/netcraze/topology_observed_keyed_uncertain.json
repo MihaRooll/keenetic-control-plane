@@ -1,0 +1,26 @@
+{
+  "interface": {
+    "upstream-wan-001": {
+      "type": "ISP",
+      "role": "wan",
+      "link": "up",
+      "connected": true,
+      "state": "maybe-up",
+      "address": ["10.0.0.0/16"],
+      "password": "SENTINEL-SECRET-ORACLE"
+    },
+    "home-bridge-002": {
+      "type": "Bridge",
+      "role": "lan",
+      "link": "up",
+      "connected": true,
+      "address": {"ip": "192.168.1.1/24"},
+      "ip": "10.0.1.0",
+      "mask": "255.255.255.0",
+      "bridge": 42,
+      "segment": "Home",
+      "mac": "DE:AD:BE:EF:00:01"
+    },
+    "firmware_label": "stable"
+  }
+}

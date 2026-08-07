@@ -1,0 +1,144 @@
+/* LOCAL HUB — дизайн-токены (только CSS-переменные) */
+
+:root {
+  /* ── 1. Цвета: поверхности ── */
+  --hub-surface-base: #0b0f1a;
+  --hub-surface-raised: #121826;
+  --hub-surface-sunken: #0d121f;
+  --hub-surface-nav: #090d16;
+
+  /* Границы */
+  --hub-border-default: #1e2637;
+  --hub-border-subtle: #171e2e;
+  --hub-border-strong: #2a3448;
+
+  /* Текст (3 уровня) */
+  --hub-text-primary: #e6eaf2;
+  --hub-text-secondary: #8a94a6;
+  --hub-text-muted: #8a94a6;
+
+  /* Primary */
+  --hub-color-primary: #4f5bf0;
+  --hub-color-primary-hover: #4852eb;
+  --hub-color-primary-active: #3d47c9;
+  --hub-color-primary-text: #a5abff;
+  --hub-color-link: #a5abff;
+  --hub-color-primary-soft: rgb(79 91 240 / 0.12);
+  --hub-color-primary-on: #ffffff;
+  --hub-color-primary-border: rgb(79 91 240 / 0.35);
+  --hub-color-primary-disabled: rgb(79 91 240 / 0.45);
+
+  /* Success */
+  --hub-color-success: #22c55e;
+  --hub-color-success-fill: #15803d;
+  --hub-color-success-soft: rgb(34 197 94 / 0.12);
+  --hub-color-success-on: #ffffff;
+  --hub-color-success-border: rgb(34 197 94 / 0.35);
+
+  /* Warning */
+  --hub-color-warning: #f59e0b;
+  --hub-color-warning-fill: #b45309;
+  --hub-color-warning-soft: rgb(245 158 11 / 0.12);
+  --hub-color-warning-on: #ffffff;
+  --hub-color-warning-border: rgb(245 158 11 / 0.35);
+
+  /* Danger */
+  --hub-color-danger: #ef4444;
+  --hub-color-danger-fill: #b91c1c;
+  --hub-color-danger-text: #fca5a5;
+  --hub-color-danger-soft: rgb(239 68 68 / 0.12);
+  --hub-color-danger-on: #ffffff;
+  --hub-color-danger-border: rgb(239 68 68 / 0.35);
+
+  /* Нейтральный / неизвестный статус */
+  --hub-color-neutral: #64748b;
+  --hub-color-neutral-soft: rgb(100 116 139 / 0.12);
+  --hub-color-neutral-on: #e6eaf2;
+  --hub-color-neutral-border: rgb(100 116 139 / 0.35);
+
+  /* Фокус */
+  --hub-focus-ring: 0 0 0 3px rgb(79 91 240 / 0.45);
+
+  /* Затемнение под модальными слоями и выдвижными панелями */
+  --hub-overlay-backdrop: rgb(0 0 0 / 0.55);
+
+  /* ── 2. Типографика ── */
+  --hub-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  --hub-font-display: 2.25rem; /* ~36px — заголовок экрана */
+  --hub-font-h2: 1.25rem; /* ~20px */
+  --hub-font-body: 0.9375rem; /* ~15px */
+  --hub-font-small: 0.8125rem; /* ~13px */
+  --hub-font-caption: 0.75rem; /* ~12px */
+  /* 16px в полях ввода — отдельный токен в base.css (iOS Safari зумит при <16px) */
+  --hub-font-input: 1rem;
+
+  --hub-line-display: 1.2;
+  --hub-line-heading: 1.3;
+  --hub-line-body: 1.5;
+  --hub-line-tight: 1.35;
+
+  --hub-weight-regular: 400;
+  --hub-weight-medium: 500;
+  --hub-weight-semibold: 600;
+  --hub-weight-bold: 700;
+
+  /* ── 3. Отступы ── */
+  --hub-space-1: 0.25rem; /* 4px */
+  --hub-space-2: 0.5rem; /* 8px */
+  --hub-space-3: 0.75rem; /* 12px */
+  --hub-space-4: 1rem; /* 16px */
+  --hub-space-5: 1.25rem; /* 20px */
+  --hub-space-6: 1.5rem; /* 24px */
+  --hub-space-7: 2rem; /* 32px */
+  --hub-space-8: 2.5rem; /* 40px */
+
+  /* ── 4. Радиусы, тени, границы ── */
+  --hub-radius-card: 1rem; /* ~16px */
+  --hub-radius-control: 0.75rem; /* ~12px */
+  --hub-radius-pill: 999px;
+
+  --hub-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.18);
+  --hub-shadow-md: 0 4px 12px rgb(0 0 0 / 0.22);
+  --hub-shadow-lg: 0 8px 24px rgb(0 0 0 / 0.28);
+
+  --hub-border-width: 1px;
+  --hub-border-width-strong: 2px;
+
+  /* ── 5. Тач-метрики ── */
+  --hub-touch-min: 44px;
+  --hub-control-height: 44px;
+  --hub-input-height: 44px;
+  --hub-button-height: 44px;
+
+  /* ── 6. Safe-area ── */
+  --hub-safe-top: env(safe-area-inset-top, 0px);
+  --hub-safe-right: env(safe-area-inset-right, 0px);
+  --hub-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --hub-safe-left: env(safe-area-inset-left, 0px);
+
+  /* ── 7. Скорости анимаций ── */
+  --hub-duration-instant: 0ms;
+  --hub-duration-fast: 180ms;
+  --hub-duration-normal: 280ms;
+  --hub-duration-slow: 480ms;
+  --hub-ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --hub-ease-emphasis: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ── 8. Z-index слои ── */
+  --hub-z-content: 0;
+  --hub-z-sidebar: 100;
+  --hub-z-modal: 200;
+  --hub-z-toast: 300;
+}
+
+/* Учёт prefers-reduced-motion на уровне токенов */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --hub-duration-instant: 0ms;
+    --hub-duration-fast: 0ms;
+    --hub-duration-normal: 0ms;
+    --hub-duration-slow: 0ms;
+  }
+}

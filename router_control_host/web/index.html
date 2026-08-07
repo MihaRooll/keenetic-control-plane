@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="system" data-ui-mode="simple">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Router Control — управление прототипом</title>
+  <link rel="icon" href="/favicon.ico" type="image/svg+xml">
+  <link rel="stylesheet" href="/settings/router-control/assets/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Перейти к содержимому</a>
+  <div id="app-shell" class="app-shell">
+    <header class="topbar" role="banner">
+      <button type="button" id="nav-toggle" class="nav-toggle" aria-expanded="false" aria-controls="sidebar-nav">
+        <span class="nav-toggle-label">Меню</span>
+      </button>
+      <div class="topbar-brand">
+        <span class="brand-title">Router Control</span>
+        <span id="topbar-status" class="topbar-status" aria-live="polite"></span>
+      </div>
+      <div class="topbar-actions">
+        <a href="/settings/router-control/hub/#/overview" class="btn btn-primary" id="open-local-hub-link">Открыть LOCAL HUB</a>
+        <form method="post" action="/logout" class="logout-form">
+          <button type="submit" class="btn btn-secondary">Выйти</button>
+        </form>
+        <button type="button" id="refresh-btn" class="btn btn-secondary">Обновить</button>
+        <div class="ui-mode-switcher" role="group" aria-label="Режим интерфейса">
+          <button type="button" id="ui-mode-simple" class="btn btn-ui-mode" aria-pressed="true" data-ui-mode-value="simple">Простой</button>
+          <button type="button" id="ui-mode-expert" class="btn btn-ui-mode" aria-pressed="false" data-ui-mode-value="expert">Эксперт</button>
+        </div>
+        <div class="theme-switcher" role="group" aria-label="Тема оформления">
+          <button type="button" id="theme-system" class="btn btn-theme" aria-pressed="true" data-theme-value="system">Система</button>
+          <button type="button" id="theme-light" class="btn btn-theme" aria-pressed="false" data-theme-value="light">Светлая</button>
+          <button type="button" id="theme-dark" class="btn btn-theme" aria-pressed="false" data-theme-value="dark">Тёмная</button>
+        </div>
+      </div>
+    </header>
+    <div class="layout-body">
+      <aside id="sidebar" class="sidebar" aria-label="Основная навигация">
+        <nav id="sidebar-nav" class="sidebar-nav">
+          <ul class="nav-list">
+            <li class="nav-simple-only"><a href="#simple" class="nav-link" data-view="simple">Мастер настройки</a></li>
+            <li class="nav-simple-only"><a href="#config" class="nav-link nav-link-expert-entry" data-view="config">Эксперт: настройки</a></li>
+            <li class="nav-expert-only"><a href="#dashboard" class="nav-link" data-view="dashboard">Обзор</a></li>
+            <li class="nav-expert-only"><a href="#routers" class="nav-link" data-view="routers">Роутеры</a></li>
+            <li class="nav-expert-only"><a href="#add-router" class="nav-link" data-view="add-router">Добавить роутер</a></li>
+            <li class="nav-expert-only"><a href="#commissioning" class="nav-link" data-view="commissioning">Комиссионирование</a></li>
+            <li class="nav-expert-only"><a href="#presets" class="nav-link" data-view="presets">Пресеты события</a></li>
+            <li class="nav-expert-only"><a href="#operations" class="nav-link" data-view="operations">Операции</a></li>
+            <li class="nav-expert-only"><a href="#vpn" class="nav-link" data-view="vpn">VPN-каталог</a></li>
+            <li class="nav-expert-only"><a href="#config" class="nav-link" data-view="config">Настройки роутера</a></li>
+            <li class="nav-expert-only"><a href="#uplink" class="nav-link" data-view="uplink">Uplink (полевая)</a></li>
+            <li class="nav-expert-only"><a href="#settings" class="nav-link" data-view="settings">Настройки</a></li>
+          </ul>
+        </nav>
+      </aside>
+      <main id="main-content" class="main-content" role="main" tabindex="-1">
+        <div id="global-banner" class="global-banner" role="status" aria-live="assertive" hidden></div>
+        <div id="view-root" class="view-root" aria-live="polite"></div>
+      </main>
+    </div>
+  </div>
+  <div id="toast-region" class="toast-region" role="status" aria-live="polite" aria-atomic="true"></div>
+  <script type="module" src="/settings/router-control/assets/app.js"></script>
+</body>
+</html>

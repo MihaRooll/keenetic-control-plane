@@ -13,4 +13,9 @@ alwaysApply: true
 - Nesting limit: Main -> L1 -> L2. L2 agents never spawn Task/subagents.
 - Findings require path, lines, requirement reference, and reproducible evidence. Model votes are not evidence.
 - Never claim done without all acceptance criteria passing, required commands exiting 0, and no open blocker.
+- **L2 model pins (best-effort):** Main and nested L1 **must** set `model=` on every L2 Task spawn:
+  - Grok roles (`operational-orchestrator`, `explore`, `adversarial-reviewer`): `cursor-grok-4.5-high-fast`
+  - Composer roles (`implementer`, `verifier`): `composer-2.5-fast`
+  - `principal-arbiter`: omit `model=` — inherits Main Sol family; if Sol family unavailable → stop and report; **never** list or call unavailable or disallowed Sol slugs
+- L2 agents cannot delegate (no nested Task/subagents).
 - Routing, model pins, and policy gates are best-effort in normal Cursor chat; do not describe them as platform-enforced.

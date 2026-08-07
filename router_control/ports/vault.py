@@ -21,6 +21,10 @@ class CredentialVaultPort(Protocol):
         """Store secret; return opaque metadata handle only."""
         ...
 
+    def get_kind(self, credential_ref_id: str) -> str:
+        """Return stored kind metadata without decrypting the secret."""
+        ...
+
     def use(self, credential_ref_id: str) -> str:
         """Resolve secret for in-process adapter use only. Not exposed via HTTP API."""
         ...

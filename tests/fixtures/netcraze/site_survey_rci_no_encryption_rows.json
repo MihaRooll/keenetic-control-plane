@@ -1,0 +1,16 @@
+[
+  {
+    "parse": {
+      "ap_cell": [
+        {
+          "essid": "SYNTH-SSID-NoSec-Only",
+          "address": "aa:bb:cc:dd:ee:30",
+          "channel": 1,
+          "quality": 60,
+          "ieee": "11b/g/n"
+        }
+      ],
+      "prompt": "SYNTH-PROMPT"
+    }
+  }
+]

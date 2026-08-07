@@ -1,0 +1,8 @@
+{
+  "hw_id": "NC-1812",
+  "version": "5.01.C.1.0-0",
+  "sandbox": "beta-preview",
+  "ndm": {
+    "exact": "SYNTH-NDM-BUILD-100"
+  }
+}

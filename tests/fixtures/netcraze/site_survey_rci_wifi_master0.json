@@ -1,0 +1,40 @@
+[
+  {
+    "parse": {
+      "ap_cell": [
+        {
+          "essid": "SYNTH-SSID-Alpha",
+          "address": "aa:bb:cc:dd:ee:01",
+          "channel": 6,
+          "quality": 85,
+          "ieee": "11b/g/n/ax/be",
+          "rssi": -42,
+          "bandwidth": 40,
+          "encryption": "wpa2",
+          "encryption-mode": "psk"
+        },
+        {
+          "essid": "",
+          "address": "aa:bb:cc:dd:ee:02",
+          "channel": 11,
+          "quality": 72,
+          "ieee": "11a/n/ac/ax/be",
+          "rssi": -55,
+          "bandwidth": 80,
+          "encryption": "wpa3",
+          "encryption-mode": "sae"
+        },
+        {
+          "essid": "SYNTH-SSID-NoSec",
+          "address": "aa:bb:cc:dd:ee:03",
+          "channel": 1,
+          "quality": 60,
+          "ieee": "11b/g/n",
+          "rssi": -68,
+          "bandwidth": 20
+        }
+      ],
+      "prompt": "SYNTH-PROMPT"
+    }
+  }
+]

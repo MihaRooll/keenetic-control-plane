@@ -4,7 +4,7 @@
 
 | Check | Action |
 |---|---|
-| Phase | Phase **0b complete**; Phase **1 offline mega (SLICE-2/3/5/8) complete** — persistence + `router_control_host` + vault + traffic proposals; hardware gates A–D **closed**; **next SLICE-4** requires Gate A |
+| Phase | **P3 topology safety closure complete** (2026-07-23; offline/default-deny); both fail-safe trials consumed **completed_failed**; **2026-07-31 end state:** station uplink persisted; WG **`tunnel_healthy` DEVICE-CONFIRMED**; **2026-08-05:** **`SET_IP_ADDRESS`** + **`wireguard_ip_global`** + traffic via tunnel DEVICE-VERIFIED (§M-24..§M-27); kill-switch/named policy/IPv6 routes **NOT done** |
 | Wave 1 | RCI policy, hardware gates, security/operations — **complete** |
 | Wave 2 | SQLite persistence, revisions, durable jobs, audit — **complete** |
 | Wave 3 | HTTP/API contract (v0) — **complete** |
@@ -14,7 +14,8 @@
 | Wave 7 | Cross-document review/closeout — **complete** |
 | Read order | This index → [`RCI_POLICY.md`](RCI_POLICY.md) + [`HARDWARE_GATES.md`](HARDWARE_GATES.md) → [`SECURITY_OPS.md`](SECURITY_OPS.md) → [`PERSISTENCE_CONTRACT.md`](PERSISTENCE_CONTRACT.md) → [`API_CONTRACT.md`](API_CONTRACT.md) → [`TEST_STRATEGY.md`](TEST_STRATEGY.md) → [`SCENARIOS.md`](SCENARIOS.md) → [`ROADMAP.md`](ROADMAP.md) → [`AI_HANDOFF.md`](AI_HANDOFF.md) |
 | Trace | [`CANONICAL.md`](../CANONICAL.md), [`ARCHITECTURE.md`](../ARCHITECTURE.md), [`DOMAIN_MODEL.md`](../DOMAIN_MODEL.md), [`COMPATIBILITY.md`](../COMPATIBILITY.md), ADR-0002/0003/0004, [`LEGACY_MAP.md`](../LEGACY_MAP.md) for RCI evidence limits |
-| Do not | Invent certified RCI JSON bodies; normalize raw `5.01` to `5.1`; open hardware gates A–D |
+| Do not | Invent certified RCI JSON bodies; normalize raw `5.01` to `5.1`; open or expand hardware gates without exact explicit human approval; **treat `approvals.dedicated_development_router_lab` program authorization as standing write approval** for live mutations, reboots, installs, resets, or capability write/trials — program permits Gate **A** read-only observe/probe/re-cert on exact tuple and offline harness work only; Gate **B** completed_failed / not WriteCertified; Gates **C/D** closed; no standing T4 |
+| Lab policy | [`DEDICATED_ROUTER_LAB_POLICY.md`](../DEDICATED_ROUTER_LAB_POLICY.md) — project-owned NC-1812; program vs action; active handoff [`SESSION_HANDOFF_REAL_ROUTER_2026-08-02.md`](../SESSION_HANDOFF_REAL_ROUTER_2026-08-02.md) + [`STATUS.yaml`](../STATUS.yaml); historical: [`SESSION_HANDOFF_REAL_ROUTER_2026-07-31.md`](../SESSION_HANDOFF_REAL_ROUTER_2026-07-31.md) |
 
 ---
 
@@ -70,8 +71,8 @@
 
 | Файл | Назначение |
 |---|---|
-| [`ROADMAP.md`](ROADMAP.md) | Dependency-ordered implementation slices, entry/exit gates, verification evidence, rollback/stop — offline mega **complete** (SLICE-2/3/5/8); **next SLICE-4** (hardware) per [`STATUS.yaml`](../STATUS.yaml) |
-| [`AI_HANDOFF.md`](AI_HANDOFF.md) | AI cold-start, SSOT hierarchy, invariants, task template, atomic doc updates, safe resumption |
+| [`ROADMAP.md`](ROADMAP.md) | Local-first milestone DAG M0–M8; parallel deferred AWG/routes/LTE lanes; SLICE history as reference — **P3 topology safety closure complete** (2026-07-23); **next task:** `local-hub-vpn-real-peer-autoconnect-continuation` per [`STATUS.yaml`](../STATUS.yaml) `next_task` §3.3 — **`tunnel_healthy` + Address/ip_global + traffic DEVICE-VERIFIED** (§M-24..§M-27); **parallel deferred:** VPN named policy / kill-switch live apply (offline preview only; kill-switch `permit global` **unresolved**; **`CLEAR_IP_GLOBAL` on teardown** not device-proven; IPv6 allow-ips refused) — [`OPERATOR_VPN_CONNECTION_POLICY_DISCOVERY.md`](../OPERATOR_VPN_CONNECTION_POLICY_DISCOVERY.md); Gate B / `write_shapes_registered` BLOCKED |
+| [`AI_HANDOFF.md`](AI_HANDOFF.md) | AI cold-start, SSOT hierarchy, M1–M3 bounds, 2026-07-22 authorization wording |
 
 ## Зависимости
 
@@ -84,7 +85,8 @@ Wave 1 опирается на:
 - [`docs/LEGACY_MAP.md`](../LEGACY_MAP.md) — limits of legacy RCI fixtures (old device shapes ≠ NC-1812 certification)
 - [`docs/adrs/0002-persistence-jobs-sqlite.md`](../adrs/0002-persistence-jobs-sqlite.md) — durable jobs, idempotency, audit (Wave 2 contract expands types/FK/indexes)
 - [`docs/adrs/0003-security-auth-secrets.md`](../adrs/0003-security-auth-secrets.md) — auth, DPAPI, trust boundaries
-- [`docs/adrs/0004-product-capability-scope.md`](../adrs/0004-product-capability-scope.md) — NC-1812 scope, AWG, route benchmark
+- [`docs/adrs/0004-product-capability-scope.md`](../adrs/0004-product-capability-scope.md) — NC-1812 scope, AWG, route benchmark (ordering superseded by ADR-0005)
+- [`docs/adrs/0005-local-first-commissioning-roadmap.md`](../adrs/0005-local-first-commissioning-roadmap.md) — M0–M8 milestone DAG, M1–M3 bounds
 
 ## Phase 0b Definition of Done (Wave 7 closeout — historical snapshot)
 
@@ -96,4 +98,4 @@ Wave 1 опирается на:
 4. No implementation artifacts, secrets, or opened hardware gates.
 5. Cross-document review complete; reviewer blockers clear.
 
-**Current state:** see [`STATUS.yaml`](../STATUS.yaml) — Phase 1 offline mega **complete** (SLICE-2/3/5/8); **`router_control` + `router_control_host` packages exist**; **next SLICE-4** (hardware observe); hardware gates A–D remain closed.
+**Current state:** see [`STATUS.yaml`](../STATUS.yaml) — **P3 topology safety closure complete** (2026-07-23); both consumed fail-safe trials closed **completed_failed** (094500Z + 110000Z; not WriteCertified); Gate A **open/ReadOnlyCertified** (post-WG rebind 2026-07-31; evidence `gate-a-probe-post-wireguard-install-192.168.2.1-20260731.json`); Gate B **completed_failed**; Gate C **closed** completed_failed; Gate D **closed**; `write_shapes_registered` false; WriteCertified **NOT** claimed; **`tunnel_healthy` DEVICE-CONFIRMED** (first real handshake §M-24..§M-26); **`SET_IP_ADDRESS` + `wireguard_ip_global` DEVICE-VERIFIED** (§M-24/M-27); traffic via tunnel **device-verified reversible** (§M-27); **next task:** `local-hub-vpn-real-peer-autoconnect-continuation`; **parallel deferred:** VPN named policy / kill-switch live apply (offline preview only; kill-switch `permit global` **unresolved**; **`CLEAR_IP_GLOBAL` on teardown** not device-proven; IPv6 allow-ips refused) — AWG shape discovery **parallel deferred**.

@@ -1,0 +1,8 @@
+{
+  "security-level": {
+    "private": true
+  },
+  "ssl": {
+    "enable": false
+  }
+}

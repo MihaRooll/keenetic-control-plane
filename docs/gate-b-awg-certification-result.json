@@ -1,0 +1,100 @@
+{
+  "contract_id": "gate-bc-awg-certification-20260721",
+  "capability_family": "AmneziaWG",
+  "recorded_at": "2026-07-21T21:20:19Z",
+  "outcome": "certification_failed_all_candidates_handshake",
+  "candidate_order": ["keenetic50-compat", "fi-ip", "de-ip"],
+  "candidates": [
+    {
+      "candidate_id": "keenetic50-compat",
+      "profile_digest": "sha256:d0e5cb7f0130a4257073e99e0fcec90431d525f36bb00cd44bc152f208edd5b8",
+      "import_accepted": true,
+      "targeted_checks": {
+        "state_up": false,
+        "link_up": false,
+        "connected_or_online": false,
+        "last_handshake": false
+      },
+      "handshake_failed": true,
+      "reachability_not_proven": true,
+      "save_commit": false,
+      "fail_safe_rollback_succeeded": true,
+      "reboot_recovery_succeeded": true
+    },
+    {
+      "candidate_id": "fi-ip",
+      "profile_digest": "sha256:1108ef9845393ba2deede01870c7a08667040c31749a69ae70470ca34164f6d4",
+      "import_accepted": true,
+      "targeted_checks": {
+        "state_up": false,
+        "link_up": false,
+        "connected_or_online": false,
+        "last_handshake": false
+      },
+      "handshake_failed": true,
+      "reachability_not_proven": true,
+      "save_commit": false,
+      "fail_safe_rollback_succeeded": true,
+      "reboot_recovery_succeeded": true
+    },
+    {
+      "candidate_id": "de-ip",
+      "profile_digest": "sha256:16106e090cdcb9f912afb063af221c71cdb78958e493df80c29d9d6990be0de4",
+      "import_accepted": true,
+      "targeted_checks": {
+        "state_up": false,
+        "link_up": false,
+        "connected_or_online": false,
+        "last_handshake": false
+      },
+      "handshake_failed": true,
+      "reachability_not_proven": true,
+      "save_commit": false,
+      "fail_safe_rollback_succeeded": true,
+      "reboot_recovery_succeeded": true
+    }
+  ],
+  "component_preflight": {
+    "wireguard_client": {
+      "present": true,
+      "installed": true
+    },
+    "wireguard_server": {
+      "present": true,
+      "installed": false
+    }
+  },
+  "accepted_interface_field_names": [
+    "Address",
+    "DNS",
+    "H1",
+    "H2",
+    "H3",
+    "H4",
+    "Jc",
+    "Jmax",
+    "Jmin",
+    "PrivateKey",
+    "S1",
+    "S2"
+  ],
+  "accepted_peer_field_names": [
+    "AllowedIPs",
+    "Endpoint",
+    "PersistentKeepalive",
+    "PresharedKey",
+    "PublicKey"
+  ],
+  "secrets": {
+    "storage": "dpapi_local_only",
+    "credential_refs_in_evidence": false
+  },
+  "final_baseline": {
+    "gate_a_tuple_match": true,
+    "identity_complete": true,
+    "wg_interface_count": 0,
+    "startup_config_sha256_matches_pretrial_current_tuple_baseline": true
+  },
+  "write_shapes_registered": false,
+  "shape_registry_note": "Frontend discovery proved narrow tokens; full advanced field parity not proven — automated shape registry remains fail-closed/unregistered."
+}

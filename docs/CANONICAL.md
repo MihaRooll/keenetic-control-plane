@@ -38,7 +38,7 @@ Collect-only остаётся фактическим fallback:
 
 ## 3. Router reality и deployment history
 
-### Current observed reality — 2026-07-19
+### Historical observed reality — 2026-07-19
 
 - Физически текущий target — новый **Netcraze Ultra NC-1812**.
 - На момент наблюдения **WireGuard/AmneziaWG на нём не настроен**.
@@ -46,7 +46,58 @@ Collect-only остаётся фактическим fallback:
 - Поддержка нужных RCI commands, components и AmneziaWG на установленной версии ещё не сертифицирована.
 - До capability certification любые writes должны быть заблокированы. Phase 0 не изменяет живой роутер.
 
-Это current reality, а не продолжение состояния старого устройства.
+### Sanitized lab observations — 2026-07-21 (historical non-certifying: insecure HTTP)
+
+**Historical only** — early operator probe over plain LAN HTTP (gates **CLOSED** at observation time; **не** certification claim):
+
+- Raw firmware string from `components/firmware.version`: **`5.01.C.1.0-0`** (canonical); display title **`5.1.1`** from `firmware.title`.
+- `show/system` on lab HTTP path carries telemetry only; identity claims ignore it for observed shape.
+- Frontend bundle trace (sanitized loaded NDMS web UI, 2026-07-21) maps dotted tokens **`show.identification`** → GET `/rci/show/identification` and **`show.version`** → GET `/rci/show/version`. Parser and allowlist design validated offline; insecure HTTP remains non-certifying (`certification_eligible: false`).
+- Plain LAN HTTP and unpinned SSH are non-certifying transport paths.
+
+Shared identity/parser rules (also apply to certifying path):
+
+- Gate A frozen allowlist (exactly four RCI reads): GET `/rci/show/system`, POST `/rci/components/list`, GET `/rci/show/identification`, GET `/rci/show/version`. Raw serial/servicetag hashed at parser boundary; evidence exposes `physical_identifier_source: show.identification_digest` only (no digest values).
+- Canonical observed `model` = exact `show.version.hw_id`; optional `show.identification.hwid` must exact-match when present; display `model`/`device`/`description` are metadata only (`model_display`). Operator hint: absent/blank => no token disagreement; when supplied, extracted token set must exactly equal `{hw_id}` (empty, partial, case variant, or competing tokens => incomplete). RCI display metadata may omit tokens; present tokens must exactly match `{hw_id}`.
+- NDM build from nested `show.version.ndm.exact` (`build_source: rci_version_ndm_exact`) required for `identity_complete`; flat `build` is legacy display fallback only (`build_source: rci_version`); BSP exact separate; components raw firmware remains canonical; when both `version` and `release` are present they must agree with each other and components firmware; exact `sandbox: stable` maps to update channel `Main`.
+- Firmware source disagreement or token/hwid disagreement leaves identity incomplete/provisional.
+
+### Dedicated lab device ownership — 2026-07-22
+
+- The currently connected **Netcraze Ultra NC-1812** is **project-owned** dedicated development/laboratory hardware purchased solely for Router Control development and certification; no production or customer dependency; preferred hardware validation target ([`DEDICATED_ROUTER_LAB_POLICY.md`](DEDICATED_ROUTER_LAB_POLICY.md)).
+- **Lab device ownership** is distinct from **network ownership** (§8 event LAN L3/DHCP/DNS policy owner on deployed event LAN).
+
+### Gate A ReadOnlyCertified — 2026-07-31 (current authorized rebind tuple)
+
+**Same-day rebind sequence on expendable class:** rebind **#1** (morning) — physical device replacement; rebind **#2** (afternoon) — WireGuard component install identity drift (image rebuild moved both digests; host-key and firmware unchanged).
+
+Current tuple from pinned-SSH probe evidence `data/artifacts/gate-a-probe-post-wireguard-install-192.168.2.1-20260731.json` (`2026-07-31T17:56:29+00:00`; `source_address: 192.168.2.10`) — exact tuple in [`STATUS.yaml`](STATUS.yaml) and [`gate-a-certification.json`](gate-a-certification.json):
+
+- **Target:** Netcraze Ultra **NC-1812**; firmware **`5.01.C.1.0-0`**, display **`5.1.1`**, NDM build **`0-b592e619a0`**, BSP **`0-f371d30955`**, channel **Main**, region **EA**.
+- **Digests:** `component_set_digest` **sha256:23bd35bc1bcbf8523495ff7fb37ef2ded597ce9d07b9c1c968ae1f9e4aa4de80**; `device_fingerprint_digest` **sha256:c34adec44383c0dc1f31833bb6d7885a8e9af454722af0c6bfba3761ac71e6fd**.
+- **Superseded (pre-WG, same day):** evidence `gate-a-probe-newrouter-192.168.2.1-20260731.json`; digests **sha256:91145a8284d142729b93bb0fd549312134dd669ef7b07f4d2207d2b6a22dd83b** / **sha256:13885245280ae4301f27d7ef03ab7cdaf1b51367943216b62f5c81590973e021**.
+- **Component claims:** Gate A evidence certifies the component-set digest only. Exact component presence must be freshly re-observed during Gate B preflight and is not a Gate A certification claim.
+- **Transport:** authenticated encryption via host-key-pinned SSH tunnel (`transport: ssh_tunnel`, `ssh_host_key_algorithm: ssh-ed25519`, pin **SHA256:RUi/peC9rUzYMT/CIgeIsBYjR5CFqYxxnCuUmfv2WkY**); prior pin **SHA256:lU1D6ChVB8XLfHxoIFZeA8RPpPf67zA+qwYX0ARyCmM** superseded (historical only).
+- **Gate posture:** Gate **A** open **ReadOnlyCertified** for the new exact tuple; Gate **B** completed_failed (not WriteCertified); Gates **C/D** closed — ungated live mutations forbidden.
+- **Lab topology:** test router **`192.168.2.1`**; mandatory `--source-address 192.168.2.10` on hardware CLIs; future live mutations additionally require WAN isolation or physical uplink disconnect.
+- **Host integration:** live host enroll/preflight remains bound to typed Gate A config + DPAPI credential ref when `RC_ADAPTER_MODE=live`.
+
+Это current reality для NC-1812 dedicated lab device.
+
+### Historical Gate A ReadOnlyCertified — 2026-07-21 (superseded post-change tuple)
+
+After an encrypted pre-change startup backup, a user-approved component install changed the installed-component set. The router then rebooted and a pinned-SSH read-only re-probe supplied a tuple later superseded by the 2026-07-31 authorized rebind (initial post-change evidence 2026-07-21T17:15:29+00:00; **return-home source-bound recertification** on **2026-07-23** with same digests — evidence `2026-07-23T05:17:43.764839+00:00`, `source_address: 192.168.1.144` — **historical only**):
+
+- **Target:** Netcraze Ultra **NC-1812**; same raw firmware **`5.01.C.1.0-0`**, display **`5.1.1`**, NDM/BSP builds, channel **Main**, region **EA**; superseded component-set **`sha256:de72a7af…`** and fingerprint **`sha256:eb58946c…`**; superseded host-key pin **SHA256:lU1D6ChV…**.
+- **Dual-homed lab topology (historical):** overlapping `192.168.1.0/24` paths required explicit `--source-address 192.168.1.144`; network migrated to `192.168.2.0/24` (2026-07-23) before physical device replacement (2026-07-30).
+- **Prior tuple:** pre-install ReadOnlyCertified tuple **revoked** (historical only); encrypted pre-change startup backup retained as ignored local DPAPI baseline (metadata only — no locator or content hash in docs).
+- Certifying path may also use HTTPS with certificate validation to the same verified management host; plain LAN HTTP remains historical/non-certifying only.
+
+Superseded by §3 *Gate A ReadOnlyCertified — 2026-07-31*; do not treat as current SSOT.
+
+### Historical Gate A tuple — 2026-07-21 (pre-change)
+
+Prior ReadOnlyCertified tuple opened earlier on 2026-07-21 was **revoked** when a user-approved install changed the installed component set. Superseded digests are recorded only in STATUS `gates.A.previous_tuple` and `gate-a-certification.json` `previous_certifications` — not inherited for live observe. Encrypted pre-change startup backup succeeded before install and remains an ignored local baseline for rollback planning; it does **not** re-open Gate A for the old tuple.
 
 ### Historical FI deployment fixture
 
@@ -96,7 +147,11 @@ Firmware/components в v1 — только detect + operator instructions. Auto-
 
 ## 6. First-deployment policy, не domain invariant
 
-- Первый certified target: `Netcraze Ultra NC-1812`; raw version `5.01` остаётся unclassified до identity snapshot.
+- Первый certified target: `Netcraze Ultra NC-1812`.
+- **Historical (2026-07-19):** lab observation recorded raw version string **`5.01`** only — exact NDMS release, build, channel и installed component set **не** были подтверждены (см. §3 *Historical observed reality — 2026-07-19*).
+- **Historical (2026-07-21, non-certifying):** insecure HTTP probe recorded raw firmware **`5.01.C.1.0-0`** and display **`5.1.1`** — **без** certification claim (см. §3 *Sanitized lab observations — historical*).
+- **Historical (2026-07-21, ReadOnlyCertified, post-change):** pinned-SSH Gate A tuple after encrypted pre-change backup, user-approved component install, reboot, and re-probe; superseded digests and host-key pin — prior tuple revoked (см. §3 *Historical Gate A ReadOnlyCertified — 2026-07-21*).
+- **Current (2026-07-31, ReadOnlyCertified, authorized rebind):** two same-day rebinds on expendable class — (1) physical device replacement morning; (2) post-WG identity drift afternoon; current evidence `gate-a-probe-post-wireguard-install-192.168.2.1-20260731.json`; prior tuples in `previous_certifications` only (см. §3 *Gate A ReadOnlyCertified — 2026-07-31* and STATUS `gates.A`).
 - VPN v1: только `AmneziaWG`; unsupported/unknown profile fields fail closed.
 - На одном router в первом deployment preset разрешён ровно один active AWG assignment.
 - Управление выполняет только local operator.
@@ -142,14 +197,18 @@ RCI commands требуют system ID (`Wireguard0` в старом fixture), а
 ## 8. Locked platform boundaries
 
 - Реализация — переносимый Python package `router_control`; domain не импортирует FastAPI.
-- Канонический дом проекта и будущего prototype — репозиторий `keenetic-control-plane`; отдельный FastAPI dev-host ещё не создан. `ScanCursorIP` используется только как legacy behavioral evidence. Target integration — существующий Python 3.11 FastAPI Hub `module_3.0`.
+- Канонический дом проекта и prototype — репозиторий `keenetic-control-plane`; FastAPI dev-host **`router_control_host`** exists (`/api/router-control/v1`, FakeAdapter+SQLite default; `RC_ADAPTER_MODE=live` + Gate A open → pinned SSH read-only observe; Gate B **completed_failed**; Gates C/D **closed**). `ScanCursorIP` — legacy behavioral evidence. Target integration — Python 3.11 FastAPI Hub `module_3.0`.
 - После integration API prefix `/api/router-control/v1/*` работает на common listener и защищён existing `hub_admin` fail closed.
 - Если Router Control enabled, пустой `HUB_ADMIN_PASSWORD` — startup security error именно для Router Control.
 - Persistence — отдельный `data/router_control.sqlite3`; JSON/CONF только import/export и hashed artifacts.
 - Durable jobs, steps, leases, idempotency records и append-only audit переживают process restart.
 - Four future network zones: Guest, Promo, Staff, Admin/Server. Guest получает только локальную HTTPS order page; доступ к Admin/Router Control блокируется.
+- **P3 topology safety closure (2026-07-23, complete, offline/default-deny):** adapter/executor share one `CertifiedOperationRegistry`; Gate D missing/`None` denies; hardware CLIs accept `--source-address` (mandatory on fail-safe/AWG execute); **fail-safe trials** `fail-safe-20260723T094500Z` and retry `fail-safe-20260723T110000Z` both consumed **completed_failed** (same `sealed_cli_dispatch` failure class; VPN absent on second; root cause unproven; not WriteCertified); **offline SSH CLI channel discovery harness delivered** (2026-07-23); **expendable lab (2026-07-31):** **`tunnel_healthy` DEVICE-CONFIRMED** (evidence `data/artifacts/wg-awg-real-tunnel-attempt-20260731.json`); **2026-08-05 (§M-24..§M-27):** first real handshake; `SET_IP_ADDRESS` + `wireguard_ip_global` device-accepted; traffic via tunnel reversible with higher NDMS `ip global` priority — kill-switch/named policy/IPv6 still open; **`next_task` id:** `local-hub-vpn-real-peer-autoconnect-continuation` per [`STATUS.yaml`](STATUS.yaml); **parallel deferred:** VPN named connection policy / kill-switch **live apply** (offline preview only; kill-switch `permit global` **unresolved**); registries empty; Gate B **completed_failed**; Gates C/D **closed**; WriteCertified **NOT** claimed.
+- **P1-B live dispatch substrate (2026-07-22, complete):** MutationExecutor wires effect SM (initiate-once + poll continuation), safety session, boot marker, evidence (`runtime_applied` / `startup_saved`), DPAPI durable artifact path (offline tests), process mutex held through I/O — **offline/fake only**; live dispatch remains `MutationForbidden`; no exactly-once claim.
+- **Network ownership:** NC-1812 — sole L3/DHCP/DNS/firewall/AP policy owner on event LAN; Hub PC — application/control plane only; managed L2 switch + UPS recommended for Hub–printer L2 during router reboot; router remains network SPOF for Wi-Fi/DHCP/DNS (explicit). **Lab device ownership** (project-owned dedicated development router for Router Control validation) is a separate fact — see [`DEDICATED_ROUTER_LAB_POLICY.md`](DEDICATED_ROUTER_LAB_POLICY.md).
+- Milestone ordering: ADR-0005 local-first commissioning DAG (M0–M8); ADR-004 §Capability order superseded for execution ordering only.
 - HTTPS deployment: per-Hub public FQDN, DNS-01 certificate, local DNS и Caddy. Offline window: 1–3 дня.
 
 ## 9. Что ещё не доказано
 
-До live read-only certification на NC-1812 неизвестны точные firmware build/channel, installed components, полная AWG compatibility, RCI response/auth shapes, Fail-safe Configuration commands и practical route ceiling. NDMS 5.1 документирует import advanced ASC parameters, но это не доказывает совместимость raw `5.01` или lossless AmneziaWG mapping. Эти gaps запрещают writes; старые Keenetic responses не считаются доказательством совместимости.
+После Gate A ReadOnlyCertified на **текущем** expendable lab unit (authorized rebind **2026-07-31**; evidence `data/artifacts/gate-a-probe-post-wireguard-install-192.168.2.1-20260731.json`; host-key SHA256:RUi/peC9rUzYMT/CIgeIsBYjR5CFqYxxnCuUmfv2WkY) identity, firmware, build, channel и digest installed component set подтверждены для **read-only observe**; **`tunnel_healthy` DEVICE-CONFIRMED** (2026-07-31) и **first real handshake + traffic via tunnel** (2026-08-05, §M-24..§M-27) — **не** означает WriteCertified или полную routing policy (kill-switch/named policy/IPv6 still open; captive via tunnel unproven). Exact component presence не является Gate A claim и должна быть заново проверена в Gate B preflight. Для **writes** остаются неизвестными: полная AWG compatibility и lossless AmneziaWG mapping, Fail-safe Configuration commands и practical route ceiling на NC-1812. NDMS 5.1 документирует import advanced ASC parameters, но это не доказывает write-safe совместимость raw **`5.01.C.1.0-0`**. Эти gaps запрещают writes; `write_shapes_registered` остаётся **false**; Gate B **completed_failed**; Gates C/D **closed**; старые Keenetic responses и historical `5.01`-only observation (2026-07-19) не считаются доказательством write compatibility.

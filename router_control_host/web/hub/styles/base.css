@@ -1,0 +1,217 @@
+/* LOCAL HUB — глобальный сброс и базовые правила */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  height: 100%;
+}
+
+body {
+  min-height: 100%;
+  height: 100%;
+  font-family: var(--hub-font-family);
+  font-size: var(--hub-font-body);
+  font-weight: var(--hub-weight-regular);
+  line-height: var(--hub-line-body);
+  color: var(--hub-text-primary);
+  background-color: var(--hub-surface-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Корневой контейнер приложения: vh-фолбэк, затем dvh для iPad с клавиатурой */
+.hub-app {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  padding-top: var(--hub-safe-top);
+  padding-right: var(--hub-safe-right);
+  padding-bottom: var(--hub-safe-bottom);
+  padding-left: var(--hub-safe-left);
+}
+
+/* Базовая типографика */
+h1,
+.hub-display {
+  font-size: var(--hub-font-display);
+  font-weight: var(--hub-weight-bold);
+  line-height: var(--hub-line-display);
+  color: var(--hub-text-primary);
+}
+
+h2,
+.hub-h2 {
+  font-size: var(--hub-font-h2);
+  font-weight: var(--hub-weight-semibold);
+  line-height: var(--hub-line-heading);
+  color: var(--hub-text-primary);
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-weight: var(--hub-weight-semibold);
+  line-height: var(--hub-line-heading);
+  color: var(--hub-text-primary);
+}
+
+p {
+  color: var(--hub-text-secondary);
+}
+
+small,
+.hub-small {
+  font-size: var(--hub-font-small);
+  line-height: var(--hub-line-tight);
+}
+
+.hub-caption {
+  font-size: var(--hub-font-caption);
+  line-height: var(--hub-line-tight);
+  color: var(--hub-text-muted);
+}
+
+a {
+  color: var(--hub-color-primary-text);
+  text-decoration: none;
+}
+
+a:active {
+  color: var(--hub-color-primary-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  a:hover {
+    color: var(--hub-color-primary-text);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+}
+
+/* Интерактивные элементы */
+button,
+input,
+select,
+textarea,
+[role="button"],
+[tabindex]:not([tabindex="-1"]) {
+  font: inherit;
+  color: inherit;
+}
+
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+input[type="checkbox"],
+input[type="radio"],
+select,
+textarea,
+a,
+[role="button"],
+summary {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+[role="button"] {
+  min-height: var(--hub-touch-min);
+  min-width: var(--hub-touch-min);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+input[type="number"],
+select,
+textarea {
+  /* 16px — iOS Safari автоматически зумит страницу при фокусе на поле <16px */
+  font-size: var(--hub-font-input);
+  min-height: var(--hub-input-height);
+}
+
+.hub-scroll {
+  overscroll-behavior: contain;
+}
+
+/* Фокус — основная обратная связь для клавиатуры и тач */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--hub-focus-ring);
+}
+
+/* Активное состояние — основная обратная связь на тач-устройствах (ссылки без opacity — контраст) */
+button:active,
+[role="button"]:active {
+  opacity: 0.85;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button:hover,
+  [role="button"]:hover {
+    opacity: 0.92;
+  }
+}
+
+/* Screen enter motion (hash navigation) */
+.hub-screen-enter {
+  opacity: 0;
+  transform: translateY(var(--hub-space-2));
+}
+
+.hub-screen-enter--active {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity var(--hub-duration-normal) var(--hub-ease-emphasis),
+    transform var(--hub-duration-normal) var(--hub-ease-emphasis);
+}
+
+/* Утилита для скринридеров */
+.hub-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Отключение анимаций при prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

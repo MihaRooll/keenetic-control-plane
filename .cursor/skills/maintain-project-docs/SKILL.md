@@ -38,7 +38,25 @@ description: Обновить living docs и docs-map.json после правк
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\validate-project-docs.ps1
 ```
 
-5. Для change/build через `autonomous-task` — приложи **Docs Impact Record** (`.cursor/skills/autonomous-task/contracts.md` §8).
+5. Запусти расширенный audit (links, unmapped, sync-marker):
+
+```powershell
+py -3.11 scripts\project-docs.py audit --project-root .
+```
+
+6. Если marker устарел относительно `docs/STATUS.yaml`:
+
+```powershell
+py -3.11 scripts\project-docs.py sync-marker --project-root . --write
+```
+
+7. Для change/build через `autonomous-task` — приложи **Docs Impact Record**:
+
+```powershell
+py -3.11 scripts\project-docs.py impact --project-root . --contract-id TASK --paths path1 path2 --map-entries docs/foo.md --validator-run yes --validator-exit-code 0 --notes "..."
+```
+
+(см. `.cursor/skills/autonomous-task/contracts.md` §8)
 
 ## Не делай
 

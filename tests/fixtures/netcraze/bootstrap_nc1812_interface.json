@@ -1,0 +1,18 @@
+{
+  "interface": [
+    {"id": "WifiMaster0/AccessPoint0", "type": "Wifi", "role": "lan", "link": "up", "connected": true},
+    {"id": "WifiMaster0/AccessPoint1", "type": "Wifi", "role": "lan", "link": "down", "connected": true},
+    {"id": "WifiMaster0/AccessPoint2", "type": "Wifi", "role": "lan", "link": "down", "connected": true},
+    {"id": "WifiMaster0/AccessPoint3", "type": "Wifi", "role": "lan", "link": "down", "connected": true},
+    {"id": "WifiMaster0/AccessPoint4", "type": "Wifi", "role": "lan", "link": "down", "connected": true},
+    {"id": "WifiMaster0/AccessPoint5", "type": "Wifi", "role": "lan", "link": "down", "connected": true},
+    {"id": "WifiMaster0/AccessPoint6", "type": "Wifi", "role": "lan", "link": "down", "connected": true},
+    {"id": "WifiMaster0/AccessPoint7", "type": "Wifi", "role": "lan", "link": "down", "connected": true},
+    {"id": "WifiMaster0/AccessPoint8", "type": "Wifi", "role": "lan", "link": "down", "connected": true},
+    {"id": "WifiMaster0/AccessPoint9", "type": "Wifi", "role": "lan", "link": "down", "connected": true},
+    {"id": "WifiMaster1/AccessPoint0", "type": "Wifi", "role": "lan", "link": "up", "connected": true},
+    {"id": "WifiMaster1/AccessPoint1", "type": "Wifi", "role": "lan", "link": "down", "connected": true},
+    {"id": "WifiMaster1/AccessPoint2", "type": "Wifi", "role": "lan", "link": "down", "connected": true},
+    {"id": "WifiMaster1/AccessPoint3", "type": "Wifi", "role": "lan", "link": "down", "connected": true}
+  ]
+}

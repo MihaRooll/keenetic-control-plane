@@ -1,0 +1,16 @@
+{
+  "hostname": "nc1812-lab",
+  "release": "5.01",
+  "title": "Netcraze Ultra NC-1812",
+  "model": "NC-1812",
+  "serial": "SERIAL_REDACTED",
+  "mac": "MAC_REDACTED",
+  "build": "100",
+  "channel": "Main",
+  "ndm": {
+    "release": "5.01",
+    "title": "Netcraze Ultra NC-1812",
+    "build": "100",
+    "channel": "Main"
+  }
+}

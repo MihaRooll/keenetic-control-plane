@@ -1,0 +1,9 @@
+{
+  "hw_id": "NC-1820",
+  "version": "5.01.C.1.0-0",
+  "release": "5.01.C.1.0-0",
+  "model": "Netcraze Ultra NC-1820",
+  "ndm": {
+    "exact": "SYNTH-NDM-BUILD-100"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "path": "sample.md",
+      "title": "Sample fixture doc",
+      "status": "active",
+      "owners": ["team"],
+      "tags": ["fixture"]
+    }
+  ],
+  "rules": {
+    "update_on_change": true,
+    "validate_on_commit": false
+  }
+}

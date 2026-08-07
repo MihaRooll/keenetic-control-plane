@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://keenetic-control-plane.local/schemas/fail-safe-trial-authorization.schema.json",
+  "title": "FailSafeTrialAuthorization",
+  "type": "object",
+  "required": [
+    "contract_id",
+    "human_decision",
+    "trial_id",
+    "capability_family",
+    "typed_operation",
+    "timer_seconds",
+    "expected_reboot",
+    "evidence_sha256",
+    "opens_at",
+    "expires_at",
+    "gates",
+    "gate_a_tuple_binding",
+    "status_source_digest",
+    "verification_receipt_sha256",
+    "verification_receipt_path"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "contract_id": {
+      "type": "string",
+      "const": "fail-safe-discovery-nc1812-20260722"
+    },
+    "human_decision": { "type": "string", "enum": ["approve"] },
+    "trial_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "authorization_recorded_at": { "type": "string", "format": "date-time" },
+    "capability_family": { "type": "string", "enum": ["fail_safe"] },
+    "typed_operation": {
+      "type": "string",
+      "enum": ["fail_safe_timer_reboot_60"]
+    },
+    "timer_seconds": { "type": "integer", "const": 60 },
+    "expected_reboot": { "type": "boolean", "const": true },
+    "evidence_sha256": {
+      "type": "string",
+      "pattern": "^([a-f0-9]{64}|sha256:[a-f0-9]{64})$"
+    },
+    "opens_at": { "type": "string", "format": "date-time" },
+    "expires_at": { "type": "string", "format": "date-time" },
+    "status_source_digest": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "verification_receipt_sha256": {
+      "type": "string",
+      "pattern": "^([a-f0-9]{64}|sha256:[a-f0-9]{64})$"
+    },
+    "verification_receipt_path": { "type": "string", "minLength": 1 },
+    "gates": {
+      "type": "object",
+      "required": ["B", "C", "D"],
+      "additionalProperties": false,
+      "properties": {
+        "B": {
+          "type": "object",
+          "required": ["status", "certification", "capability_family"],
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": ["certification_trial_authorized"]
+            },
+            "certification": {
+              "type": "string",
+              "enum": ["CertificationTrialAuthorized"]
+            },
+            "capability_family": { "type": "string", "enum": ["fail_safe"] }
+          }
+        },
+        "C": {
+          "type": "object",
+          "required": ["status", "opens_at", "expires_at"],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "type": "string", "enum": ["open"] },
+            "opens_at": { "type": "string", "format": "date-time" },
+            "expires_at": { "type": "string", "format": "date-time" }
+          }
+        },
+        "D": {
+          "type": "object",
+          "required": ["status"],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "type": "string", "enum": ["closed"] }
+          }
+        }
+      }
+    },
+    "gate_a_tuple_binding": {
+      "type": "object",
+      "required": [
+        "model",
+        "firmware_version",
+        "ndm_build",
+        "bsp_build",
+        "update_channel",
+        "region",
+        "component_set_digest",
+        "device_fingerprint_digest",
+        "transport",
+        "ssh_host_key_algorithm"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "model": { "type": "string" },
+        "firmware_version": { "type": "string" },
+        "ndm_build": { "type": "string" },
+        "bsp_build": { "type": "string" },
+        "update_channel": { "type": "string" },
+        "region": { "type": "string" },
+        "component_set_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "device_fingerprint_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "transport": { "type": "string" },
+        "ssh_host_key_algorithm": { "type": "string" }
+      }
+    }
+  }
+}

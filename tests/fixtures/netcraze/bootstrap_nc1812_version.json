@@ -1,0 +1,18 @@
+{
+  "hw_id": "NC-1812",
+  "version": "4.03.C.6.4-16",
+  "release": "4.03.C.6.4-16",
+  "model": "Netcraze Ultra NC-1812",
+  "device": "Ultra",
+  "description": "Netcraze Ultra Router",
+  "sandbox": "stable",
+  "region": "EA",
+  "ndm": {
+    "exact": "0-bootstrap-ndm-build",
+    "cdate": "20260301"
+  },
+  "bsp": {
+    "exact": "0-bootstrap-bsp-build",
+    "cdate": "20260302"
+  }
+}

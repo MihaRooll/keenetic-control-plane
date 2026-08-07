@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import StrEnum
@@ -17,6 +18,7 @@ from router_control.domain.entities import (
 from router_control.domain.enums import (
     CertificationStatus,
     ObservationCollectionStatus,
+    PlanConfirmationState,
 )
 from router_control.domain.errors import (
     FailSafeTimeout,
@@ -31,6 +33,7 @@ from router_control.domain.ids import (
     ObservationId,
     OperationId,
     PlanId,
+    RevisionId,
     RouterId,
 )
 from router_control.ports.clock import ClockPort
@@ -95,6 +98,7 @@ class FakeRouterAdapter:
     evidence: FakeAdapterEvidence = field(default_factory=FakeAdapterEvidence.fake_only)
     _apply_continuation_pending: bool = field(default=False, init=False)
     _mutable_snapshot: _MutableStateSnapshot | None = field(default=None, init=False)
+    _continuation_tokens: dict[str, tuple[PlanId, str]] = field(default_factory=dict, init=False)
 
     def _record(self, name: str) -> None:
         self.call_trace.append(name)
@@ -191,24 +195,42 @@ class FakeRouterAdapter:
         self.state.fail_safe_active = True
         return FailSafeSession(session_digest="digest:session:fail-safe-001", active=True)
 
+    def _external_ids(self, plan: ChangePlan) -> tuple[str, str]:
+        return (
+            f"extop:{plan.plan_id.value}",
+            f"extfx:{plan.plan_id.value}",
+        )
+
+    def _issue_continuation_token(self, plan: ChangePlan) -> str:
+        token = f"tok:{secrets.token_hex(12)}"
+        self._continuation_tokens[token] = (plan.plan_id, plan.expected_desired_digest)
+        return token
+
     async def apply_plan(self, plan: ChangePlan) -> ApplyResult:
         self._record("apply_plan")
+        ext_op, ext_fx = self._external_ids(plan)
         if self.config.mode is FakeMode.UNMANAGED_CONFLICT:
             raise UnmanagedConflict("unmanaged resource conflict — apply blocked")
         if self.config.mode is FakeMode.ALWAYS_CONTINUED:
+            token = self._issue_continuation_token(plan)
             return ApplyResult(
                 plan_id=plan.plan_id,
                 outcome_digest="digest:apply:continued",
                 continued=True,
+                external_operation_id=ext_op,
+                external_effect_id=ext_fx,
+                continuation_token=token,
             )
-        continued = False
         if self.config.mode is FakeMode.PARTIAL_ASYNC and not self._apply_continuation_pending:
             self._apply_continuation_pending = True
-            continued = True
+            token = self._issue_continuation_token(plan)
             return ApplyResult(
                 plan_id=plan.plan_id,
                 outcome_digest="digest:apply:partial",
                 continued=True,
+                external_operation_id=ext_op,
+                external_effect_id=ext_fx,
+                continuation_token=token,
             )
         self._apply_continuation_pending = False
         self.state.applied_plan_digest = plan.expected_desired_digest
@@ -217,7 +239,67 @@ class FakeRouterAdapter:
         return ApplyResult(
             plan_id=plan.plan_id,
             outcome_digest="digest:apply:complete",
-            continued=continued,
+            continued=False,
+            external_operation_id=ext_op,
+            external_effect_id=ext_fx,
+        )
+
+    async def poll_apply_continuation(
+        self,
+        router_id: RouterId,
+        plan_id: PlanId,
+        continuation_token: str,
+    ) -> ApplyResult:
+        self._record("poll_apply_continuation")
+        if router_id != self.state.identity.router_id:
+            raise ValueError("unknown router")
+        bound = self._continuation_tokens.get(continuation_token)
+        if bound is None:
+            raise UnknownExternalOutcome(
+                "session-bound continuation token invalid — read-back required"
+            )
+        bound_plan_id, expected_digest = bound
+        if bound_plan_id != plan_id:
+            raise UnknownExternalOutcome(
+                "session-bound continuation token invalid — read-back required"
+            )
+        ext_op = f"extop:{plan_id.value}"
+        ext_fx = f"extfx:{plan_id.value}"
+        if self.config.mode is FakeMode.ALWAYS_CONTINUED:
+            stub_plan = ChangePlan(
+                plan_id=plan_id,
+                router_id=router_id,
+                revision_id=RevisionId("revision-fake-poll"),
+                observation_id=ObservationId("observation-fake-poll"),
+                expected_desired_digest=expected_digest,
+                observed_resource_version=self.state.resource_version,
+                items=(),
+                confirmation_state=PlanConfirmationState.CONFIRMED,
+                expires_at=self._now() + timedelta(hours=1),
+                created_at=self._now(),
+                actor="fake-poll",
+            )
+            new_token = self._issue_continuation_token(stub_plan)
+            del self._continuation_tokens[continuation_token]
+            return ApplyResult(
+                plan_id=plan_id,
+                outcome_digest="digest:apply:continued",
+                continued=True,
+                external_operation_id=ext_op,
+                external_effect_id=ext_fx,
+                continuation_token=new_token,
+            )
+        del self._continuation_tokens[continuation_token]
+        self._apply_continuation_pending = False
+        self.state.applied_plan_digest = expected_digest
+        self.state.state_digest = expected_digest
+        self.state.resource_version = f"digest:rv:{plan_id.value}"
+        return ApplyResult(
+            plan_id=plan_id,
+            outcome_digest="digest:apply:complete",
+            continued=False,
+            external_operation_id=ext_op,
+            external_effect_id=ext_fx,
         )
 
     async def read_back(self, router_id: RouterId, plan_id: PlanId) -> ReadBackResult:

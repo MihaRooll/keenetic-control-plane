@@ -1,0 +1,342 @@
+"""Env-gated Wi-Fi uplink watchdog — reapply when station gateway absent/mismatch."""
+
+from __future__ import annotations
+
+import asyncio
+import os
+import re
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any, Protocol
+
+from router_control.application.internet_status_observe import (
+    InternetStatusTransport,
+    run_internet_status_observe,
+)
+from router_control.application.router_apply_lock import run_with_router_apply_lock
+from router_control.application.wifi_station_apply_service import (
+    WifiStationApplyTransport,
+    apply_wifi_station_intent,
+)
+from router_control.domain.network_intents import UplinkIntent, UplinkMode, WifiBand
+
+UPLINK_WATCHDOG_ENABLED = os.environ.get("UPLINK_WATCHDOG_ENABLED", "").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
+UPLINK_WATCHDOG_POLL_SECONDS = max(
+    5.0,
+    float(os.environ.get("UPLINK_WATCHDOG_POLL_SECONDS", "45") or "45"),
+)
+_UNHEALTHY_STREAK_THRESHOLD = 2
+_BACKOFF_BASE_SECONDS = UPLINK_WATCHDOG_POLL_SECONDS
+_BACKOFF_MAX_SECONDS = 600.0
+
+CredentialResolver = Callable[[str], str]
+ObserveTransportFactory = Callable[[str], InternetStatusTransport | None]
+ApplyTransportFactory = Callable[[str], WifiStationApplyTransport | None]
+# True = internet reachable (skip router SSH this cycle), False = unreachable
+# (escalate to router-side check), None = inconclusive (fall back to router-side
+# check, same as if no probe were wired at all).
+HostInternetProbeFn = Callable[[], bool | None]
+
+
+class WatchdogHost(Protocol):
+    runtime: Any
+
+
+def _parse_updated_at_epoch(value: str | None) -> float | None:
+    if not value:
+        return None
+    try:
+        normalized = value.replace("Z", "+00:00")
+        return datetime.fromisoformat(normalized).timestamp()
+    except ValueError:
+        return None
+
+
+def is_ethernet_like_gateway(gateway_interface: str | None) -> bool:
+    if not gateway_interface:
+        return False
+    gateway = gateway_interface.strip()
+    if not gateway:
+        return False
+    if gateway.startswith("GigabitEthernet"):
+        return True
+    return bool(re.match(r"^Ethernet", gateway, re.IGNORECASE))
+
+
+def gateway_matches_remembered_station(
+    gateway_interface: str | None,
+    *,
+    expected_station_id: str | None,
+) -> bool:
+    if not expected_station_id:
+        return False
+    if not gateway_interface:
+        return False
+    gateway = gateway_interface.strip()
+    if gateway == expected_station_id:
+        return True
+    if gateway.startswith("WifiMaster") and expected_station_id.startswith("WifiMaster"):
+        return gateway == expected_station_id
+    return False
+
+
+def should_skip_uplink_reapply(
+    *,
+    observation: Any,
+    expected_station_id: str | None,
+    suppress_until_epoch: float | None,
+    now_epoch: float,
+) -> bool:
+    if suppress_until_epoch is not None and now_epoch < suppress_until_epoch:
+        return True
+    gateway = getattr(observation, "gateway_interface", None)
+    if gateway_matches_remembered_station(gateway, expected_station_id=expected_station_id):
+        return True
+    return False
+
+
+def should_reapply_uplink(
+    *,
+    observation: Any,
+    expected_station_id: str | None,
+) -> bool:
+    gateway = getattr(observation, "gateway_interface", None)
+    return not gateway_matches_remembered_station(gateway, expected_station_id=expected_station_id)
+
+
+@dataclass
+class _RouterWatchState:
+    unhealthy_streak: int = 0
+    backoff_seconds: float = _BACKOFF_BASE_SECONDS
+    next_poll_at: float = 0.0
+
+
+@dataclass
+class UplinkWatchdogHandle:
+    host: WatchdogHost
+    observe_transport_factory: ObserveTransportFactory | None = None
+    apply_transport_factory: ApplyTransportFactory | None = None
+    credential_resolver: CredentialResolver | None = None
+    host_internet_probe: HostInternetProbeFn | None = None
+    _task: asyncio.Task[None] | None = field(default=None, init=False)
+    _stop: asyncio.Event = field(default_factory=asyncio.Event, init=False)
+    _states: dict[str, _RouterWatchState] = field(default_factory=dict, init=False)
+
+    def status_payload(self) -> dict[str, Any]:
+        running = self._task is not None and not self._task.done()
+        return {
+            "uplink_watchdog_enabled": UPLINK_WATCHDOG_ENABLED,
+            "uplink_watchdog_poll_seconds": UPLINK_WATCHDOG_POLL_SECONDS,
+            "uplink_watchdog_running": running,
+        }
+
+    def start(self) -> None:
+        if not UPLINK_WATCHDOG_ENABLED:
+            return
+        if self._task is not None and not self._task.done():
+            return
+        self._stop.clear()
+        self._task = asyncio.create_task(self._run_loop(), name="uplink-watchdog")
+
+    async def stop(self) -> None:
+        if self._task is None:
+            return
+        self._stop.set()
+        self._task.cancel()
+        try:
+            await self._task
+        except asyncio.CancelledError:
+            pass
+        self._task = None
+
+    async def _run_loop(self) -> None:
+        while not self._stop.is_set():
+            try:
+                await self._poll_once()
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                pass
+            try:
+                await asyncio.wait_for(self._stop.wait(), timeout=UPLINK_WATCHDOG_POLL_SECONDS)
+                break
+            except TimeoutError:
+                continue
+
+    async def _poll_once(self) -> None:
+        if self.observe_transport_factory is None or self.apply_transport_factory is None:
+            return
+        remembered_svc = self.host.runtime.remembered_uplink
+        remembered = remembered_svc.get_remembered()
+        if not remembered.get("desired_active"):
+            self._states.clear()
+            return
+        if not remembered.get("credential_configured"):
+            return
+        station_id = remembered.get("station_id")
+        ssid = str(remembered.get("ssid") or "").strip()
+        band_raw = remembered.get("band")
+        cred_ref = remembered.get("credential_ref_id")
+        if not ssid or not band_raw or not cred_ref:
+            return
+        try:
+            band = WifiBand(str(band_raw))
+        except ValueError:
+            return
+        router_id = remembered.get("router_id")
+        if not router_id:
+            rows = self.host.runtime.store.list_routers(limit=1)
+            if not rows:
+                return
+            router_id = str(rows[0]["router_id"])
+        router_key = str(router_id)
+        loop = asyncio.get_running_loop()
+        now = loop.time()
+        state = self._states.setdefault(router_key, _RouterWatchState())
+        if now < state.next_poll_at:
+            return
+        if self.host_internet_probe is not None:
+            try:
+                host_reachable = await asyncio.to_thread(self.host_internet_probe)
+            except Exception:
+                host_reachable = None
+            if host_reachable is True:
+                # Cheap host-side check (no router SSH round-trip) says internet
+                # is fine — skip the expensive router-side probe this cycle.
+                # Only escalate to the router when the host-side signal is
+                # False or inconclusive, to avoid loading the router with
+                # routine SSH traffic just for monitoring.
+                state.unhealthy_streak = 0
+                state.backoff_seconds = _BACKOFF_BASE_SECONDS
+                state.next_poll_at = now + UPLINK_WATCHDOG_POLL_SECONDS
+                return
+        observe_transport = self.observe_transport_factory(router_key)
+        if observe_transport is None:
+            return
+        observation = await asyncio.to_thread(
+            run_internet_status_observe,
+            transport=observe_transport,
+        )
+        updated_at = _parse_updated_at_epoch(str(remembered.get("updated_at") or ""))
+        suppress_until = (
+            updated_at + 2.0 * UPLINK_WATCHDOG_POLL_SECONDS
+            if updated_at is not None
+            else None
+        )
+        gateway = getattr(observation, "gateway_interface", None)
+        if is_ethernet_like_gateway(
+            str(gateway) if gateway is not None else None
+        ):
+            state.unhealthy_streak = 0
+            state.backoff_seconds = _BACKOFF_BASE_SECONDS
+            state.next_poll_at = now + UPLINK_WATCHDOG_POLL_SECONDS
+            return
+        if should_skip_uplink_reapply(
+            observation=observation,
+            expected_station_id=str(station_id) if station_id else None,
+            suppress_until_epoch=suppress_until,
+            now_epoch=datetime.now(tz=UTC).timestamp(),
+        ):
+            state.unhealthy_streak = 0
+            state.backoff_seconds = _BACKOFF_BASE_SECONDS
+            state.next_poll_at = now + UPLINK_WATCHDOG_POLL_SECONDS
+            return
+        if not should_reapply_uplink(
+            observation=observation,
+            expected_station_id=str(station_id) if station_id else None,
+        ):
+            state.unhealthy_streak = 0
+            state.next_poll_at = now + UPLINK_WATCHDOG_POLL_SECONDS
+            return
+        state.unhealthy_streak += 1
+        if state.unhealthy_streak >= _UNHEALTHY_STREAK_THRESHOLD:
+            apply_transport = self.apply_transport_factory(router_key)
+            if apply_transport is not None:
+                intent = UplinkIntent(
+                    mode=UplinkMode.WIFI_WAN,
+                    ssid=ssid,
+                    band=band,
+                    credential_ref_id=str(cred_ref),
+                )
+                await asyncio.to_thread(
+                    self._reapply_locked,
+                    router_key,
+                    intent,
+                    apply_transport,
+                    remembered,
+                )
+            state.unhealthy_streak = 0
+            state.backoff_seconds = min(
+                state.backoff_seconds * 2.0,
+                _BACKOFF_MAX_SECONDS,
+            )
+            state.next_poll_at = now + state.backoff_seconds
+        else:
+            state.next_poll_at = now + UPLINK_WATCHDOG_POLL_SECONDS
+
+    def _resolve_credentials(self) -> CredentialResolver:
+        if self.credential_resolver is not None:
+            return self.credential_resolver
+        vault = self.host.runtime.vault
+
+        def resolve(ref_id: str) -> str:
+            return str(vault.use(ref_id))
+
+        return resolve
+
+    def _reapply_locked(
+        self,
+        router_id: str,
+        intent: UplinkIntent,
+        transport: WifiStationApplyTransport,
+        remembered: dict[str, Any],
+    ) -> None:
+        credential_resolver = self._resolve_credentials()
+
+        def _run() -> None:
+            result = apply_wifi_station_intent(
+                intent=intent,
+                transport=transport,
+                credential_resolver=credential_resolver,
+                live_dispatch=True,
+                compensate_on_failure=True,
+                idempotent=True,
+                uplink_settle_seconds=25.0,
+                store=self.host.runtime.store,
+            )
+            self.host.runtime.store.try_append_sealed_apply_audit(
+                action="uplink_watchdog.reapply",
+                outcome=result.overall,
+                route="remembered-uplink",
+                verb="watchdog_reapply",
+                intent_redacted={
+                    "router_id": router_id,
+                    "ssid": remembered.get("ssid"),
+                    "band": remembered.get("band"),
+                    "credential_ref_id": remembered.get("credential_ref_id"),
+                },
+                router_id=router_id,
+                correlation_id=None,
+                result_payload=result.to_dict(),
+                outcome_snapshot=None,
+                error_message=None,
+                exception_type=None,
+            )
+
+        run_with_router_apply_lock(router_id, _run)
+
+
+__all__ = [
+    "UPLINK_WATCHDOG_ENABLED",
+    "UPLINK_WATCHDOG_POLL_SECONDS",
+    "UplinkWatchdogHandle",
+    "gateway_matches_remembered_station",
+    "is_ethernet_like_gateway",
+    "should_reapply_uplink",
+    "should_skip_uplink_reapply",
+]

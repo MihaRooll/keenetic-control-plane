@@ -27,3 +27,31 @@ class StaleFenceError(PersistenceError):
 
 class NotFoundError(PersistenceError):
     pass
+
+
+class FenceExpiredError(PersistenceError):
+    pass
+
+
+class MutexHolderRequiredError(PersistenceError):
+    pass
+
+
+class RecoveryConflictError(PersistenceError):
+    pass
+
+
+class EffectTransitionError(PersistenceError):
+    pass
+
+
+class UnknownBootError(PersistenceError):
+    pass
+
+
+class ArtifactNotRestorableError(PersistenceError):
+    pass
+
+
+class SealedApplyTrailBeginError(PersistenceError):
+    """Sealed apply trail row could not be created; device dispatch must not proceed."""

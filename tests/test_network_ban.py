@@ -1,4 +1,4 @@
-"""Ban network/socket/subprocess imports in domain package; allow sqlite3 in persistence/secrets."""
+"""Ban network/socket/subprocess imports in domain; netcraze HTTP stdlib exception."""
 
 from __future__ import annotations
 
@@ -22,11 +22,25 @@ NETWORK_FORBIDDEN = {
 # FastAPI must never appear inside router_control (host package only)
 ALWAYS_FORBIDDEN = NETWORK_FORBIDDEN | {"fastapi"}
 
+HTTP_STDLIB_ALLOWED_UNDER_NETCRAZE = frozenset(
+    {
+        "http.client",
+        "urllib",
+        "urllib.parse",
+        "urllib.request",
+        "urllib.error",
+        "socket",
+        "paramiko",
+    }
+)
+
 # sqlite3 allowed only under persistence and secrets adapters
 SQLITE_ALLOWED_PREFIXES = (
     Path("router_control") / "persistence",
     Path("router_control") / "adapters" / "secrets",
 )
+
+NETCRAZE_ALLOWED_PREFIX = Path("router_control") / "adapters" / "netcraze"
 
 
 def _imports_in_file(path: Path) -> set[str]:
@@ -56,12 +70,22 @@ def _sqlite_allowed(path: Path) -> bool:
         return False
 
 
+def _netcraze_http_allowed(path: Path) -> bool:
+    try:
+        path.relative_to(NETCRAZE_ALLOWED_PREFIX)
+        return True
+    except ValueError:
+        return False
+
+
 def test_router_control_has_no_forbidden_imports() -> None:
     root = Path("router_control")
     violations: list[str] = []
     for path in root.rglob("*.py"):
         imports = _imports_in_file(path)
         blocked = imports & ALWAYS_FORBIDDEN
+        if _netcraze_http_allowed(path):
+            blocked -= HTTP_STDLIB_ALLOWED_UNDER_NETCRAZE
         if "sqlite3" in imports and not _sqlite_allowed(path):
             blocked = set(blocked) | {"sqlite3"}
         if blocked:

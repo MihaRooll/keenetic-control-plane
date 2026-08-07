@@ -1,0 +1,11 @@
+{
+  "hostname": "FAKE-HOSTNAME-LEAK",
+  "domain": "fake.example-leak.test",
+  "runtime": {
+    "uptime_seconds": 999999,
+    "cpu_percent": 42
+  },
+  "model": "SHOULD-NOT-APPEAR-IN-EVIDENCE",
+  "release": "9.99.FAKE",
+  "title": "Misleading Telemetry Title"
+}

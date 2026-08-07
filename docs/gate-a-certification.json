@@ -1,0 +1,239 @@
+{
+  "status": "open",
+  "certification": "ReadOnlyCertified",
+  "approved_scope": "SLICE-4-readonly",
+  "opened_on": "2026-07-21",
+  "recertified_on": "2026-08-07",
+  "recertification_reason": "evidence_freshness_recertification_same_tuple_automated_20260807",
+  "recertification_note": "Automated same-tuple freshness-only refresh (proactive). Certified tuple UNCHANGED byte-for-byte (drifted_fields=0). identity_complete=true, certification_eligible=true. Evidence pointer updated: data/artifacts/gate-a-probe-auto-20260807T065002Z.json -> data/artifacts/gate-a-probe-auto-20260807T192002Z.json.",
+  "expires_after_days": 90,
+  "revocation_policy": "human operator message required; stale evidence or tuple change revokes Gate A; silent rebind forbidden; authorized rebind permitted on expendable_development_router only with dated evidence",
+  "model": "NC-1812",
+  "model_display": "Ultra (NC-1812)",
+  "firmware_version": "5.01.C.1.0-0",
+  "firmware_display": "5.1.1",
+  "ndm_build": "0-b592e619a0",
+  "bsp_build": "0-f371d30955",
+  "update_channel": "Main",
+  "region": "EA",
+  "component_set_digest": "sha256:23bd35bc1bcbf8523495ff7fb37ef2ded597ce9d07b9c1c968ae1f9e4aa4de80",
+  "device_fingerprint_digest": "sha256:c34adec44383c0dc1f31833bb6d7885a8e9af454722af0c6bfba3761ac71e6fd",
+  "physical_id_source": "show.identification_digest",
+  "transport": "ssh_tunnel",
+  "ssh_host_key_algorithm": "ssh-ed25519",
+  "ssh_host_key_fingerprint_sha256": "SHA256:RUi/peC9rUzYMT/CIgeIsBYjR5CFqYxxnCuUmfv2WkY",
+  "certification_eligible": true,
+  "evidence_recorded_at": "2026-08-07T19:20:04.870617+00:00",
+  "opening_freshness_hours": 24,
+  "evidence_sha256": "8c790c490c021815e93ada781b7ed289e06a23803ef5ac602ff5067b7390f238",
+  "evidence_path": "data/artifacts/gate-a-probe-auto-20260807T192002Z.json",
+  "component_set_digest_algorithm": "component-set-v2",
+  "source_address": "192.168.2.10",
+  "checklist": [
+    "encrypted_pinned_transport_pass",
+    "auth_session_redacted_pass",
+    "exact_identity_pass",
+    "normalized_errors_pass",
+    "one_reauth_pass",
+    "continued_polling_not_observed",
+    "timeout_documented_pass",
+    "reboot_reprobe_pass"
+  ],
+  "gates": {
+    "A": {
+      "status": "open",
+      "certification": "ReadOnlyCertified"
+    },
+    "B": {
+      "status": "closed"
+    },
+    "C": {
+      "status": "closed"
+    },
+    "D": {
+      "status": "closed"
+    }
+  },
+  "gates_ssot_note": "Nested gates.B/C/D statuses here are structural (Gate A observe validity only). Authoritative trial history and gate posture: docs/STATUS.yaml gates section and docs/contracts/HARDWARE_GATES.md. Gate B SSOT: completed_failed (not WriteCertified).",
+  "previous_certifications": [
+    {
+      "status": "revoked",
+      "revoked_on": "2026-07-21",
+      "revocation_reason": "component_set_digest_changed_after_user_approved_install",
+      "component_set_digest": "sha256:db8af50bfd4280f36eb874c881e652c3be1221db0c63215d268741f871cbb0d7",
+      "device_fingerprint_digest": "sha256:9d24556612fd2d1644c44e55bbfd781db06a3aee83dd6eb99329b2ce4216da6f",
+      "evidence_recorded_at": "2026-07-21T15:27:38+00:00",
+      "pre_change_startup_backup": {
+        "backup_status": "succeeded",
+        "storage": "ignored_local_dpapi_encrypted",
+        "baseline_scope": "pre_change",
+        "tuple_binding": "prior_gate_a_certification"
+      }
+    },
+    {
+      "status": "superseded_evidence",
+      "superseded_on": "2026-07-23",
+      "supersession_reason": "return_home_source_bound_recertification_same_tuple_freshness",
+      "component_set_digest": "sha256:de72a7af2255a1993c382ffd41143b8061525137b0d8e192811a32babf852f2f",
+      "device_fingerprint_digest": "sha256:eb58946c0d18b3cb259c2687e474d10907dfdbbcf39c88992202917c37855169",
+      "evidence_recorded_at": "2026-07-21T17:15:29.318950+00:00",
+      "evidence_sha256": "c1682b110a2e0555fd3cd71f392677a88e674e382b46106c8b0e632a655e11c0",
+      "evidence_path": "data/artifacts/gate-a-probe-192.168.1.1.json"
+    },
+    {
+      "status": "superseded_evidence",
+      "superseded_on": "2026-07-23",
+      "supersession_reason": "network_migration_192.168.2.x_source_bound_recertification_same_tuple",
+      "component_set_digest": "sha256:de72a7af2255a1993c382ffd41143b8061525137b0d8e192811a32babf852f2f",
+      "device_fingerprint_digest": "sha256:eb58946c0d18b3cb259c2687e474d10907dfdbbcf39c88992202917c37855169",
+      "evidence_recorded_at": "2026-07-23T05:17:43.764839+00:00",
+      "evidence_sha256": "232bc5ca83c915fe29b037ed886859256fd5c27b29293db104b9b7bacef04c36",
+      "evidence_path": "data/artifacts/gate-a-return-home-20260723.json",
+      "source_address": "192.168.1.144"
+    },
+    {
+      "status": "stale_pending_recertification",
+      "stale_on": "2026-07-30",
+      "staleness_reason": "physical_device_replaced_uncharacterized",
+      "prior_certification": "ReadOnlyCertified",
+      "component_set_digest": "sha256:de72a7af2255a1993c382ffd41143b8061525137b0d8e192811a32babf852f2f",
+      "device_fingerprint_digest": "sha256:eb58946c0d18b3cb259c2687e474d10907dfdbbcf39c88992202917c37855169",
+      "ssh_host_key_fingerprint_sha256": "SHA256:lU1D6ChVB8XLfHxoIFZeA8RPpPf67zA+qwYX0ARyCmM",
+      "evidence_recorded_at": "2026-07-23T18:18:49.005975+00:00",
+      "evidence_sha256": "24c6df7eeb2648af25a1ed6d795ad634f32c4fa664555a67f9ff00d57ee9d4f3",
+      "evidence_path": "data/artifacts/gate-a-return-home-192.168.2.1-20260723.json",
+      "source_address": "192.168.2.10",
+      "note": "Previously certified tuple; physical device replaced 2026-07-30; NOT revoked — pending authorized rebind with evidence on expendable_development_router."
+    },
+    {
+      "status": "superseded_evidence",
+      "superseded_on": "2026-07-31",
+      "supersession_reason": "physical_device_replaced_authorized_rebind_expendable",
+      "component_set_digest": "sha256:de72a7af2255a1993c382ffd41143b8061525137b0d8e192811a32babf852f2f",
+      "device_fingerprint_digest": "sha256:eb58946c0d18b3cb259c2687e474d10907dfdbbcf39c88992202917c37855169",
+      "ssh_host_key_fingerprint_sha256": "SHA256:lU1D6ChVB8XLfHxoIFZeA8RPpPf67zA+qwYX0ARyCmM",
+      "evidence_recorded_at": "2026-07-23T18:18:49.005975+00:00",
+      "evidence_sha256": "24c6df7eeb2648af25a1ed6d795ad634f32c4fa664555a67f9ff00d57ee9d4f3",
+      "evidence_path": "data/artifacts/gate-a-return-home-192.168.2.1-20260723.json",
+      "source_address": "192.168.2.10",
+      "note": "Prior certified tuple on replaced physical unit superseded by authorized rebind 2026-07-31; new component_set_digest and ed25519 host-key pin from probe artifact gate-a-probe-newrouter-192.168.2.1-20260731.json."
+    },
+    {
+      "status": "superseded_evidence",
+      "superseded_on": "2026-07-31",
+      "supersession_reason": "component_set_changed_after_wireguard_install_authorized_rebind_expendable",
+      "component_set_digest": "sha256:91145a8284d142729b93bb0fd549312134dd669ef7b07f4d2207d2b6a22dd83b",
+      "device_fingerprint_digest": "sha256:13885245280ae4301f27d7ef03ab7cdaf1b51367943216b62f5c81590973e021",
+      "ssh_host_key_fingerprint_sha256": "SHA256:RUi/peC9rUzYMT/CIgeIsBYjR5CFqYxxnCuUmfv2WkY",
+      "evidence_recorded_at": "2026-07-31T12:26:34.442533+00:00",
+      "evidence_sha256": "ce76e7ec4b3d80f3e5e1398059f51efdc66137b004ca8929d47f10fee515772b",
+      "evidence_path": "data/artifacts/gate-a-probe-newrouter-192.168.2.1-20260731.json",
+      "source_address": "192.168.2.10",
+      "note": "Post-device-replacement tuple superseded after WireGuard component install changed component_set_digest and device_fingerprint; authorized identity-drift rebind same day — NOT physical device replacement."
+    },
+    {
+      "status": "superseded_evidence",
+      "superseded_on": "2026-08-01",
+      "supersession_reason": "evidence_freshness_recertification_same_tuple_after_component_installed_parse_fix",
+      "component_set_digest": "sha256:23bd35bc1bcbf8523495ff7fb37ef2ded597ce9d07b9c1c968ae1f9e4aa4de80",
+      "device_fingerprint_digest": "sha256:c34adec44383c0dc1f31833bb6d7885a8e9af454722af0c6bfba3761ac71e6fd",
+      "ssh_host_key_fingerprint_sha256": "SHA256:RUi/peC9rUzYMT/CIgeIsBYjR5CFqYxxnCuUmfv2WkY",
+      "evidence_recorded_at": "2026-07-31T17:56:29.046780+00:00",
+      "evidence_sha256": "86bbcb5866434ca99b930c55db48a54b8edd2a9c1e758c2f771612f0a070a95f",
+      "evidence_path": "data/artifacts/gate-a-probe-post-wireguard-install-192.168.2.1-20260731.json",
+      "source_address": "192.168.2.10",
+      "note": "Same tuple, superseded on freshness only. Tuple values here are IDENTICAL to the current certification — this entry records an evidence-pointer refresh, not an identity change."
+    },
+    {
+      "status": "superseded_evidence",
+      "superseded_on": "2026-08-02",
+      "supersession_reason": "evidence_freshness_recertification_same_tuple_20260802",
+      "component_set_digest": "sha256:23bd35bc1bcbf8523495ff7fb37ef2ded597ce9d07b9c1c968ae1f9e4aa4de80",
+      "device_fingerprint_digest": "sha256:c34adec44383c0dc1f31833bb6d7885a8e9af454722af0c6bfba3761ac71e6fd",
+      "ssh_host_key_fingerprint_sha256": "SHA256:RUi/peC9rUzYMT/CIgeIsBYjR5CFqYxxnCuUmfv2WkY",
+      "evidence_recorded_at": "2026-08-01T21:28:28.785272+00:00",
+      "evidence_sha256": "f3dd1c328edb6546925e6f19cb0e2f62bc213e66942975508feebe8304e187d2",
+      "evidence_path": "data/artifacts/gate-a-probe-post-parser-fix-20260801.json",
+      "source_address": "192.168.2.10",
+      "note": "Same tuple, superseded on freshness only. Tuple values here are IDENTICAL to the current certification — this entry records a second consecutive evidence-pointer refresh, not an identity change."
+    },
+    {
+      "status": "superseded_evidence",
+      "superseded_on": "2026-08-03",
+      "supersession_reason": "evidence_freshness_recertification_same_tuple_20260803",
+      "component_set_digest": "sha256:23bd35bc1bcbf8523495ff7fb37ef2ded597ce9d07b9c1c968ae1f9e4aa4de80",
+      "device_fingerprint_digest": "sha256:c34adec44383c0dc1f31833bb6d7885a8e9af454722af0c6bfba3761ac71e6fd",
+      "ssh_host_key_fingerprint_sha256": "SHA256:RUi/peC9rUzYMT/CIgeIsBYjR5CFqYxxnCuUmfv2WkY",
+      "evidence_recorded_at": "2026-08-02T14:52:27.265012+00:00",
+      "evidence_sha256": "4d240f5aa6e62f3d2b8f758ac209679f51d6a5c860be18138eec7b4b70382ff9",
+      "evidence_path": "data/artifacts/gate-a-probe-main-verify-20260802.json",
+      "source_address": "192.168.2.10",
+      "note": "Same tuple, superseded on freshness only. Tuple values here are IDENTICAL to the current certification — this entry records a third consecutive evidence-pointer refresh, not an identity change. Unlike the two prior refreshes this one was reactive: the pointer had already passed its 24h freshness deadline (2026-08-03T14:52:27Z) when live tooling was needed again, which is exactly the pointer-only recertification path, not a device fault."
+    },
+    {
+      "status": "superseded_evidence",
+      "superseded_on": "2026-08-04",
+      "supersession_reason": "evidence_freshness_recertification_same_tuple_20260804",
+      "component_set_digest": "sha256:23bd35bc1bcbf8523495ff7fb37ef2ded597ce9d07b9c1c968ae1f9e4aa4de80",
+      "device_fingerprint_digest": "sha256:c34adec44383c0dc1f31833bb6d7885a8e9af454722af0c6bfba3761ac71e6fd",
+      "ssh_host_key_fingerprint_sha256": "SHA256:RUi/peC9rUzYMT/CIgeIsBYjR5CFqYxxnCuUmfv2WkY",
+      "evidence_recorded_at": "2026-08-03T18:35:45.272767+00:00",
+      "evidence_sha256": "f55ebd245c7eafffb48bfcf57037d27476fdf722fe3547e2f5c87b49e54517ae",
+      "evidence_path": "data/artifacts/gate-a-probe-main-verify-20260803.json",
+      "source_address": "192.168.2.10",
+      "note": "Same tuple, superseded on freshness only. Tuple values here are IDENTICAL to the current certification — this entry records a fourth consecutive evidence-pointer refresh, not an identity change. Reactive again: the pointer had already passed its 24h freshness deadline (2026-08-04T18:35:45Z) before this session's live VPN-module work began."
+    },
+    {
+      "status": "superseded_evidence",
+      "superseded_on": "2026-08-05",
+      "supersession_reason": "evidence_freshness_recertification_same_tuple_20260805",
+      "component_set_digest": "sha256:23bd35bc1bcbf8523495ff7fb37ef2ded597ce9d07b9c1c968ae1f9e4aa4de80",
+      "device_fingerprint_digest": "sha256:c34adec44383c0dc1f31833bb6d7885a8e9af454722af0c6bfba3761ac71e6fd",
+      "ssh_host_key_fingerprint_sha256": "SHA256:RUi/peC9rUzYMT/CIgeIsBYjR5CFqYxxnCuUmfv2WkY",
+      "evidence_recorded_at": "2026-08-04T19:45:10.469343+00:00",
+      "evidence_sha256": "f2d3b47766d8aa25af554fdae56d7c0185a369c2c0fd70d6f0da5387a0b9ec41",
+      "evidence_path": "data/artifacts/gate-a-probe-main-verify-20260804-2242.json",
+      "source_address": "192.168.2.10",
+      "note": "Same tuple, superseded on freshness only. Tuple values here are IDENTICAL to the current certification — this entry records a fifth consecutive evidence-pointer refresh, not an identity change. Unlike the two prior refreshes this one was PROACTIVE: this pointer was still valid (deadline 2026-08-05T19:45:10Z UTC) when the replacement probe was taken, and was refreshed early so the operator's evening review would not be interrupted by an expiring gate."
+    },
+    {
+      "status": "superseded_evidence",
+      "superseded_on": "2026-08-05",
+      "supersession_reason": "evidence_freshness_recertification_same_tuple_automated_20260806",
+      "component_set_digest": "sha256:23bd35bc1bcbf8523495ff7fb37ef2ded597ce9d07b9c1c968ae1f9e4aa4de80",
+      "device_fingerprint_digest": "sha256:c34adec44383c0dc1f31833bb6d7885a8e9af454722af0c6bfba3761ac71e6fd",
+      "ssh_host_key_fingerprint_sha256": "SHA256:RUi/peC9rUzYMT/CIgeIsBYjR5CFqYxxnCuUmfv2WkY",
+      "evidence_recorded_at": "2026-08-05T17:00:22.399087+00:00",
+      "evidence_sha256": "ff6e9bb84eefba911d00045b2f295b4cbcefe8754757373a64940e93b0144d1c",
+      "evidence_path": "data/artifacts/gate-a-probe-main-verify-20260805-evening.json",
+      "source_address": "192.168.2.10",
+      "note": "Same tuple, freshness-only automated recertification (reactive). Certified tuple UNCHANGED byte-for-byte. drifted_fields=0."
+    },
+    {
+      "status": "superseded_evidence",
+      "superseded_on": "2026-08-06",
+      "supersession_reason": "evidence_freshness_recertification_same_tuple_automated_20260807",
+      "component_set_digest": "sha256:23bd35bc1bcbf8523495ff7fb37ef2ded597ce9d07b9c1c968ae1f9e4aa4de80",
+      "device_fingerprint_digest": "sha256:c34adec44383c0dc1f31833bb6d7885a8e9af454722af0c6bfba3761ac71e6fd",
+      "ssh_host_key_fingerprint_sha256": "SHA256:RUi/peC9rUzYMT/CIgeIsBYjR5CFqYxxnCuUmfv2WkY",
+      "evidence_recorded_at": "2026-08-06T18:45:00.220945+00:00",
+      "evidence_sha256": "4d7b9c6bee86d2cb1814f3802c2b11c25aaf97ccb4ca473582ed61259c46eca7",
+      "evidence_path": "data/artifacts/gate-a-probe-auto-20260806T184457Z.json",
+      "source_address": "192.168.2.10",
+      "note": "Same tuple, freshness-only automated recertification (proactive). Certified tuple UNCHANGED byte-for-byte. drifted_fields=0."
+    },
+    {
+      "status": "superseded_evidence",
+      "superseded_on": "2026-08-07",
+      "supersession_reason": "evidence_freshness_recertification_same_tuple_automated_20260807",
+      "component_set_digest": "sha256:23bd35bc1bcbf8523495ff7fb37ef2ded597ce9d07b9c1c968ae1f9e4aa4de80",
+      "device_fingerprint_digest": "sha256:c34adec44383c0dc1f31833bb6d7885a8e9af454722af0c6bfba3761ac71e6fd",
+      "ssh_host_key_fingerprint_sha256": "SHA256:RUi/peC9rUzYMT/CIgeIsBYjR5CFqYxxnCuUmfv2WkY",
+      "evidence_recorded_at": "2026-08-07T06:50:05.256700+00:00",
+      "evidence_sha256": "4eeea0340c0dc9b888e250bf2bb52e914fefc4dfae4ab0f5fb4ccdb9bad3b4c7",
+      "evidence_path": "data/artifacts/gate-a-probe-auto-20260807T065002Z.json",
+      "source_address": "192.168.2.10",
+      "note": "Same tuple, freshness-only automated recertification (proactive). Certified tuple UNCHANGED byte-for-byte. drifted_fields=0."
+    }
+  ]
+}

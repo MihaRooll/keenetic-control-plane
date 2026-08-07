@@ -1,0 +1,18 @@
+{
+  "hw_id": "NC-1812",
+  "version": "5.01.C.1.0-0",
+  "release": "5.01.C.1.0-0",
+  "model": "Netcraze Ultra NC-1812",
+  "device": "Ultra",
+  "description": "Netcraze Ultra Router",
+  "sandbox": "stable",
+  "region": "SYNTH-REGION-EU",
+  "ndm": {
+    "exact": "SYNTH-NDM-BUILD-100",
+    "cdate": "20260101"
+  },
+  "bsp": {
+    "exact": "SYNTH-BSP-BUILD-200",
+    "cdate": "20260102"
+  }
+}

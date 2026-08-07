@@ -1,0 +1,330 @@
+{
+  "firmware": {
+    "version": "5.01.C.1.0-0",
+    "title": "5.1.1"
+  },
+  "component": {
+    "base": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "cloudcontrol": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "corewireless": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "dhcpd": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "dns-filter": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "dot1x": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "easyconfig": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "exfat": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "ext": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "fat": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "hfsplus": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "igmp": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "l2tp": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "lang-en": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "lang-ru": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "mdns": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "miniupnpd": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "mws": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "nathelper-ftp": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "nathelper-h323": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "nathelper-pptp": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "nathelper-rtsp": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "nathelper-sip": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "ndns": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "ntfs": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "pingcheck": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "ppe": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "pppoe": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "pptp": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "ssh": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "storage": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "trafficcontrol": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "tsmb": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "usb": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "usblte": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "usbmodem": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "usbnet": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "usbqmi": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "webdav": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "wireguard": {
+      "installed": "5.01.C.1.0-0",
+      "version": "5.01.C.1.0-0"
+    },
+    "acl": {
+      "version": "0.9.20"
+    },
+    "chilli": {
+      "version": "0.9.20"
+    },
+    "ddns": {
+      "version": "0.9.20"
+    },
+    "dlna": {
+      "version": "0.9.20"
+    },
+    "dns-https": {
+      "version": "0.9.20"
+    },
+    "dns-tls": {
+      "version": "0.9.20"
+    },
+    "eoip": {
+      "version": "0.9.20"
+    },
+    "exfat-utils": {
+      "version": "0.9.20"
+    },
+    "ext-utils": {
+      "version": "0.9.20"
+    },
+    "fat-utils": {
+      "version": "0.9.20"
+    },
+    "ftp": {
+      "version": "0.9.20"
+    },
+    "gre": {
+      "version": "0.9.20"
+    },
+    "hfsplus-utils": {
+      "version": "0.9.20"
+    },
+    "ike-client": {
+      "version": "0.9.20"
+    },
+    "iperf3": {
+      "version": "0.9.20"
+    },
+    "ipip": {
+      "version": "0.9.20"
+    },
+    "ipsec": {
+      "version": "0.9.20"
+    },
+    "monitor": {
+      "version": "0.9.20"
+    },
+    "nathelper-esp": {
+      "version": "0.9.20"
+    },
+    "netflow": {
+      "version": "0.9.20"
+    },
+    "nextdns": {
+      "version": "0.9.20"
+    },
+    "ntce": {
+      "version": "0.9.20"
+    },
+    "ntfs-utils": {
+      "version": "0.9.20"
+    },
+    "nvox": {
+      "version": "0.9.20"
+    },
+    "ocserver": {
+      "version": "0.9.20"
+    },
+    "openconnect": {
+      "version": "0.9.20"
+    },
+    "openvpn": {
+      "version": "0.9.20"
+    },
+    "opkg": {
+      "version": "0.9.20"
+    },
+    "opkg-kmod-audio": {
+      "version": "0.9.20"
+    },
+    "opkg-kmod-dvb-tuner": {
+      "version": "0.9.20"
+    },
+    "opkg-kmod-fs": {
+      "version": "0.9.20"
+    },
+    "opkg-kmod-netfilter": {
+      "version": "0.9.20"
+    },
+    "opkg-kmod-netfilter-addons": {
+      "version": "0.9.20"
+    },
+    "opkg-kmod-tc": {
+      "version": "0.9.20"
+    },
+    "opkg-kmod-usbip": {
+      "version": "0.9.20"
+    },
+    "opkg-kmod-video": {
+      "version": "0.9.20"
+    },
+    "proxy": {
+      "version": "0.9.20"
+    },
+    "sftp": {
+      "version": "0.9.20"
+    },
+    "skydns": {
+      "version": "0.9.20"
+    },
+    "snmp": {
+      "version": "0.9.20"
+    },
+    "sstp": {
+      "version": "0.9.20"
+    },
+    "sstp-server": {
+      "version": "0.9.20"
+    },
+    "transmission": {
+      "version": "0.9.20"
+    },
+    "udpxy": {
+      "version": "0.9.20"
+    },
+    "usbdsl": {
+      "version": "0.9.20"
+    },
+    "usbnet-extra": {
+      "version": "0.9.20"
+    },
+    "usbserial-extra": {
+      "version": "0.9.20"
+    },
+    "virtual-ip-server": {
+      "version": "0.9.20"
+    },
+    "vpnserver": {
+      "version": "0.9.20"
+    },
+    "vpnserver-l2tp": {
+      "version": "0.9.20"
+    },
+    "vrrp": {
+      "version": "0.9.20"
+    },
+    "wireguard-server": {
+      "version": "0.9.20"
+    },
+    "wpa-eap": {
+      "version": "0.9.20"
+    },
+    "zerotier": {
+      "version": "0.9.20"
+    }
+  }
+}

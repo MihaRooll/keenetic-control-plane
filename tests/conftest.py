@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -26,6 +27,8 @@ from router_control.domain.ids import (
     RevisionId,
     RouterId,
 )
+
+os.environ.setdefault("ROUTER_CONTROL_TEST_SESSION", "1")
 
 
 @pytest.fixture

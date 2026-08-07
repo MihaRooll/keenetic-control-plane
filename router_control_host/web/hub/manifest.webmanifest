@@ -1,0 +1,35 @@
+{
+  "name": "LOCAL HUB",
+  "short_name": "LOCAL HUB",
+  "description": "Локальная панель управления роутером Keenetic",
+  "id": "/settings/router-control/hub/",
+  "start_url": "/settings/router-control/hub/",
+  "scope": "/settings/router-control/hub/",
+  "display": "standalone",
+  "display_override": ["standalone"],
+  "orientation": "any",
+  "background_color": "#0B0F1A",
+  "theme_color": "#0B0F1A",
+  "lang": "ru",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/settings/router-control/hub/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/settings/router-control/hub/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/settings/router-control/hub/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

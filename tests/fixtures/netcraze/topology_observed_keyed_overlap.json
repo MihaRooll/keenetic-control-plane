@@ -1,0 +1,20 @@
+{
+  "interface": {
+    "upstream-wan-001": {
+      "type": "ISP",
+      "role": "wan",
+      "link": "up",
+      "connected": true,
+      "address": ["192.168.1.100/24"]
+    },
+    "home-bridge-002": {
+      "type": "Bridge",
+      "role": "lan",
+      "link": "up",
+      "connected": true,
+      "address": ["192.168.1.1/24"],
+      "bridge": "Bridge0",
+      "segment": "Home"
+    }
+  }
+}

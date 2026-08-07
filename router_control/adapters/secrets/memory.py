@@ -33,6 +33,12 @@ class MemoryVault:
             provider_locator=locator,
         )
 
+    def get_kind(self, credential_ref_id: str) -> str:
+        try:
+            return self._kinds[credential_ref_id]
+        except KeyError as exc:
+            raise VaultError("credential not found") from exc
+
     def use(self, credential_ref_id: str) -> str:
         if credential_ref_id in self._revoked:
             raise VaultError("credential revoked")

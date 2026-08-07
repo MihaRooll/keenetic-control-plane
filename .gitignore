@@ -51,3 +51,17 @@ Thumbs.db
 
 # Papercuts journal (optional commit; merge=union in .gitattributes)
 .papercuts.jsonl
+
+# Ephemeral live-campaign scratch scripts at repo root (operator-local; ruff-excluded)
+_wg_health_*.py
+
+# Ephemeral verify/debug scratch output at repo root (txt/json/log/pid/sqlite dumps from
+# ad-hoc agent verification runs — 598 such files were found and removed 2026-08-06, see
+# .cursor/plans/main-decisions-local-hub.md; this rule keeps them from silently reaccumulating)
+/_*.txt
+/_*.json
+/_*.log
+/_*.pid
+/_*.sqlite3
+/_*.sqlite3-*
+/_*.py

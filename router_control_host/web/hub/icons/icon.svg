@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="LOCAL HUB">
+  <rect width="512" height="512" fill="#0B0F1A"/>
+  <polygon points="256,84 396,165 396,327 256,408 116,327 116,165" fill="#4F5BF0"/>
+  <polygon points="256,120 360,180 360,280 256,340 152,280 152,180" fill="#4F5BF0"/>
+  <polygon points="256,148 312,180 312,248 256,280 200,248 200,180" fill="#6B75F5"/>
+</svg>

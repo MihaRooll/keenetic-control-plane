@@ -1,7 +1,7 @@
 ---
 name: verifier
 description: Deterministic verifier. Always use after T1-T3 implementation when Main or the orchestrator requests checks; T0 uses Main shell verification.
-model: cursor-grok-4.5-high-fast
+model: composer-2.5-fast
 readonly: false
 is_background: false
 ---

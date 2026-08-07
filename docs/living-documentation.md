@@ -11,6 +11,8 @@
 - After material doc or user-facing change → update map entries + run `maintain-project-docs` checklist
 - Change/build touching docs → include **Docs Impact Record** in Task Contract return ([contracts.md](../.cursor/skills/autonomous-task/contracts.md))
 - Validate: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\validate-project-docs.ps1`
+- Extended audit (links, unmapped surfaces, STATUS sync marker): `py -3.11 scripts\project-docs.py audit --project-root .`
+- Sync machine marker only (never rewrite prose): `py -3.11 scripts\project-docs.py sync-marker --project-root . --write`
 - Greenfield seeds map **day-0 only** via `new-project.ps1` (skip if file exists with parseable JSON)
 
 **Do not:** overwrite an existing parseable `docs-map.json`; ship without validator when map or referenced paths changed.
@@ -31,12 +33,20 @@ maintain-project-docs skill + project-docs-lifecycle rule
         │
         ▼
 validate-project-docs.ps1  (schema + path existence)
+        │
+        ▼
+project-docs.py audit  (links, unmapped curated surfaces, sync-marker; advisory in doctor)
 ```
+
+Unmapped audit scans a **curated** surface list (README, AGENTS, docs/**, templates, project-docs scripts) — not every repo `*.md`.
 
 | Artifact | Role |
 |----------|------|
 | [docs-map-schema.md](docs-map-schema.md) | Normative field rules |
 | `templates/docs-map.json` | Minimal day-0 seed |
+| `templates/project-state.md` | Project-state seed with sync marker placeholder |
+| `scripts/project-docs.py` | Audit / sync-marker / Docs Impact Record CLI |
+| `scripts/project-docs.ps1` | PS5.1 wrapper for project-docs CLI |
 | `maintain-project-docs` skill | When/how to update map |
 | `project-docs-lifecycle.mdc` | Nudge after doc/feature edits |
 | Docs Impact Record | Contract artifact for doc-touching work |
@@ -71,7 +81,6 @@ notes: compact optional context
 - `docs_paths_touched`: every doc/markdown path edited or added
 - `docs_map_entries_updated`: `entries[].path` values changed in `docs/docs-map.json`
 - `validator_run: yes` expected when map or referenced paths changed; attach exit code
-- `status: planned` = reserved **only while the file is absent**; once the path exists on disk, promote to `active` (or `draft`/`deprecated` as appropriate)
 
 ---
 
@@ -81,7 +90,8 @@ notes: compact optional context
 2. Update matching `docs-map.json` entry (status/title/tags)
 3. Add entry if new doc
 4. Run `validate-project-docs.ps1` (exit 0)
-5. Attach Docs Impact Record to task return
+5. Run `project-docs.py audit` (exit 0; use `--strict-unmapped` in CI if desired)
+6. Attach Docs Impact Record to task return
 
 ---
 

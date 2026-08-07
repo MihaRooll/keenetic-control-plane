@@ -31,7 +31,21 @@ class FailSafeSession:
 class ApplyResult:
     plan_id: PlanId
     outcome_digest: str
-    continued: bool
+    continued: bool = False
+    external_operation_id: str | None = None
+    external_effect_id: str | None = None
+    continuation_token: str | None = None
+
+
+class ApplyContinuationPort(Protocol):
+    """Optional poll surface — fake implements; live adapters stay deny-by-default."""
+
+    async def poll_apply_continuation(
+        self,
+        router_id: RouterId,
+        plan_id: PlanId,
+        continuation_token: str,
+    ) -> ApplyResult: ...
 
 
 @dataclass(frozen=True, slots=True)

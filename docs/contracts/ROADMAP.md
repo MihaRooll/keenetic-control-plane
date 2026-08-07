@@ -4,186 +4,247 @@
 
 | Check | Action |
 |---|---|
-| Phase | **Phase 1 offline mega (SLICE-2/3/5/8) complete**; **next SLICE-4** (Gate A hardware) — **no** live adapter until Gate A |
-| Code entry | Offline mega delivered under overnight autonomy (`approved_scope: SLICE-2,SLICE-3,SLICE-5,SLICE-8-offline`; `code_may_start=true`); hardware A–D **closed** |
-| Gates A–D | Remain **independent switches** — opening one gate does **not** imply certification of another; **no slice implies NC-1812 certification** |
-| Sequence | **11** dependency-ordered slices (SLICE-1..11) align ADR-0001/0002/0003/0004 capability ladder — do not reorder without ADR amendment |
-| Slices after routes | SLICE-8 TrafficDiscovery → SLICE-9 NetworkPolicy → SLICE-10 Hub (`module_3.0`) → SLICE-11 zone/cutover/rehearsal (ADR-0004 §Capability order) |
+| Phase | **P3 shared typed executor complete** (2026-07-22; offline/default-deny; Certified registry empty; **not live-ready**); both fail-safe trials **completed_failed**; **2026-08-05:** first handshake + traffic via tunnel **device-verified** (§M-24..§M-27); station apply **live** (§M-34); **current `next_task`:** `local-hub-vpn-real-peer-autoconnect-continuation` — [`STATUS.yaml`](../STATUS.yaml); active handoff [`SESSION_HANDOFF_REAL_ROUTER_2026-08-02.md`](../SESSION_HANDOFF_REAL_ROUTER_2026-08-02.md) |
+| Gates | **A** **ReadOnlyCertified** (authorized rebind **2026-07-31** rebind #2 post-WG; evidence `data/artifacts/gate-a-probe-post-wireguard-install-192.168.2.1-20260731.json`; rebind #1 `gate-a-probe-newrouter-…` **SUPERSEDED**); **NOT** WriteCertified; **B** `completed_failed` / `not_write_certified`; **C** closed `completed_failed`; **D** closed — **WriteCertified not claimed**; `write_shapes_registered` remains **false** |
+| Ordering SSOT | Milestone DAG **M0→M8** per [ADR-0005](../adrs/0005-local-first-commissioning-roadmap.md); supersedes ADR-004 §Capability order only |
+| Deferred lanes | AWG write certification, managed routes, LTE/SIM, **portable rack / WISP client uplink** — **parallel**, not predecessors of M1–M3; **dedicated NC-1812 HW validation program** authorized for Gate A RO + offline prep — **non-expendable / out-of-envelope** live mutations still require fresh exact **T4** per campaign; **expendable** bounded autonomous work when `ROUTER_CONTROL_LAB_CLASS=expendable_development_router` and live device matches recorded tuple — [`DEDICATED_ROUTER_LAB_POLICY.md`](../DEDICATED_ROUTER_LAB_POLICY.md) §1a (**NOT** WriteCertified; Gates B/C/D unchanged) |
+| M1–M3 bounds | No router writes; live I/O Gate A RO only; no signed pull; no Hub `module_3.0`; **LOCAL HUB PWA + prototype UI exist** (`router_control_host/web/`); bounded live apply paths **device-verified** for VPN handshake/traffic and station (§M-24..§M-35); no generic/raw RCI |
+| Authorization | User authorization 2026-07-22: M1–M3 offline/read-only code only — see [`STATUS.yaml`](../STATUS.yaml) and [`AI_HANDOFF.md`](AI_HANDOFF.md) |
 | Hub isolation | Router Control failure must not block kiosk, board, printing, or Hub startup ([`ARCHITECTURE.md`](../ARCHITECTURE.md)) |
-| Strangler | Legacy `ScanCursorIP` remains fallback until parity, rehearsal, and explicit cutover ([`SCENARIOS.md`](SCENARIOS.md) `SCN-CUT-*`) |
-| Trace | [`RCI_POLICY.md`](RCI_POLICY.md), [`HARDWARE_GATES.md`](HARDWARE_GATES.md), [`SECURITY_OPS.md`](SECURITY_OPS.md), [`PERSISTENCE_CONTRACT.md`](PERSISTENCE_CONTRACT.md), [`API_CONTRACT.md`](API_CONTRACT.md), [`TEST_STRATEGY.md`](TEST_STRATEGY.md), [`SCENARIOS.md`](SCENARIOS.md), [`AI_HANDOFF.md`](AI_HANDOFF.md) |
+| Trace | [`RCI_POLICY.md`](RCI_POLICY.md), [`HARDWARE_GATES.md`](HARDWARE_GATES.md), [`PERSISTENCE_CONTRACT.md`](PERSISTENCE_CONTRACT.md), [`API_CONTRACT.md`](API_CONTRACT.md), [`TEST_STRATEGY.md`](TEST_STRATEGY.md), [`SCENARIOS.md`](SCENARIOS.md) |
 
 ---
 
 ## 1. Purpose and scope
 
-This document is the **normative implementation roadmap** between Phase 0b contracts and future production code. It defines dependency-ordered slices, entry/exit gates, owned deliverables, verification evidence, and rollback/stop conditions.
+This document is the **normative implementation roadmap** between Phase 0b contracts and production commissioning. It defines the **local-first milestone DAG** (M0–M8), entry/exit/evidence/stop conditions, and **parallel deferred lanes** (AWG, routes, LTE).
 
-**Phase 0b:** complete (Wave 7 closeout). **Phase 1 / SLICE-1:** complete (2026-07-21). **Phase 1 offline mega (SLICE-2/3/5/8):** complete (2026-07-21). **Phase 1 / SLICE-4:** pending — requires Gate A open.
+**Ordering authority:** [ADR-0005](../adrs/0005-local-first-commissioning-roadmap.md) supersedes [ADR-004](../adrs/0004-product-capability-scope.md) §Capability order only. ADR-004 certified target, VPN scope, fail-closed writes, route benchmark, TrafficDiscovery proposals, Hub non-blocking, and cutover rules remain binding.
 
-**Global entry gate (all slices):** Phase 0b `complete: true` **and** `implementation_transition_gate.human_approved=true` **and** `code_may_start=true` in [`STATUS.yaml`](../STATUS.yaml). Offline mega scope authorized 2026-07-21; hardware gates A–D remain independent and closed.
+**Completed foundation (historical, not current critical path):** Phase 0b closed; SLICE-1 portable core; offline mega SLICE-2/3/5/8; SLICE-4 Gate A read-only adapter; SLICE-6 AWG trial closed failed (2026-07-21) — see [`gate-b-awg-certification-result.json`](../gate-b-awg-certification-result.json).
+
+**Global entry gate (M1+ code):** M0 complete in [`STATUS.yaml`](../STATUS.yaml) **and** recorded M1–M3 offline/read-only authorization **and** applicable slice/milestone scope in STATUS. Live observe requires Gate **A** open; writes require Gates **B/C/D** per family — currently fail-closed.
 
 ---
 
-## 2. Global prohibitions (all slices)
+## 2. Milestone DAG (M0–M8)
+
+```text
+M0 docs rebaseline ──► M1 RO commissioning MVP ──► M2 event preset/readiness ──► M3 durable worker
+                              │                           │                              │
+                              └─────────────┬─────────────┴──────────────────────────────┘
+                                            ▼
+                                     M4 recovery substrate
+                                            ▼
+                          M5 per-family certification (parallel families inside milestone)
+                                            ▼
+                                     M6 combined LAN rehearsal
+                                            ▼
+                                     M7 Hub module_3.0 integration
+                                            ▼
+                                     M8 signed central pull (later)
+
+Parallel deferred (not blocking M1–M4/M6):
+  • Dedicated NC-1812 HW validation program (Gate A RO + offline prep/docs only until P1–P3 verify green; live mutations require P1–P3 + fresh exact T4 per campaign)
+  • AWG write lane (post failed B/C trial)
+  • Managed routes lane
+  • LTE / SIM uplink lane
+```
+
+### M0 — Local-first roadmap rebaseline (docs only)
+
+| Field | Content |
+|---|---|
+| **Entry** | Principal approval of rebaseline plan; preserve gate evidence |
+| **Exit** | ADR-0005 accepted; ROADMAP/STATUS/project-state/docs-map synced; stale AWG-linear navigation removed |
+| **Evidence** | This file + ADR-0005 + STATUS `current_phase: m0-local-first-roadmap-rebaseline` complete |
+| **Stop** | Do not change product Python in M0; do not open write gates |
+
+### M1 — Read-only commissioning MVP
+
+| Field | Content |
+|---|---|
+| **Status** | **Complete** (2026-07-22) |
+| **Entry** | M0 complete; M1–M3 offline authorization recorded; Gate **A** ReadOnlyCertified tuple unchanged |
+| **Exit** | Commissioning MVP: enroll/preflight/identity/readiness paths on fake + optional Gate A RO; offline tests green |
+| **Evidence** | TEST lanes 1–2 + optional lane 4 (Gate A RO); no write dispatch |
+| **Stop** | Any router write attempt; opening Gate B/C/D; claiming WriteCertified |
+| **Out of scope** | Router writes; new gate opens; Hub embed; signed pull; UI frontend |
+
+### M2 — Offline event preset / readiness
+
+| Field | Content |
+|---|---|
+| **Status** | **Complete** (2026-07-22) |
+| **Entry** | M1 exit; same authorization bounds |
+| **Exit** | Event preset and readiness modeling offline; four-zone intent documented in domain/application without live mutation |
+| **Evidence** | Fake/recorded tests; SCN-EVT trace where applicable; no live writes |
+| **Stop** | Live NetworkPolicy apply; Hub UI claims |
+| **Out of scope** | Live mutations; Hub `module_3.0`; signed pull |
+
+### M3 — Durable worker / job durability ✅ complete (2026-07-22)
+
+| Field | Content |
+|---|---|
+| **Entry** | M2 exit; persistence contract satisfied |
+| **Exit** | Worker claim/lease/fencing/recovery offline; per-router serialization demonstrated |
+| **Evidence** | `router_control.application.worker`, `tests/test_worker_*.py`; PERSISTENCE §4.5 renew/complete |
+| **Stop** | Long router I/O inside SQLite txn; signed central pull; generic/raw RCI |
+| **Out of scope** | Signed pull; Hub module_3.0; frontend; live writes |
+
+### UI presentation — prototype management surface ✅ complete (2026-07-22)
+
+| Field | Content |
+|---|---|
+| **Entry** | M3 exit; principal-approved UI auth/CSP/buildless SPA architecture |
+| **Exit** | Buildless SPA `/settings/router-control` on prototype host; M1–M3 views; hub_admin gate; theme/a11y |
+| **Evidence** | `router_control_host/web/*`, `tests/test_ui_*.py`; [`OPERATOR_UI.md`](../OPERATOR_UI.md) |
+| **Stop** | Hub `module_3.0` embed claims; Apply when Gate B not WriteCertified; secrets in DOM |
+| **Out of scope** | Hub integration; live commissioning writes; npm/CDN/framework build |
+
+### M4 — Recovery substrate ✅ complete (2026-07-22)
+
+| Field | Content |
+|---|---|
+| **Status** | **Complete** (2026-07-22) |
+| **Entry** | M3 exit |
+| **Exit** | RecoveryRequired / compensation paths specified and tested offline — **not live-ready** |
+| **Evidence** | SCN-JOB-* recovery rows; persistence fault injection |
+| **Stop** | Blind retry without identity/read-back |
+
+### M5 — Independent per-family certification
+
+| Field | Content |
+|---|---|
+| **Status** | **Offline framework complete** (2026-07-22); live campaigns pending |
+| **Entry** | M4 exit; explicit human gate per capability family |
+| **Exit (offline slice)** | Per-family catalog (`fail_safe`, `vlan`, `dhcp`, `dns`, `wifi`, `firewall`, `amneziawg`, `routes`); empty/default-deny shape registries; evidence manifest schema; read discovery catalog; offline planner/runner/CLI — **no dispatch** |
+| **Exit (live slice)** | Sanitized Gate B (+ C lab when applicable) evidence per family; **WriteCertified** only with STATUS update |
+| **Evidence** | `router_control/adapters/netcraze/certification_framework.py`, `docs/netcraze-source-catalog.json`, `docs/schemas/netcraze-evidence-manifest.schema.json`, `scripts/plan-gate-b-family.py`; HARDWARE_GATES checklists |
+| **Stop** | Inventing RCI shapes; conflating trial authorization with WriteCertified; planner/runner dispatch |
+| **First live campaign** | **Fail-safe discovery/certification Human Gate** (exact T4 packet required) |
+| **Note** | AWG lane resumes here as **one family** — not a predecessor of M1–M4 |
+
+### M6 — Combined commissioning rehearsal
+
+| Field | Content |
+|---|---|
+| **Entry** | M5 families required for rehearsal scope certified or explicitly simulated |
+| **Exit** | End-to-end LAN rehearsal script offline + optional RO observe; rollback documented |
+| **Evidence** | SCN-CUT-* / commissioning checklist; no silent production cutover |
+| **Stop** | Production Gate D without rehearsal evidence |
+
+### M7 — Hub `module_3.0` integration
+
+| Field | Content |
+|---|---|
+| **Entry** | Prototype parity on M1–M6 scope; Hub maintainer approval |
+| **Exit** | Mechanical embed; shared listener; failure isolation verified |
+| **Evidence** | ARCHITECTURE §9; integration tests on fake adapter |
+| **Stop** | Blocking Hub startup on RC failure |
+
+### M8 — Signed central pull (later)
+
+| Field | Content |
+|---|---|
+| **Entry** | Separate authorization; M7 optional depending on deployment |
+| **Exit** | Signed pull protocol implemented and tested |
+| **Evidence** | Security review + contract amendment |
+| **Stop** | Unsigned or ad-hoc remote control plane |
+
+---
+
+## 3. Parallel deferred lanes
+
+These lanes run **only** under their own human gates. They do **not** block M1–M3.
+
+| Lane | Status (2026-07-22) | Next when pursued |
+|---|---|---|
+| **Dedicated NC-1812 HW validation** | Program authorized 2026-07-22; Gate A RO + offline prep in scope | **Non-expendable / out-of-envelope** live mutations require fresh exact **T4** Human Gate per campaign; **expendable** bounded autonomous envelope per [`DEDICATED_ROUTER_LAB_POLICY.md`](../DEDICATED_ROUTER_LAB_POLICY.md) §1a when lab_class + live tuple match — **NOT** WriteCertified; program auth ≠ standing write approval |
+| **AWG writes** | Trial **completed_failed**; shapes unregistered | Sanitized shape discovery + new human packet ([`OPERATOR_GATE_B_C_AWG.md`](../OPERATOR_GATE_B_C_AWG.md)) |
+| **Managed routes** | Not benchmarked; Gate B not WriteCertified | M5 family certification when authorized |
+| **LTE / SIM uplink** | Out of v1 commissioning scope | Separate compatibility lane |
+| **Portable rack / WISP client uplink** | Domain `UplinkIntent` extended (2026-07-31); bounded grammar probe **device-confirmed** offline (`device_accepted_grammar`); first association **bounded persisted** (`uplink_verified_bounded`, 5 GHz WPA2); planner **unsupported** / `wifi_wan_not_certified`; HTTP `POST /wifi/station/apply` + `/wifi/station/teardown` **device-verified live 2026-08-05** (§M-34) | See §3.2 — broader association scenarios **T4-gated** |
+
+### 3.2 Portable rack / WISP client uplink (parallel deferred)
+
+Honest gap lane for field-technician portable equipment rack — venue Wi‑Fi client, wired fallback, planned cellular. **Does not** open Gate A/B/C/D or claim WriteCertified. Scenario SSOT: [`SCENARIO_PORTABLE_EQUIPMENT_RACK.md`](../SCENARIO_PORTABLE_EQUIPMENT_RACK.md).
+
+**Hazards (read before station code):**
+
+| Hazard | Impact |
+|---|---|
+| Management cut-off | Station misconfig isolates router management |
+| Same-band AP+station coupling | Rebroadcast + client on one radio may fail (unverified) |
+| Evil-twin / SSID spoof | Without `bssid` pin, wrong AP association risk |
+| Venue DNS / captive hijack | Breaks VPN, order page, or Hub reachability |
+| No kill-switch / unresolved policy grammar | Vendor `ip policy permit global` probe **rejected** (`no such command: global`); kill-switch **unresolved**; no policy-routing in repo; VPN drop may leak — see [`OPERATOR_VPN_CONNECTION_POLICY_DISCOVERY.md`](../OPERATOR_VPN_CONNECTION_POLICY_DISCOVERY.md) |
+| Connectivity ↔ component download | WireGuard/AmneziaWG install needs NDSS/internet; venue Wi‑Fi needs station + upstream credentials; `component unavailable` ≠ unsupported — pre-provision before field ship |
+| Gate A STALE | *(Historical — superseded 2026-07-31 authorized rebind; Gate A ReadOnlyCertified.)* |
+
+**Ordered work items:**
+
+| # | Work item | Lane | Depends on |
+|---|---|---|---|
+| 1 | `UplinkIntent` WifiWan parse/validate + captive_portal_client marker + priority | **offline-buildable** | Done (2026-07-31 foundation) |
+| 2 | Scenario doc + gap register + ROADMAP hazards | **offline-buildable** | Done (2026-07-31 foundation) |
+| 3 | Planner/readiness blockers (`wifi_wan_not_certified`, captive client finding) | **offline-buildable** | Done (2026-07-31 foundation) |
+| 4 | Device recon — Wi‑Fi station RCI grammar (sanitized evidence only) | **offline-buildable** (bounded probe 2026-07-31) | Done — evidence `station-wisp-grammar-probe-20260731.json`; first association **bounded persisted** |
+| 5 | Sealed station uplink ops + allowlist (if evidence supports) | **offline-buildable** (grammar compile + ack verify) | #4; live dispatch **T4-gated** + Gate B family cert |
+| 6 | Captive portal **client** automation (distinct from host Coova-Chilli) | **live/T4-gated** | #4–5 + unknown vendor behavior |
+| 7 | Multi-uplink failover / policy-routing (optional) | **blocked** — design on open questions | Help grammar captured 2026-07-31; vendor `permit global` probe **rejected**; kill-switch **unresolved**; see [`OPERATOR_VPN_CONNECTION_POLICY_DISCOVERY.md`](../OPERATOR_VPN_CONNECTION_POLICY_DISCOVERY.md) §5 |
+| 8 | LTE / USB modem uplink | **live/T4-gated** | USB stack **installed** on current unit (2026-07-31); physical modem + live path; operation not device-verified |
+| 9 | WG component pre-provision / connectivity | **deployment-order (field guidance)** | **Resolved on current lab unit** (WG installed 2026-07-31); field rack may still ship offline — pre-provision before ship or restore WAN first; see scenario §5 |
+
+### 3.1 Module scope honesty — offline-incomplete / live-gated verticals
+
+Honest completeness relative to full event-booth apply (not bounded test-AP sealed apply):
+
+| Vertical | Code truth | Offline-buildable? | Live / T4 gate |
+|---|---|---|---|
+| **VLAN / DHCP / DNS / firewall** | `deployment_planner.py` compiles plan items; **VLAN/DHCP/DNS/firewall:** sealed offline `{family}_apply_planner.py` + `{family}_apply_service.py` + `{family}_rci.py` (preview/build; `verification_status=offline_unverified`; **not** Gate B / WriteCertified; **HTTP preview routes delivered 2026-08-01** — `/vlan/preview`, `/dhcp/preview`, `/dns/preview`, `/firewall/preview`; **UI preview panels wired 2026-08-01**; **NOT device-verified**; no apply routes) | Yes — all four sealed offline executors + preview API tests | Gate B family certification + T4 per family; apply HTTP routes |
+| **LTE uplink** | `preset_planner.py` ~L67–69 `lte_apply_deferred`; `network_intents.py` ~L1071–1074 | Yes — planner/uplink modeling | **T4-gated** when live |
+| **Captive portal** | Domain field accepted; `captive_portal=Enabled` **rejected at compile** — HTTP **422** `wifi.captive_portal_unsupported` (default `Disabled` = noop); same rule for `guest_isolation=true` → `wifi.guest_isolation_unsupported` | Readiness/docs offline | Coova-Chilli install+reboot = **T4** (live) |
+| **KeenDNS / CrazeDNS** | No backend; UI unavailable | Discovery/docs only | External/cloud **T4** |
+| **TrafficDiscovery** | `composition.py` composes service; proposals-only; **HTTP routes delivered** — `POST /traffic/observations`, `POST /traffic/proposals`, `GET /traffic/proposals/{proposal_id}` (`traffic_discovery_routes.py`; registered in `app.py`); **UI panel on `#config` delivered 2026-08-01**; `auto_apply_blocked=true` | Yes — API routes + UI panel + SQLite persistence | Router auto-apply writes **T4** |
+| **Sealed apply reliability (wifi/station/wg)** | `sealed_apply_runs` mid-flight trail + sealed apply audit; state-aware compensating rollback; 503 `sealed_apply.trail_begin_failed`; **no** auto resume/rollback — **NOT device-verified** (2026-08-01) | Yes — persistence + apply services + tests | Live HTTP verification optional; Gates B/C/D unchanged |
+| **Preset AWG/routes fragments** | `preset_planner.py` `awg_not_implemented` / `*_apply_deferred` when Gate B blocks | Readiness offline | **Not** the same as sealed `/wifi/*` + `/wireguard/*` — see [`DOMAIN_MODEL.md`](../DOMAIN_MODEL.md) dual-path note |
+
+Bounded sealed Wi-Fi/AWG apply on test APs may be live under per-campaign T4 while rows above remain incomplete for preset/deployment apply.
+
+### 3.3 Full operator web UI — next major phase (2026-08-01)
+
+**Status:** **`operator-web-ui-full-coverage` substantially delivered** (2026-08-01); LOCAL HUB PWA is primary operator surface. **Current continuation:** [`STATUS.yaml`](../STATUS.yaml) `next_task` `local-hub-vpn-real-peer-autoconnect-continuation`. Prototype presentation UI (M1–M3 views, bounded `#config` apply panels, eight LOCAL HUB screens + main menu) is **complete** for current operator spec wave.
+
+| Principle | Requirement |
+|---|---|
+| **Simple by default** | Happy-path forms show only minimum inputs (example: create Wi-Fi → SSID + password + band; sealed planner/service derives ops, allowlists, confirm gates, live connection params) |
+| **Full on demand** | **Advanced settings** expander on every capability screen reveals **all** supported parameters (no hidden backend-only knobs) |
+| **Guidance** | Tooltips on **every** field: purpose, safe default, device-verified vs offline-only / pending verification |
+| **Coverage rule** | If planners/services/API expose a configurable parameter for a family, UI must surface it (default or advanced) |
+| **Verification** | Autonomous UI contract tests (`tests/test_config_ui.py` JS matrix; extend per family); optional browser-verify for layout — **NOT device-verified** until live campaigns |
+| **Gates** | Does **not** open Gates B/C/D; does **not** claim WriteCertified; broad catalog/preset Apply remains blocked until Gate B |
+
+**Parallel deferred (unchanged):** VPN routing live apply (preview offline; kill-switch unresolved); network-family apply HTTP routes; Gate B / `write_shapes_registered`.
+
+Operator runbook anchor: [`OPERATOR_UI.md`](../OPERATOR_UI.md). Router-config vertical: [`OPERATOR_ROUTER_CONFIG_UI.md`](../OPERATOR_ROUTER_CONFIG_UI.md).
+
+---
+
+## 4. Global prohibitions (all milestones)
 
 | Rule | Enforcement |
 |---|---|
 | Unknown identity, firmware, capability, or profile | **Fail closed** — no write dispatch ([`HARDWARE_GATES.md`](HARDWARE_GATES.md) §5) |
-| Closed applicable gate | Live observe → **403** `gate.a_closed`; write dispatch → **403** `gate.mutation_forbidden` |
-| Secrets in repo/docs/fixtures/logs | Forbidden — DPAPI opaque refs only ([`SECURITY_OPS.md`](SECURITY_OPS.md)) |
+| Closed applicable gate | Live observe without A → **403**; write dispatch → **403** `gate.mutation_forbidden` |
+| Secrets in repo/docs/fixtures/logs | Forbidden — DPAPI opaque refs only |
 | Invented RCI JSON bodies | Forbidden — recorded evidence binds sanitized manifests only |
 | Hub failure isolation | RC degraded/disabled must not block Hub core services |
-| Certification claims | No slice completion may claim AWG/route/firmware certification without gate evidence package |
-
-### 2.1 Hub isolation / strangler (per-slice applicability)
-
-| Slice range | Hub isolation / strangler |
-|---|---|
-| SLICE-1..9 | **N/A** until SLICE-10 (Hub embed) / SLICE-11 (cutover); global For-agents rows (Hub isolation, strangler) still bind for all work |
-| SLICE-10..11 | Hub failure isolation and strangler fallback are **owned deliverables** — see slice tables |
+| Certification claims | No milestone may claim WriteCertified without gate evidence package |
 
 ---
 
-## 3. Implementation slices (dependency order)
-
-**Eleven slices** in ADR-0004-aligned order. Portable core through routes (SLICE-1..7) precede TrafficDiscovery and NetworkPolicy; Hub integration and zone/cutover follow.
-
-### SLICE-1 — Portable core + FakeRouterAdapter
-
-| Field | Content |
-|---|---|
-| **Prerequisites** | Phase 0b closed; human approval to implementation; ADR-0001 accepted |
-| **Non-goals** | FastAPI host; SQLite; live network; Hub wiring; hardware gates |
-| **Owned deliverables** | Python package `router_control` (domain + application ports); vendor-neutral `RouterControlPort`; in-memory `FakeRouterAdapter` with step kinds per [`RCI_POLICY.md`](RCI_POLICY.md) §5 |
-| **Entry gate** | `implementation_transition_gate.human_approved=true` and `code_may_start=true` (human sets after Phase 0b close) |
-| **Exit gate** | Domain invariants pass fake-only tests; package importable without FastAPI/network |
-| **Verification / evidence** | TEST lane **2** (fake/domain); pyramid unit/domain layer ([`TEST_STRATEGY.md`](TEST_STRATEGY.md) §3) |
-| **Rollback / stop** | Stop on invariant violation or gate predicate bug; no partial "live" adapter |
-
-### SLICE-2 — Persistence / jobs (SQLite)
-
-| Field | Content |
-|---|---|
-| **Prerequisites** | SLICE-1 exit; ADR-0002 accepted |
-| **Non-goals** | HTTP surface; live router; Hub integration |
-| **Owned deliverables** | `data/router_control.sqlite3` schema v0; migrations; revisions/ETag; durable jobs, leases, idempotency, audit per [`PERSISTENCE_CONTRACT.md`](PERSISTENCE_CONTRACT.md) |
-| **Entry gate** | SLICE-1 complete **and** new human approval recorded in [`STATUS.yaml`](../STATUS.yaml) with `approved_scope: SLICE-2` **and** `code_may_start=true` (SLICE-1 approval alone does **not** authorize SLICE-2 code) |
-| **Exit gate** | Persistence fault matrix (§8.7) passes injected SQLite tests; two-worker claim + fencing demonstrated |
-| **Verification / evidence** | TEST lane **2** + fault injection; no secrets in DB dumps |
-| **Rollback / stop** | Stop on schema drift without migration; unknown migration → fail closed |
-
-### SLICE-3 — API / FastAPI dev host (prototype; not Hub)
-
-| Field | Content |
-|---|---|
-| **Prerequisites** | SLICE-2 exit; ADR-0001 accepted |
-| **Non-goals** | Hub `module_3.0` wiring; production zone policy enforcement; hardware I/O |
-| **Owned deliverables** | Separate FastAPI dev-host in canonical repo; routes under `/api/router-control/v1/*` per [`API_CONTRACT.md`](API_CONTRACT.md); auth order §2; mutation gates closed |
-| **Entry gate** | SLICE-2 complete |
-| **Exit gate** | Contract/static + fake integration tests for auth, idempotency, ETag, error codes; **no** live observe/write dispatch |
-| **Verification / evidence** | TEST lanes **1–2**; SCN-OPS/SCN-NEG trace via fake adapter |
-| **Rollback / stop** | Stop if OpenAPI diverges from contract without contract amendment; gates remain closed |
-
-### SLICE-4 — Gate A read-only adapter (NC-1812 observe)
-
-| Field | Content |
-|---|---|
-| **Prerequisites** | SLICE-3 exit; dedicated NC-1812 identity tuple; Gate **A** human open per [`HARDWARE_GATES.md`](HARDWARE_GATES.md) |
-| **Non-goals** | Write dispatch; Gate B/C/D; certification of mutation families |
-| **Owned deliverables** | Read-only `RouterAdapter` transport; enroll/preflight/observe legs; sanitized Gate A evidence package |
-| **Entry gate** | Gate **A** explicitly open for exact router identity/firmware tuple |
-| **Exit gate** | Recorded read-only evidence; `Enrolled` lifecycle path verified; identity mismatch fail-closed |
-| **Verification / evidence** | TEST lane **4**; SCN-OPS-002, SCN-NEG-003/005; **not** write certification |
-| **Rollback / stop** | Close Gate A on identity drift, tuple change, or failed read-back; revert to fake/recorded-only |
-
-### SLICE-5 — Vault / credentials (DPAPI CredentialRef)
-
-| Field | Content |
-|---|---|
-| **Prerequisites** | SLICE-3 exit (may parallel SLICE-4 after dev-host); ADR-0003 accepted |
-| **Non-goals** | Plaintext API read-back; fleet-wide operator key recovery |
-| **Owned deliverables** | Local vault: opaque `CredentialRef` + DPAPI `CurrentUser`; write/rotate/revoke without read-back ([`SECURITY_OPS.md`](SECURITY_OPS.md) §4) |
-| **Entry gate** | SLICE-3 complete; Windows Hub user context defined for prototype |
-| **Exit gate** | SCN-OPS-003 credentials path; redaction scans pass; no secrets in audit/plan/job payloads |
-| **Verification / evidence** | TEST lane **2** + security negatives; SCN-EVT-001/004 trace |
-| **Rollback / stop** | Stop on any plaintext leak surface; revoke refs on compromise |
-
-### SLICE-6 — AWG Gate B then Gate C (family writes + lab window)
-
-| Field | Content |
-|---|---|
-| **Prerequisites** | SLICE-4 + SLICE-5 exit; AWG family allowlist certified; Gates **B** then **C** opened separately |
-| **Non-goals** | Gate D production enablement; route benchmark; Hub integration |
-| **Owned deliverables** | AWG apply/verify sequence on lab router; Fail-safe Configuration narrative; per-family Gate B evidence; time-boxed Gate C lab window |
-| **Entry gate** | Gate **B** per AWG family; then Gate **C** lab window with operator approval |
-| **Exit gate** | Sanitized lab evidence package; SCN-LAB-001 spec satisfied; read-back verify before `applied_revision` |
-| **Verification / evidence** | TEST lanes **5–6**; [`COMPATIBILITY.md`](../COMPATIBILITY.md) AWG unknowns resolved for tuple |
-| **Rollback / stop** | Close Gates B/C on failed verify; compensation per RCI §5; **not** Gate D |
-
-### SLICE-7 — Routes benchmark
-
-| Field | Content |
-|---|---|
-| **Prerequisites** | SLICE-6 exit (AWG path stable); lab router available |
-| **Non-goals** | Production route ceiling claim without measured evidence; Gate D |
-| **Owned deliverables** | Benchmark protocol 100 → 1k → 5k routes; measured production ceiling; SCN-LAB-002 evidence |
-| **Entry gate** | Gate **C** lab window; route family Gate **B** evidence |
-| **Exit gate** | Recorded benchmark artifacts; ADR-004 ceiling documented from measurement |
-| **Verification / evidence** | TEST lanes **6–7** spec; no assumption of 5000 without benchmark pass |
-| **Rollback / stop** | Stop on timeout/degraded management; do not raise production limit without evidence |
-
-### SLICE-8 — TrafficDiscovery (bounded context; proposals only)
-
-| Field | Content |
-|---|---|
-| **Prerequisites** | SLICE-7 exit (routes path stable); ADR-0004 accepted |
-| **Non-goals** | Direct route mutation; auto-apply of untrusted proposals; Gate D; Hub `module_3.0` wiring |
-| **Owned deliverables** | Separate `TrafficDiscovery` bounded context; timestamped evidence; `RouteProposal` with TTL/confidence; operator review default; auto-apply only for explicitly marked trusted policy with plan/idempotency/ownership/verify gates |
-| **Entry gate** | SLICE-7 complete; persistence tables for `traffic_observations` / `route_proposals` per [`PERSISTENCE_CONTRACT.md`](PERSISTENCE_CONTRACT.md) |
-| **Exit gate** | Proposals emitted without direct router writes; untrusted auto-apply blocked; legacy strangler path documented until parity |
-| **Verification / evidence** | TEST lane **2** + domain; [`LEGACY_MAP.md`](../LEGACY_MAP.md) parity checklist; no hidden direct-push |
-| **Rollback / stop** | Stop on dual-writer with legacy monitor; disable auto-apply on policy ambiguity |
-
-### SLICE-9 — NetworkPolicy (four-zone policy)
-
-| Field | Content |
-|---|---|
-| **Prerequisites** | SLICE-8 exit; ADR-0004 accepted; zone scenarios in [`SCENARIOS.md`](SCENARIOS.md) |
-| **Non-goals** | Hub `module_3.0` embed; Gate D production enablement; zone substituting `hub_admin` |
-| **Owned deliverables** | Guest/Promo/Staff/Admin-Server firewall/VLAN intent; deny paths for Guest/Promo/Staff to RC prefix; Admin zone + auth complementarity; SCN-ZONE-* enforcement spec |
-| **Entry gate** | SLICE-8 complete; HTTPS order-page infrastructure prerequisites documented |
-| **Exit gate** | Zone matrix verified in lab/staging; **zone ≠ auth** enforced; RC API fail-closed on shared listener |
-| **Verification / evidence** | SCN-ZONE-001..005; [`SECURITY_OPS.md`](SECURITY_OPS.md) §8; [`ARCHITECTURE.md`](../ARCHITECTURE.md) §4 |
-| **Rollback / stop** | Revert to baseline firewall; do not open Gate D from zone work alone |
-
-### SLICE-10 — Hub integration phase 8 (`module_3.0`)
-
-| Field | Content |
-|---|---|
-| **Prerequisites** | SLICE-3..9 parity on prototype; ADR-0001 integration phase; Hub bootstrap/deps/lifespan patterns understood |
-| **Non-goals** | Production cutover; Gate D |
-| **Owned deliverables** | Mechanical embed of `router_control` into Hub; shared listener `/api/router-control/v1/*`; UI block in `/settings`; **failure isolation** verified |
-| **Entry gate** | Prototype slices 1–9 exit; Hub maintainer approval for integration branch |
-| **Exit gate** | Hub starts with RC disabled/degraded without blocking kiosk/board/printing; integration tests on fake adapter |
-| **Verification / evidence** | ARCHITECTURE §9 acceptance; SCN-JOB-009 isolation; TEST failure-isolation matrix |
-| **Rollback / stop** | Feature flag / RC `Disabled` path; Hub continues if RC DB worker fails |
-
-### SLICE-11 — Zone / cutover / rehearsal (strangler fallback; Gate D separate)
-
-| Field | Content |
-|---|---|
-| **Prerequisites** | SLICE-10 exit; four-zone network policy deployed (SLICE-9); strangler parity checklist |
-| **Non-goals** | Silent production cutover; conflating Gate D with lab Gates B/C |
-| **Owned deliverables** | Zone matrix enforcement (Guest/Promo/Staff/Admin); cutover rehearsal; rollback to legacy `ScanCursorIP`; Gate **D** production enablement evidence |
-| **Entry gate** | Gate **D** explicitly open for production tuple; operator acceptance of rehearsal |
-| **Exit gate** | SCN-CUT-001/002 satisfied; documented fallback; production writes only with Gate D + maintained B |
-| **Verification / evidence** | SCN-ZONE-* + SCN-CUT-*; field rehearsal log (no secrets) |
-| **Rollback / stop** | **Strangler fallback** to legacy on failed cutover; close Gate D; RC `Disabled` — Hub continues |
-
----
-
-## 4. Gate ladder reference (independent switches)
+## 5. Gate ladder reference (independent switches)
 
 | Gate | Opens | Does **not** imply |
 |---|---|---|
@@ -192,22 +253,34 @@ This document is the **normative implementation roadmap** between Phase 0b contr
 | **C** | Time-boxed lab mutations | Event production writes |
 | **D** | Production enablement on enrolled router | Retroactive certification of A/B/C evidence |
 
-See [`HARDWARE_GATES.md`](HARDWARE_GATES.md) for tuple binding and fail-closed table.
+Current posture: **A ReadOnlyCertified** (authorized rebind **2026-07-31** rebind #2 post-WG; evidence `data/artifacts/gate-a-probe-post-wireguard-install-192.168.2.1-20260731.json`; rebind #1 `gate-a-probe-newrouter-…` **SUPERSEDED**); **NOT** WriteCertified; **B** completed_failed / not WriteCertified; **C/D closed**; `write_shapes_registered` remains **false**. See [`HARDWARE_GATES.md`](HARDWARE_GATES.md) and [`DEDICATED_ROUTER_LAB_POLICY.md`](../DEDICATED_ROUTER_LAB_POLICY.md).
 
 ---
 
-## 5. Phase 0b Definition of Done (Wave 7 — Phase 0b closed)
+## 6. Historical SLICE completion (reference only)
 
-Wave 6 satisfied partial Phase 0b exit when roadmap and AI handoff were authored. **Phase 0b is now closed** (Wave 7 closeout). **Phase 1 / SLICE-1 complete** (2026-07-21). **Phase 1 / SLICE-2 pending** — requires separate human approval before persistence code.
+The following SLICE IDs are **completed evidence**, mapped into the foundation above. They are **not** the current execution order (see M0–M8).
+
+| SLICE | Status | Maps to |
+|---|---|---|
+| SLICE-1 | Complete | Foundation / M1 fake paths |
+| SLICE-2 | Complete | Persistence / M3 |
+| SLICE-3 | Complete | `router_control_host` / M1 API surface |
+| SLICE-4 | Complete | Gate A RO adapter / M1 live RO |
+| SLICE-5 | Complete | Vault / M1 credentials |
+| SLICE-6 | Closed failed | AWG deferred lane (not M1 blocker) |
+| SLICE-7 | Not started | Routes deferred lane |
+| SLICE-8 | Complete (proposals only) | TrafficDiscovery offline / M2 readiness input |
+| SLICE-9 | Not started | NetworkPolicy / M2–M6 |
+| SLICE-10 | Not started | Hub / **M7** |
+| SLICE-11 | Not started | Cutover / **M6** |
 
 ---
 
-## 6. Links
+## 7. Links
 
-- AI agent cold-start and task contracts: [`AI_HANDOFF.md`](AI_HANDOFF.md)
+- Milestone ordering ADR: [`adrs/0005-local-first-commissioning-roadmap.md`](../adrs/0005-local-first-commissioning-roadmap.md)
+- AI agent cold-start: [`AI_HANDOFF.md`](AI_HANDOFF.md)
 - Hardware gates: [`HARDWARE_GATES.md`](HARDWARE_GATES.md)
-- Test lanes and evidence: [`TEST_STRATEGY.md`](TEST_STRATEGY.md)
-- Operator scenarios: [`SCENARIOS.md`](SCENARIOS.md)
-- Architecture and Hub isolation: [`ARCHITECTURE.md`](../ARCHITECTURE.md)
-- Contracts index: [`README.md`](README.md)
 - Project status: [`STATUS.yaml`](../STATUS.yaml)
+- Architecture ownership: [`ARCHITECTURE.md`](../ARCHITECTURE.md)

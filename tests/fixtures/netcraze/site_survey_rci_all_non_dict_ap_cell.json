@@ -1,0 +1,8 @@
+[
+  {
+    "parse": {
+      "ap_cell": ["not-a-dict", 42, null],
+      "prompt": "SYNTH-PROMPT"
+    }
+  }
+]

@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "firmware_label": "stable",
+  "ndm_build": "20260723",
+  "observed_field_count_hint": 32,
+  "metadata-block": {
+    "type": "System",
+    "traits": ["Bridge"]
+  },
+  "noise-scalar": "lab-mixed-root",
+  "upstream-wan-001": {
+    "type": "ISP",
+    "role": "wan",
+    "link": "up",
+    "connected": true,
+    "address": ["8.8.8.8/24"],
+    "description": "SYNTH-DESCRIPTION-ORACLE",
+    "mac": "DE:AD:BE:EF:00:01",
+    "unknown_vendor_field": "ignored"
+  },
+  "home-bridge-002": {
+    "type": "Bridge",
+    "role": "lan",
+    "link": "up",
+    "connected": true,
+    "address": ["192.168.1.1/24"],
+    "bridge": "Bridge0",
+    "segment": "Home",
+    "ssid": "SENTINEL-SSID-ORACLE"
+  },
+  "nested-noise": {
+    "type": "Placeholder",
+    "traits": ["Home"]
+  }
+}

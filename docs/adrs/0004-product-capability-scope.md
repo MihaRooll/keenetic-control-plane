@@ -4,6 +4,8 @@
 - Date: 2026-07-19
 - Scope: first supported product, capability order and legacy cutover
 
+> **Supersession (2026-07-22):** **§Capability order** below is **superseded** for execution ordering by [ADR-0005](0005-local-first-commissioning-roadmap.md). Retained here as historical record. All other sections of this ADR remain authoritative (certified target, VPN scope, fail-closed, route scale, TrafficDiscovery, Hub non-blocking, cutover).
+
 ## Context
 
 Router Control должен расти до VPN, маршрутов, TrafficDiscovery, Wi-Fi/LAN
@@ -30,7 +32,9 @@ Legacy WPF/PowerShell уже умеет собирать IP, накаплива�
 собственной compatibility lane. Capability discovery и stable `RouterId`
 закладываются сразу, но multi-vendor writes не входят в v1.
 
-### Capability order
+### Capability order *(superseded for execution ordering — see ADR-0005)*
+
+Historical ADR-004 ordering (retained for audit; **not** current critical path):
 
 1. Offline Python core, fake adapter, persistence и jobs.
 2. Read-only identity/capability/health NC-1812.

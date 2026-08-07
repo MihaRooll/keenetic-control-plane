@@ -1,0 +1,16 @@
+{
+  "firmware": {
+    "version": "5.01.C.1.0-0",
+    "title": "5.1.1"
+  },
+  "component": {
+    "comp-alpha": {"installed": true, "version": "1.0.0"},
+    "comp-beta": {"installed": false},
+    "comp-gamma": {"installed": null},
+    "comp-delta": {"version": "2.0.0", "available": true},
+    "comp-epsilon": {"installed": true}
+  },
+  "local": {"hostname": "fake-local-host"},
+  "group": {},
+  "changelog": []
+}

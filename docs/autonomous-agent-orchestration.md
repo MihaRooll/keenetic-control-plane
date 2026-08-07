@@ -31,15 +31,20 @@ Main — единственный classifier и user-facing completion owner. L2
 
 ## Models
 
+Main и вложенный L1 **должны** задавать `model=` на каждом L2 Task для Grok/Composer ролей. L2 не делегирует.
+
 | Agent | Model | Permission |
 |-------|-------|------------|
-| operational-orchestrator | `cursor-grok-4.5-high-fast` | пишет только `.cursor/plans/**` |
-| implementer | `composer-2.5-fast` | единственный product writer |
-| adversarial-reviewer | `cursor-grok-4.5-high-fast` | readonly |
-| verifier | `cursor-grok-4.5-high-fast` | shell checks; product source readonly по prompt |
-| principal-arbiter | `gpt-5.6-sol-medium` | readonly, T3 only |
+| operational-orchestrator (Grok) | `cursor-grok-4.5-high-fast` | пишет только `.cursor/plans/**` |
+| explore (Grok) | `cursor-grok-4.5-high-fast` | readonly scouts |
+| implementer (Composer) | `composer-2.5-fast` | единственный product writer |
+| adversarial-reviewer (Grok) | `cursor-grok-4.5-high-fast` | readonly |
+| verifier (Composer) | `composer-2.5-fast` | shell checks; product source readonly по prompt |
+| principal-arbiter | *(omit — inherits Main Sol family)* | readonly, T3 only; если Sol family недоступна → stop + report |
 
-Cursor может заменить configured model из-за plan/admin/Max restrictions. Pin = intent, не абсолютная гарантия. Grok/Composer расходуют включённый Cursor pool; Sol подключается только для T3.
+**Exception:** `principal-arbiter` не получает явный L2 slug — наследует Sol family сессии Main. Недоступность Sol family → остановка и отчёт оператору; не подставлять другие premium slug.
+
+Cursor может заменить configured model из-за plan/admin/Max restrictions. Pin = intent, **не** абсолютная гарантия и **не** platform enforcement. Grok/Composer расходуют включённый Cursor pool; Sol подключается только для T3 principal gate.
 
 ## Plan Mode vs internal plan
 

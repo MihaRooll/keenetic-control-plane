@@ -1,0 +1,10 @@
+[
+  {
+    "destination": "0.0.0.0/0",
+    "gateway": "192.168.1.1",
+    "interface": "WifiMaster1/WifiStation0",
+    "metric": 1000,
+    "flags": "U",
+    "proto": "boot"
+  }
+]

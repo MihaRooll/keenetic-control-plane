@@ -49,6 +49,16 @@ T4: `CONTRACT → HUMAN → HUMAN_PENDING`; reject → BLOCKED. После appro
 - ожидаемый return schema из [contracts.md](contracts.md);
 - явный запрет расширять scope или делегировать дальше.
 
+**Model pins (best-effort — не платформенная гарантия):** Main и вложенный L1 **обязаны** задавать `model=` на **каждом** L2 Task для ролей ниже. L2 не делегирует.
+
+| L2 role | `model=` |
+|---------|----------|
+| `operational-orchestrator`, `explore`, `adversarial-reviewer` | `cursor-grok-4.5-high-fast` |
+| `implementer`, `verifier` | `composer-2.5-fast` |
+| `principal-arbiter` | **omit** — наследует Sol family Main; если недоступна → stop + report; **не** перечислять и **не** вызывать недоступные или запрещённые Sol slug |
+
+Cursor может заменить модель из‑за plan/admin/ограничений; pin = intent. Зафиксируй fallback/skip как limitation, не скрывай.
+
 Для `adversarial-reviewer` не передавай reasoning автора: Task Contract + plan + diff/evidence достаточно.
 
 ## Evidence and completion

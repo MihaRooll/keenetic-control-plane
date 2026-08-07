@@ -1,0 +1,3136 @@
+{
+  "families": {
+    "bootstrap_discovery": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "allow_insecure_http",
+          "required": true,
+          "tooltip": "Разрешить HTTP для bootstrap discovery.",
+          "type": "boolean",
+          "verification_note": "non-certifying read-only lab observe; certification_eligible=false."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "credential_ref_id",
+          "required": true,
+          "tooltip": "Sealed credential ref для management login.",
+          "type": "string",
+          "verification_note": "non-certifying read-only lab observe."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "host",
+          "required": true,
+          "tooltip": "IP или hostname роутера для discovery.",
+          "type": "string",
+          "verification_note": "non-certifying read-only lab observe."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "username",
+          "required": true,
+          "tooltip": "Management username для discovery session.",
+          "type": "string",
+          "verification_note": "non-certifying read-only lab observe."
+        }
+      ],
+      "routes": {
+        "discover": "/api/router-control/v1/lab/bootstrap-discovery"
+      },
+      "title": "Bootstrap discovery",
+      "verification_status": "non_certifying_readonly"
+    },
+    "change_plan": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "adopt_acknowledged",
+          "required": false,
+          "tooltip": "Подтверждение adopt risk при create/confirm plan.",
+          "type": "boolean",
+          "verification_note": "SQLite plan queue only; apply_plan fail-closed without fake gate (routes.py apply_plan ~2358–2451)."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "deployment_revision_id",
+          "required": false,
+          "tooltip": "Опциональная deployment revision для plan.",
+          "type": "string",
+          "verification_note": "create plan only; SQLite queue, no live router."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "observation_id",
+          "required": true,
+          "tooltip": "Observation ID для plan baseline.",
+          "type": "string",
+          "verification_note": "create plan; SQLite queue, no live router."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "plan_digest",
+          "required": true,
+          "tooltip": "Digest plan для confirm step.",
+          "type": "string",
+          "verification_note": "confirm plan; SQLite queue, no live router."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "revision_id",
+          "required": true,
+          "tooltip": "Desired revision ID для plan.",
+          "type": "string",
+          "verification_note": "create plan; SQLite queue, no live router."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "risk_acknowledged",
+          "required": false,
+          "tooltip": "Опциональное подтверждение risk при confirm.",
+          "type": "boolean",
+          "verification_note": "confirm plan; SQLite queue, no live router."
+        }
+      ],
+      "routes": {
+        "confirm": "/api/router-control/v1/routers/{router_id}/plans/{plan_id}/confirm",
+        "create": "/api/router-control/v1/routers/{router_id}/plans"
+      },
+      "title": "Change plan",
+      "verification_status": "sqlite_queue_no_live_router"
+    },
+    "commissioning": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "mode",
+          "required": false,
+          "tooltip": "Adapter mode override (default host.adapter_mode).",
+          "type": "string",
+          "verification_note": "read-only MVP commissioning; zero router writes."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "router_id",
+          "required": true,
+          "tooltip": "Router ID для commissioning run.",
+          "type": "string",
+          "verification_note": "read-only MVP commissioning; zero router writes."
+        }
+      ],
+      "routes": {
+        "create": "/api/router-control/v1/sites/{site_id}/commissioning-runs"
+      },
+      "title": "Commissioning",
+      "verification_status": "readonly_mvp"
+    },
+    "connection_context": {
+      "fields": [
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "username",
+          "required": true,
+          "tooltip": "SSH/management username для live-сессии; хранится на сервере, клиенту не возвращается.",
+          "type": "string",
+          "verification_note": "POST management-username; value never echoed; required together with pin and credential for live_ready."
+        }
+      ],
+      "routes": {
+        "management_username": "/api/router-control/v1/routers/{router_id}/management-username"
+      },
+      "title": "Connection context",
+      "verification_status": "server_side_username_store"
+    },
+    "connection_health": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "credential_ref_id",
+          "required": false,
+          "tooltip": "Sealed credential ref для management/SSH login.",
+          "type": "string",
+          "verification_note": "read-only non-certifying: connection_health.py docstring; writes_allowed=False; certification_eligible=False; connection_health_routes.py L65–71 fail-closed if certifying."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "host",
+          "required": false,
+          "tooltip": "IP или hostname роутера для health assess.",
+          "type": "string",
+          "verification_note": "read-only non-certifying: connection_health.py docstring; writes_allowed=False; certification_eligible=False; connection_health_routes.py L65–71 fail-closed if certifying."
+        },
+        {
+          "constraints": {},
+          "default": true,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "probe",
+          "required": false,
+          "tooltip": "Выполнить live reachability probe (default true).",
+          "type": "boolean",
+          "verification_note": "read-only non-certifying: connection_health.py docstring; writes_allowed=False; certification_eligible=False; connection_health_routes.py L65–71 fail-closed if certifying."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "router_id",
+          "required": false,
+          "tooltip": "Зарегистрированный router_id для tuple indirection.",
+          "type": "string",
+          "verification_note": "read-only non-certifying: connection_health.py docstring; writes_allowed=False; certification_eligible=False; connection_health_routes.py L65–71 fail-closed if certifying."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "source_address",
+          "required": false,
+          "tooltip": "Локальный bind address для SSH/management probe.",
+          "type": "string",
+          "verification_note": "read-only non-certifying: connection_health.py docstring; writes_allowed=False; certification_eligible=False; connection_health_routes.py L65–71 fail-closed if certifying."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "ssh_host_key_sha256",
+          "required": false,
+          "tooltip": "SHA256 pin SSH host key для fail-closed probe.",
+          "type": "string",
+          "verification_note": "read-only non-certifying: connection_health.py docstring; writes_allowed=False; certification_eligible=False; connection_health_routes.py L65–71 fail-closed if certifying."
+        }
+      ],
+      "routes": {
+        "assess": "/api/router-control/v1/lab/connection-health"
+      },
+      "title": "Connection health",
+      "verification_status": "non_certifying_readonly"
+    },
+    "credentials": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": "RouterManagementPassword",
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "kind",
+          "required": false,
+          "tooltip": "Credential kind (default RouterManagementPassword).",
+          "type": "string",
+          "verification_note": "PutCredentialBody; vault sealed, metadata only in list."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "secret",
+          "required": true,
+          "tooltip": "Secret value intake for put/rotate (write-only).",
+          "type": "string",
+          "verification_note": "Значение не сохраняется в manifest и не отображается; sealed в vault (PutCredentialBody / RotateCredentialBody)."
+        }
+      ],
+      "routes": {
+        "put": "/api/router-control/v1/routers/{router_id}/credentials",
+        "rotate": "/api/router-control/v1/routers/{router_id}/credentials/{credential_ref_id}/rotate"
+      },
+      "title": "Router credentials",
+      "verification_status": "vault_sealed"
+    },
+    "deployment": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": "Lab",
+          "disclosure": "simple",
+          "enum": null,
+          "name": "execution_target",
+          "required": false,
+          "tooltip": "Execution target label (default Lab).",
+          "type": "string",
+          "verification_note": "SQLite deployment revision; no live router dispatch."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "published_preset_id",
+          "required": true,
+          "tooltip": "Published preset ID для deployment revision.",
+          "type": "string",
+          "verification_note": "SQLite deployment revision; no live router dispatch."
+        }
+      ],
+      "routes": {
+        "create": "/api/router-control/v1/routers/{router_id}/deployment-revisions"
+      },
+      "title": "Deployment revision",
+      "verification_status": "sqlite_only"
+    },
+    "desired_revision": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "assignments",
+          "required": false,
+          "tooltip": "Assignment list для desired document (PUT overlay).",
+          "type": "array",
+          "verification_note": "put_desired manual body; SQLite revision store."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "based_on_observation_id",
+          "required": true,
+          "tooltip": "Observation ID baseline (PUT overlay).",
+          "type": "string",
+          "verification_note": "put_desired manual body; SQLite revision store."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "deployment_revision_id",
+          "required": true,
+          "tooltip": "Deployment revision ID для create desired.",
+          "type": "string",
+          "verification_note": "create desired from deployment; SQLite only."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "observation_id",
+          "required": true,
+          "tooltip": "Observation ID для create desired.",
+          "type": "string",
+          "verification_note": "create desired from deployment; SQLite only."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "reason",
+          "required": false,
+          "tooltip": "Опциональная причина revision (PUT overlay).",
+          "type": "string",
+          "verification_note": "put_desired manual body; SQLite revision store."
+        }
+      ],
+      "routes": {
+        "create": "/api/router-control/v1/routers/{router_id}/desired-revisions",
+        "put": "/api/router-control/v1/routers/{router_id}/desired-revision"
+      },
+      "title": "Desired revision",
+      "verification_status": "sqlite_only"
+    },
+    "dhcp": {
+      "fields": [
+        {
+          "constraints": {
+            "ge": 60,
+            "le": 604800
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "lease_seconds",
+          "required": true,
+          "tooltip": "Время аренды DHCP в секундах (60–604800).",
+          "type": "integer",
+          "verification_note": "offline_unverified: bounds enforced, no device apply."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "pool_end",
+          "required": true,
+          "tooltip": "Конец пула DHCP адресов.",
+          "type": "string",
+          "verification_note": "offline_unverified: preview compile only."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "pool_start",
+          "required": true,
+          "tooltip": "Начало пула DHCP адресов.",
+          "type": "string",
+          "verification_note": "offline_unverified: preview compile only."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "reservations",
+          "required": true,
+          "tooltip": "Статические резервации MAC→IPv4 (массив объектов).",
+          "type": "array",
+          "verification_note": "offline_unverified: nested item fields exported as reservations.*."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "reservations.ipv4_address",
+          "required": true,
+          "tooltip": "Зарезервированный IPv4 адрес для MAC в reservations[].",
+          "type": "string",
+          "verification_note": "offline_unverified: nested reservation item field."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "reservations.mac_address",
+          "required": true,
+          "tooltip": "MAC адрес клиента для статической DHCP резервации.",
+          "type": "string",
+          "verification_note": "offline_unverified: nested reservation item field."
+        },
+        {
+          "constraints": {
+            "max_length": 64,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "zone_id",
+          "required": true,
+          "tooltip": "Зона DHCP сервера из allowlist.",
+          "type": "string",
+          "verification_note": "offline_unverified: allowlist validation only."
+        }
+      ],
+      "routes": {
+        "preview": "/api/router-control/v1/dhcp/preview"
+      },
+      "title": "DHCP",
+      "verification_status": "offline_unverified"
+    },
+    "dns": {
+      "fields": [
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "local_fqdn",
+          "required": true,
+          "tooltip": "Локальное FQDN имя для DNS зоны.",
+          "type": "string",
+          "verification_note": "offline_unverified: preview-only compile."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "upstream_resolvers",
+          "required": true,
+          "tooltip": "Список upstream DNS резолверов (минимум один).",
+          "type": "array",
+          "verification_note": "offline_unverified: min_length=1 on array."
+        },
+        {
+          "constraints": {
+            "max_length": 64,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "zone_id",
+          "required": true,
+          "tooltip": "ID DNS зоны из allowlist.",
+          "type": "string",
+          "verification_note": "offline_unverified: allowlist check in route."
+        }
+      ],
+      "routes": {
+        "preview": "/api/router-control/v1/dns/preview"
+      },
+      "title": "DNS",
+      "verification_status": "offline_unverified"
+    },
+    "enroll": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "credential_ref_id",
+          "required": false,
+          "tooltip": "Sealed credential ref вместо plaintext password.",
+          "type": "string",
+          "verification_note": "enroll path; vault ref, not plaintext in store echo."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "display_name",
+          "required": true,
+          "tooltip": "Отображаемое имя роутера.",
+          "type": "string",
+          "verification_note": "enroll path; Gate A gated in live mode."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "endpoint",
+          "required": false,
+          "tooltip": "Nested endpoint tuple (host/port/kind/username).",
+          "type": "object",
+          "verification_note": "enroll path; optional nested object."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "endpoint.host",
+          "required": false,
+          "tooltip": "Management host/IP endpoint.",
+          "type": "string",
+          "verification_note": "enroll nested endpoint field."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "endpoint.kind",
+          "required": false,
+          "tooltip": "Endpoint kind (management_http/https).",
+          "type": "string",
+          "verification_note": "enroll nested endpoint field."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "endpoint.port",
+          "required": false,
+          "tooltip": "Management port.",
+          "type": "integer",
+          "verification_note": "enroll nested endpoint field."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "endpoint.source_address",
+          "required": false,
+          "tooltip": "Source bind address для management session.",
+          "type": "string",
+          "verification_note": "enroll nested endpoint field."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "endpoint.username",
+          "required": false,
+          "tooltip": "Management username.",
+          "type": "string",
+          "verification_note": "enroll nested endpoint field."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "hardware_revision",
+          "required": false,
+          "tooltip": "Hardware revision string.",
+          "type": "string",
+          "verification_note": "enroll path; optional metadata."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "management_password",
+          "required": false,
+          "tooltip": "Management password intake (write-only).",
+          "type": "string",
+          "verification_note": "Значение не сохраняется в manifest и не отображается; sealed в vault при enroll."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "model",
+          "required": true,
+          "tooltip": "Модель роутера (vendor-specific).",
+          "type": "string",
+          "verification_note": "enroll path; Gate A identity match in live mode."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "site_id",
+          "required": false,
+          "tooltip": "Site ID; default site если omitted.",
+          "type": "string",
+          "verification_note": "enroll path; optional."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "vendor",
+          "required": true,
+          "tooltip": "Vendor роутера.",
+          "type": "string",
+          "verification_note": "enroll path; Gate A identity match in live mode."
+        }
+      ],
+      "routes": {
+        "enroll": "/api/router-control/v1/routers"
+      },
+      "title": "Router enroll",
+      "verification_status": "gate_a_gated_live"
+    },
+    "firewall": {
+      "fields": [
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "rules",
+          "required": true,
+          "tooltip": "Правила firewall (массив объектов action/destination/ordinal).",
+          "type": "array",
+          "verification_note": "offline_unverified: nested item fields exported as rules.*."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": [
+            "Allow",
+            "Deny"
+          ],
+          "name": "rules.action",
+          "required": true,
+          "tooltip": "Действие правила: Allow или Deny.",
+          "type": "enum",
+          "verification_note": "offline_unverified: nested firewall rule item field."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": [
+            "OrderPage",
+            "Dns",
+            "Dhcp",
+            "Management",
+            "Internet",
+            "LocalZone"
+          ],
+          "name": "rules.destination_family",
+          "required": true,
+          "tooltip": "Семейство назначения правила (Internet, Dns, LocalZone и т.п.).",
+          "type": "enum",
+          "verification_note": "offline_unverified: nested firewall rule item field."
+        },
+        {
+          "constraints": {
+            "ge": 0
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "rules.ordinal",
+          "required": true,
+          "tooltip": "Порядковый номер правила в списке (≥0).",
+          "type": "integer",
+          "verification_note": "offline_unverified: nested firewall rule item field."
+        },
+        {
+          "constraints": {
+            "max_length": 64,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "zone_id",
+          "required": true,
+          "tooltip": "Зона firewall политики из allowlist.",
+          "type": "string",
+          "verification_note": "offline_unverified: preview-only family."
+        }
+      ],
+      "routes": {
+        "preview": "/api/router-control/v1/firewall/preview"
+      },
+      "title": "Firewall",
+      "verification_status": "offline_unverified"
+    },
+    "internet_status": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "allow_insecure_http",
+          "required": false,
+          "tooltip": "Зарезервировано в схеме observe; handler пока не читает — noop.",
+          "type": "boolean",
+          "verification_note": "declared on InternetStatusObserveBody; observe path never reads it — accepted for forward-compat only; no HTTP probe behavior."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "credential_ref_id",
+          "required": false,
+          "tooltip": "Legacy alias credential ref (prefer router_credential_ref_id).",
+          "type": "string",
+          "verification_note": "observe body alias; sealed ref only."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "host",
+          "required": false,
+          "tooltip": "Адрес роутера для read-only show internet status.",
+          "type": "string",
+          "verification_note": "observe route live tuple field."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "router_credential_ref_id",
+          "required": false,
+          "tooltip": "Sealed SSH credential для internet status observe.",
+          "type": "string",
+          "verification_note": "credential ref only."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "router_id",
+          "required": false,
+          "tooltip": "router_id для live tuple из store.",
+          "type": "string",
+          "verification_note": "optional store indirection."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "source_address",
+          "required": false,
+          "tooltip": "Локальный bind для SSH live session.",
+          "type": "string",
+          "verification_note": "optional live param."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "ssh_host_key_sha256",
+          "required": false,
+          "tooltip": "SHA256 SSH host key pin для observe.",
+          "type": "string",
+          "verification_note": "Gate A preflight on live path."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "username",
+          "required": false,
+          "tooltip": "SSH username для internet status observe.",
+          "type": "string",
+          "verification_note": "observe route live tuple field."
+        }
+      ],
+      "routes": {
+        "observe": "/api/router-control/v1/internet-status/observe"
+      },
+      "title": "Internet status",
+      "verification_status": "read_only_observe"
+    },
+    "keendns": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "components_raw",
+          "required": false,
+          "tooltip": "Опциональный сырой вывод components для offline-classify статуса KeenDNS. Не для обычного заполнения оператором; simple mode скрывает.",
+          "type": "string",
+          "verification_note": "documentation_sourced_unconfirmed: только status/preview, маршрута apply нет; грамматика не device-certified; внешняя cloud-запись требует T4 Human Gate."
+        },
+        {
+          "constraints": {
+            "max_length": 64,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "domain",
+          "required": true,
+          "tooltip": "Домен KeenDNS/CrazeDNS (1–64 символа).",
+          "type": "string",
+          "verification_note": "documentation_sourced_unconfirmed: preview-only; грамматика из документации, не device-verified."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "get_booked_raw",
+          "required": false,
+          "tooltip": "Опциональный сырой вывод get booked для offline-classify статуса. Не для обычного заполнения оператором; simple mode скрывает.",
+          "type": "string",
+          "verification_note": "documentation_sourced_unconfirmed: только status/preview, маршрута apply нет; грамматика не device-certified; внешняя cloud-запись требует T4 Human Gate."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": [
+            "book",
+            "drop"
+          ],
+          "name": "intent_kind",
+          "required": true,
+          "tooltip": "Намерение preview: book (зарегистрировать имя) или drop (освободить).",
+          "type": "enum",
+          "verification_note": "documentation_sourced_unconfirmed: sealed preview compile only; маршрута apply нет по построению; dispatch в облако недоступен без Human Gate; грамматика не device-certified."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": [
+            "auto",
+            "cloud",
+            "direct"
+          ],
+          "name": "mode",
+          "required": false,
+          "required_when": {
+            "intent_kind": [
+              "book"
+            ]
+          },
+          "tooltip": "Режим регистрации: auto, cloud или direct. Обязателен при intent_kind=book; при drop должен быть опущен (422 иначе).",
+          "type": "enum",
+          "verification_note": "documentation_sourced_unconfirmed: preview-only; cloud/direct подразумевают внешнюю запись — apply route отсутствует, Human Gate; грамматика из документации, не device-verified."
+        },
+        {
+          "constraints": {
+            "max_length": 64,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "name",
+          "required": true,
+          "tooltip": "Имя KeenDNS/CrazeDNS записи (1–64 символа).",
+          "type": "string",
+          "verification_note": "documentation_sourced_unconfirmed: preview-only; грамматика из документации, не device-verified."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "ndns_show_raw",
+          "required": false,
+          "tooltip": "Опциональный сырой вывод ndns show для offline-classify статуса. Не для обычного заполнения оператором; simple mode скрывает.",
+          "type": "string",
+          "verification_note": "documentation_sourced_unconfirmed: только status/preview, маршрута apply нет; грамматика не device-certified; внешняя cloud-запись требует T4 Human Gate."
+        }
+      ],
+      "routes": {
+        "preview": "/api/router-control/v1/keendns/preview",
+        "status": "/api/router-control/v1/keendns/status"
+      },
+      "title": "KeenDNS / CrazeDNS (preview)",
+      "verification_status": "documentation_sourced_unconfirmed"
+    },
+    "rci_sealed": {
+      "fields": [
+        {
+          "constraints": {
+            "max_length": 64,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "interface_id",
+          "required": false,
+          "required_when": {
+            "operation": [
+              "interface_up",
+              "interface_down"
+            ]
+          },
+          "tooltip": "Interface ID для interface up/down; обязателен только при operation interface_up или interface_down.",
+          "type": "string",
+          "verification_note": "_FakeRciTransport synthetic ack only (rci_mutation_routes.py ~76–110, ~222); no live network I/O."
+        },
+        {
+          "body_operation_by_value": {
+            "configuration_save": "configuration_save",
+            "fail_safe_arm": "arm_timer_reboot_60",
+            "fail_safe_disarm": "disarm_timer",
+            "interface_down": "interface_down",
+            "interface_up": "interface_up",
+            "reboot": "reboot"
+          },
+          "constraints": {},
+          "default": "fail_safe_arm",
+          "disclosure": "simple",
+          "enum": [
+            "fail_safe_arm",
+            "fail_safe_disarm",
+            "interface_up",
+            "interface_down",
+            "configuration_save",
+            "reboot"
+          ],
+          "name": "operation",
+          "required": false,
+          "route_key_by_value": {
+            "configuration_save": "system_save",
+            "fail_safe_arm": "fail_safe_arm",
+            "fail_safe_disarm": "fail_safe_disarm",
+            "interface_down": "interface",
+            "interface_up": "interface",
+            "reboot": "system_reboot"
+          },
+          "tooltip": "UI route selector (не body FailSafe enum): fail_safe_arm, fail_safe_disarm, interface_up, interface_down, configuration_save, reboot. Тело запроса — body_operation_by_value; маршрут — route_key_by_value.",
+          "type": "enum",
+          "verification_note": "_FakeRciTransport synthetic ack only (rci_mutation_routes.py ~76–110, ~222); no live network I/O."
+        }
+      ],
+      "routes": {
+        "fail_safe_arm": "/api/router-control/v1/routers/{router_id}/rci/fail-safe/arm",
+        "fail_safe_disarm": "/api/router-control/v1/routers/{router_id}/rci/fail-safe/disarm",
+        "interface": "/api/router-control/v1/routers/{router_id}/rci/interface",
+        "system_reboot": "/api/router-control/v1/routers/{router_id}/rci/system/reboot",
+        "system_save": "/api/router-control/v1/routers/{router_id}/rci/system/configuration-save"
+      },
+      "title": "Sealed RCI mutations",
+      "verification_status": "fake_rci_transport"
+    },
+    "remembered_uplink": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "band",
+          "required": false,
+          "tooltip": "Диапазон Wi‑Fi (BAND_2_4GHZ / BAND_5GHZ).",
+          "type": "string",
+          "verification_note": "mapped to WifiMaster station on apply."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "credential_ref_id",
+          "required": false,
+          "tooltip": "Sealed credential ref для upstream PSK.",
+          "type": "string",
+          "verification_note": "no plaintext password column in remembered_uplink table."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "desired_active",
+          "required": false,
+          "tooltip": "Включить uplink watchdog reapply для этой записи.",
+          "type": "boolean",
+          "verification_note": "false → poll_once skips observe/apply."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "router_id",
+          "required": false,
+          "tooltip": "Router ID для remembered uplink row (optional).",
+          "type": "string",
+          "verification_note": "PUT remembered uplink; host SQLite persistence."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "ssid",
+          "required": false,
+          "tooltip": "SSID upstream Wi‑Fi для auto-reapply watchdog.",
+          "type": "string",
+          "verification_note": "credential_ref only; password keys forbidden."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "station_id",
+          "required": false,
+          "tooltip": "WifiMasterN/WifiStation0 override (optional).",
+          "type": "string",
+          "verification_note": "defaults from band when unset."
+        }
+      ],
+      "routes": {
+        "put": "/api/router-control/v1/remembered-uplink"
+      },
+      "title": "Remembered uplink",
+      "verification_status": "host_persisted_uplink_watchdog"
+    },
+    "router_discovery": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": true,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "include_default_gateway",
+          "required": false,
+          "tooltip": "Включить default-gateway кандидата из host route table.",
+          "type": "boolean",
+          "verification_note": "read-only non-certifying: router_discovery.py docstring; certification_eligible=False; writes_allowed=False; router_discovery_routes.py L60–66 fail-closed if certifying."
+        },
+        {
+          "constraints": {},
+          "default": true,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "include_known_endpoints",
+          "required": false,
+          "tooltip": "Включить known-endpoint кандидатов из store.",
+          "type": "boolean",
+          "verification_note": "read-only non-certifying: router_discovery.py docstring; certification_eligible=False; writes_allowed=False; router_discovery_routes.py L60–66 fail-closed if certifying."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "preferred_source_address",
+          "required": false,
+          "tooltip": "Предпочитаемый source bind address для probe кандидатов.",
+          "type": "string",
+          "verification_note": "read-only non-certifying: router_discovery.py docstring; certification_eligible=False; writes_allowed=False; router_discovery_routes.py L60–66 fail-closed if certifying."
+        },
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "probe",
+          "required": false,
+          "tooltip": "Опциональный identity probe кандидатов (default false).",
+          "type": "boolean",
+          "verification_note": "read-only non-certifying: router_discovery.py docstring; certification_eligible=False; writes_allowed=False; router_discovery_routes.py L60–66 fail-closed if certifying."
+        }
+      ],
+      "routes": {
+        "discover": "/api/router-control/v1/lab/router-discovery"
+      },
+      "title": "Router discovery",
+      "verification_status": "non_certifying_readonly"
+    },
+    "ssh_host_key": {
+      "fields": [
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "algorithm",
+          "required": true,
+          "tooltip": "Алгоритм SSH host key (из learn candidate).",
+          "type": "string",
+          "verification_note": "confirm path; must match pending learn."
+        },
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "allow_overwrite",
+          "required": false,
+          "tooltip": "Разрешить перезапись существующего pin при confirm.",
+          "type": "boolean",
+          "verification_note": "explicit TOFU confirm; pin stored in SQLite."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "fingerprint_sha256",
+          "required": true,
+          "tooltip": "SHA256 fingerprint host key для pin.",
+          "type": "string",
+          "verification_note": "confirm path; TOFU pin to router row."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "host",
+          "required": true,
+          "tooltip": "SSH host для learn candidate.",
+          "type": "string",
+          "verification_note": "learn path; live SSH handshake, no RCI writes."
+        },
+        {
+          "constraints": {
+            "ge": 1,
+            "le": 65535
+          },
+          "default": 22,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "port",
+          "required": false,
+          "tooltip": "SSH port (default 22).",
+          "type": "integer",
+          "verification_note": "learn path."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "source_address",
+          "required": false,
+          "tooltip": "Локальный bind address для SSH learn.",
+          "type": "string",
+          "verification_note": "learn path; optional."
+        }
+      ],
+      "routes": {
+        "confirm": "/api/router-control/v1/routers/{router_id}/ssh-host-key/confirm",
+        "learn": "/api/router-control/v1/routers/{router_id}/ssh-host-key/learn"
+      },
+      "title": "SSH host key pin",
+      "verification_status": "tofu_pin"
+    },
+    "standing_network_preferences": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "guest_ap_id",
+          "required": false,
+          "tooltip": "Точка доступа, назначенная гостевой сетью (host-persisted; NULL — не назначено).",
+          "type": "string",
+          "verification_note": "PUT standing prefs; canonical shape WifiMaster[0|1]/AccessPoint[0-6] validated, no device-eligibility narrowing."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "guest_default_enabled",
+          "required": false,
+          "tooltip": "Guest AP enabled default (read-only in API; true → 422).",
+          "type": "boolean",
+          "verification_note": "guest_default_enabled true rejected; hardware apply separate."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "guest_default_ssid",
+          "required": false,
+          "tooltip": "SSID guest AP по умолчанию (host-persisted).",
+          "type": "string",
+          "verification_note": "PUT standing prefs; guest_default_enabled true rejected."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "staff_ap_id",
+          "required": false,
+          "tooltip": "Точка доступа, назначенная рабочей сетью (host-persisted; NULL — не назначено).",
+          "type": "string",
+          "verification_note": "PUT standing prefs; canonical shape WifiMaster[0|1]/AccessPoint[0-6] validated, no device-eligibility narrowing."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "staff_password_credential_ref_id",
+          "required": false,
+          "tooltip": "Sealed credential ref для staff Wi‑Fi PSK.",
+          "type": "string",
+          "verification_note": "credential ref only; secret-shaped keys rejected 422."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "staff_ssid",
+          "required": false,
+          "tooltip": "SSID staff Wi‑Fi по умолчанию (host-persisted, без plaintext PSK).",
+          "type": "string",
+          "verification_note": "PUT standing prefs; no password field accepted."
+        }
+      ],
+      "routes": {
+        "put": "/api/router-control/v1/standing-network-preferences"
+      },
+      "title": "Standing network preferences",
+      "verification_status": "host_persisted_defaults"
+    },
+    "traffic_discovery": {
+      "fields": [
+        {
+          "constraints": {
+            "ge": 0,
+            "le": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "confidence",
+          "required": true,
+          "tooltip": "Proposal confidence 0.0–1.0.",
+          "type": "number",
+          "verification_note": "proposals-only; auto_apply_blocked always true."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "evidence",
+          "required": true,
+          "tooltip": "Opaque evidence dict (dynamic keys).",
+          "type": "object",
+          "value_schema": "opaque_object",
+          "verification_note": "dict[str,Any] opaque; nested keys not enumerated; digest stored only."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "route_intent",
+          "required": true,
+          "tooltip": "Opaque route intent dict (dynamic keys).",
+          "type": "object",
+          "value_schema": "opaque_object",
+          "verification_note": "dict[str,Any] opaque; nested keys not enumerated; proposal_json unset."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "router_id",
+          "required": true,
+          "tooltip": "Router ID для traffic observation.",
+          "type": "string",
+          "verification_note": "observation record; evidence not echoed in response."
+        },
+        {
+          "constraints": {},
+          "default": "offline",
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "source",
+          "required": false,
+          "tooltip": "Evidence source label (default offline).",
+          "type": "string",
+          "verification_note": "observation record."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "traffic_observation_id",
+          "required": true,
+          "tooltip": "Existing observation ID для proposal.",
+          "type": "string",
+          "verification_note": "create proposal; auto_apply_blocked."
+        },
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "trusted_policy",
+          "required": false,
+          "tooltip": "Trusted policy flag (default false).",
+          "type": "boolean",
+          "verification_note": "create proposal; does not enable auto-apply."
+        },
+        {
+          "constraints": {
+            "ge": 1,
+            "le": 86400
+          },
+          "default": 3600,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "ttl_seconds",
+          "required": false,
+          "tooltip": "Proposal TTL seconds (1–86400).",
+          "type": "integer",
+          "verification_note": "create proposal."
+        }
+      ],
+      "routes": {
+        "observation": "/api/router-control/v1/traffic/observations",
+        "proposal": "/api/router-control/v1/traffic/proposals"
+      },
+      "title": "Traffic discovery",
+      "verification_status": "proposals_only"
+    },
+    "vlan": {
+      "fields": [
+        {
+          "constraints": {
+            "max_length": 64,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "bridge_id",
+          "required": true,
+          "tooltip": "Bridge интерфейс для VLAN subinterface.",
+          "type": "string",
+          "verification_note": "offline_unverified: preview compile only, no live apply route."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "ipv4_cidr",
+          "required": true,
+          "tooltip": "IPv4 CIDR VLAN интерфейса.",
+          "type": "string",
+          "verification_note": "offline_unverified: planner grammar not device-applied here."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "ipv4_gateway",
+          "required": true,
+          "tooltip": "IPv4 gateway VLAN зоны.",
+          "type": "string",
+          "verification_note": "offline_unverified: preview-only family."
+        },
+        {
+          "constraints": {
+            "ge": 1,
+            "le": 4094
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "vlan_id",
+          "required": true,
+          "tooltip": "802.1Q VLAN ID (1–4094).",
+          "type": "integer",
+          "verification_note": "offline_unverified: bounds from model, not live-tested."
+        },
+        {
+          "constraints": {
+            "max_length": 64,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "zone_id",
+          "required": true,
+          "tooltip": "ID зоны/интерфейса из allowlist.",
+          "type": "string",
+          "verification_note": "offline_unverified: zone_id allowlist check in route."
+        }
+      ],
+      "routes": {
+        "preview": "/api/router-control/v1/vlan/preview"
+      },
+      "title": "VLAN",
+      "verification_status": "offline_unverified"
+    },
+    "vpn_catalog": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "confirm_catalog_remove",
+          "required": true,
+          "tooltip": "Подтверждение удаления профиля из каталога (must be true).",
+          "type": "boolean",
+          "verification_note": "remove route: 400 если false; retires catalog entry."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "host",
+          "required": false,
+          "tooltip": "Адрес роутера для live catalog-status probe.",
+          "type": "string",
+          "verification_note": "catalog-status live tuple field."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "router_credential_ref_id",
+          "required": false,
+          "tooltip": "Sealed SSH credential для catalog-status probe.",
+          "type": "string",
+          "verification_note": "credential ref only."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "router_id",
+          "required": false,
+          "tooltip": "router_id для live tuple из store.",
+          "type": "string",
+          "verification_note": "optional store indirection."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "source_address",
+          "required": false,
+          "tooltip": "Локальный bind для SSH live session.",
+          "type": "string",
+          "verification_note": "optional live param."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "ssh_host_key_sha256",
+          "required": false,
+          "tooltip": "SHA256 SSH host key pin для catalog-status.",
+          "type": "string",
+          "verification_note": "Gate A preflight on live path."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "username",
+          "required": false,
+          "tooltip": "SSH username для live catalog-status probe.",
+          "type": "string",
+          "verification_note": "catalog-status live tuple field."
+        }
+      ],
+      "routes": {
+        "catalog_status": "/api/router-control/v1/vpn-profiles/catalog-status",
+        "remove": "/api/router-control/v1/vpn-profiles/{profile_id}/remove"
+      },
+      "title": "VPN catalog",
+      "verification_status": "catalog_status_and_remove"
+    },
+    "vpn_policy_routing": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "address_configured",
+          "required": false,
+          "tooltip": "Флаг: адрес VPN интерфейса уже сконфигурирован.",
+          "type": "boolean",
+          "verification_note": "help_verified_grammar_unapplied: grammar from help/docs, not live apply."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "interface_kind",
+          "required": false,
+          "tooltip": "Тип VPN интерфейса (Wireguard и т.п.), если нужен planner.",
+          "type": "string",
+          "verification_note": "help_verified_grammar_unapplied: optional hint field."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "ip_global",
+          "required": true,
+          "tooltip": "Политика ip global: auto, priority или order объект.",
+          "type": "object",
+          "verification_note": "help_verified_grammar_unapplied: union object, not device-applied."
+        },
+        {
+          "constraints": {
+            "ge": 0,
+            "le": 65535
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "ip_global.order",
+          "required": true,
+          "tooltip": "Порядок ip global (0–65535) для union-ветки order.",
+          "type": "integer",
+          "verification_note": "help_verified_grammar_unapplied: union object grammar, not device-applied."
+        },
+        {
+          "constraints": {
+            "ge": 0,
+            "le": 65535
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "ip_global.priority",
+          "required": true,
+          "tooltip": "Приоритет ip global (0–65535) для union-ветки priority.",
+          "type": "integer",
+          "verification_note": "help_verified_grammar_unapplied: union object grammar, not device-applied."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "name_servers",
+          "required": false,
+          "tooltip": "Policy-specific DNS name servers (массив объектов).",
+          "type": "array",
+          "verification_note": "help_verified_grammar_unapplied: nested item fields as name_servers.*."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "name_servers.address",
+          "required": true,
+          "tooltip": "IP адрес policy-specific DNS сервера.",
+          "type": "string",
+          "verification_note": "help_verified_grammar_unapplied: nested name server item field."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "name_servers.domain",
+          "required": false,
+          "tooltip": "Опциональный домен для policy-specific DNS сервера.",
+          "type": "string",
+          "verification_note": "help_verified_grammar_unapplied: nested name server item field."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "name_servers.on_interface",
+          "required": false,
+          "tooltip": "Опциональный интерфейс привязки DNS сервера.",
+          "type": "string",
+          "verification_note": "help_verified_grammar_unapplied: nested name server item field."
+        },
+        {
+          "constraints": {
+            "max_length": 64,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "policy_name",
+          "required": true,
+          "tooltip": "Имя policy-based routing правила.",
+          "type": "string",
+          "verification_note": "help_verified_grammar_unapplied: preview compile from help grammar."
+        },
+        {
+          "constraints": {
+            "max_length": 64,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "vpn_interface",
+          "required": true,
+          "tooltip": "VPN интерфейс для policy route (WireguardN и т.п.).",
+          "type": "string",
+          "verification_note": "help_verified_grammar_unapplied: not live-applied in this phase."
+        }
+      ],
+      "routes": {
+        "preview": "/api/router-control/v1/vpn/policy-routing/preview"
+      },
+      "title": "VPN policy routing",
+      "verification_status": "help_verified_grammar_unapplied"
+    },
+    "vpn_profile": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "confirm_live_apply",
+          "required": false,
+          "tooltip": "Подтверждение live activate/deactivate VPN профиля.",
+          "type": "boolean",
+          "verification_note": "confirm gate на activate/deactivate routes."
+        },
+        {
+          "constraints": {
+            "max_length": 128,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "display_name",
+          "required": true,
+          "tooltip": "Display name imported VPN profile.",
+          "type": "string",
+          "verification_note": "import body; catalog + vault, secrets not echoed."
+        },
+        {
+          "constraints": {
+            "ge": 0
+          },
+          "default": 0,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "handshake_settle_seconds",
+          "required": false,
+          "tooltip": "Ожидание WireGuard handshake после activate (0 = без ожидания).",
+          "type": "number",
+          "verification_note": "activate option; clamp 20–30s when >0 on live path."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "host",
+          "required": false,
+          "tooltip": "Адрес роутера для live activate/catalog probe.",
+          "type": "string",
+          "verification_note": "live connection tuple on activate/status routes."
+        },
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "ip_global_auto",
+          "required": false,
+          "tooltip": "Автовыбор ip global priority при import/activate профиля.",
+          "type": "boolean",
+          "verification_note": "import/activate metadata; взаимоисключимо с ip_global_priority."
+        },
+        {
+          "constraints": {
+            "ge": 0,
+            "le": 65535
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "ip_global_priority",
+          "required": false,
+          "tooltip": "Явный ip global priority для import/activate (0–65535).",
+          "type": "integer",
+          "verification_note": "import/activate metadata; device_verified on activate path."
+        },
+        {
+          "constraints": {},
+          "default": "primary",
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "logical_role",
+          "required": false,
+          "tooltip": "Логическая роль профиля в каталоге (primary и др.).",
+          "type": "string",
+          "verification_note": "activate/deactivate: catalog role binding."
+        },
+        {
+          "constraints": {
+            "max_length": 65536,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "profile_text",
+          "required": true,
+          "tooltip": "Raw .conf text для parse-preview или import.",
+          "type": "string",
+          "verification_note": "parse-preview/import: sanitized output, secrets sealed in vault."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "router_credential_ref_id",
+          "required": false,
+          "tooltip": "Sealed SSH credential для live VPN routes.",
+          "type": "string",
+          "verification_note": "credential ref only; no plaintext secrets."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "router_id",
+          "required": false,
+          "tooltip": "router_id для live tuple из store.",
+          "type": "string",
+          "verification_note": "optional store indirection on activate/status."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "source_address",
+          "required": false,
+          "tooltip": "Локальный bind для SSH live session.",
+          "type": "string",
+          "verification_note": "optional live param."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "ssh_host_key_sha256",
+          "required": false,
+          "tooltip": "SHA256 pin SSH host key для live VPN routes.",
+          "type": "string",
+          "verification_note": "Gate A preflight on live path."
+        },
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "tcp_mss_pmtu",
+          "required": false,
+          "tooltip": "TCP MSS clamp / PMTU для import/activate профиля.",
+          "type": "boolean",
+          "verification_note": "import/activate metadata; device_verified on apply."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "username",
+          "required": false,
+          "tooltip": "SSH username для live VPN routes.",
+          "type": "string",
+          "verification_note": "live connection tuple field."
+        },
+        {
+          "constraints": {},
+          "default": "AmneziaWG",
+          "disclosure": "simple",
+          "enum": null,
+          "name": "vpn_kind",
+          "required": false,
+          "tooltip": "VPN kind (AmneziaWG only in v1 import).",
+          "type": "string",
+          "verification_note": "import body; non-AmneziaWG rejected 422."
+        },
+        {
+          "constraints": {
+            "max_length": 32,
+            "min_length": 1
+          },
+          "default": "Wireguard5",
+          "disclosure": "simple",
+          "enum": null,
+          "name": "wg_id",
+          "required": false,
+          "tooltip": "Целевой WireguardN для import/activate (allowlist).",
+          "type": "string",
+          "verification_note": "import/activate: wg_id validated against allowlist."
+        }
+      ],
+      "routes": {
+        "activate": "/api/router-control/v1/vpn-profiles/{profile_id}/activate",
+        "deactivate": "/api/router-control/v1/vpn-profiles/deactivate",
+        "import": "/api/router-control/v1/vpn-profiles/import",
+        "parse_preview": "/api/router-control/v1/vpn-profiles/parse-preview"
+      },
+      "title": "VPN profile",
+      "verification_status": "parse_preview_and_import"
+    },
+    "wifi_ap": {
+      "fields": [
+        {
+          "constraints": {
+            "max_length": 64,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "ap_id",
+          "required": true,
+          "tooltip": "Идентификатор точки доступа из allowlist (например AccessPoint3).",
+          "type": "string",
+          "verification_note": "device_verified_wpa2: ap_id валидируется allowlist перед apply."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": [
+            "BAND_2_4GHZ",
+            "BAND_5GHZ"
+          ],
+          "name": "band",
+          "required": true,
+          "tooltip": "Диапазон Wi‑Fi: 2,4 ГГц или 5 ГГц.",
+          "type": "enum",
+          "verification_note": "device_verified_wpa2: band мапится на WifiMaster0/1 в planner."
+        },
+        {
+          "constraints": {},
+          "default": "Disabled",
+          "disclosure": "advanced",
+          "enum": [
+            "Disabled",
+            "Enabled"
+          ],
+          "name": "captive_portal",
+          "reject_http_code": "wifi.captive_portal_unsupported",
+          "required": false,
+          "tooltip": "Captive portal: Enabled отклоняется API (422); Disabled — noop.",
+          "type": "enum",
+          "verification_note": "Enabled → 422 wifi.captive_portal_unsupported; Disabled noop."
+        },
+        {
+          "constraints": {},
+          "default": true,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "compensate_on_failure",
+          "required": false,
+          "tooltip": "Откат изменений при ошибке live apply.",
+          "type": "boolean",
+          "verification_note": "device_verified_wpa2: флаг сервиса компенсации на live path."
+        },
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "confirm_live_apply",
+          "required": false,
+          "tooltip": "Явное подтверждение отправки live apply на роутер.",
+          "type": "boolean",
+          "verification_note": "device_verified_wpa2: без true apply не dispatchится."
+        },
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "confirm_live_teardown",
+          "required": false,
+          "tooltip": "Явное подтверждение live teardown точки доступа.",
+          "type": "boolean",
+          "verification_note": "device_verified_wpa2: альтернатива confirm_live_apply для teardown."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "credential_ref_id",
+          "required": false,
+          "tooltip": "Ссылка на sealed credential с паролем WPA (не plaintext).",
+          "type": "string",
+          "verification_note": "device_verified_wpa2: PSK резолвится через vault на apply."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "enabled",
+          "required": true,
+          "tooltip": "Включить или выключить точку доступа после apply.",
+          "type": "boolean",
+          "verification_note": "device_verified_wpa2: enabled участвует в planner CLI."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "guest_isolation",
+          "reject_http_code": "wifi.guest_isolation_unsupported",
+          "required": true,
+          "tooltip": "Guest isolation: true отклоняется API (422); false — noop.",
+          "type": "boolean",
+          "verification_note": "true → 422 wifi.guest_isolation_unsupported; false noop."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "host",
+          "required": false,
+          "tooltip": "IP или hostname роутера для live SSH/RCI сессии.",
+          "type": "string",
+          "verification_note": "device_verified_wpa2: live connection tuple на expendable lab."
+        },
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "idempotent",
+          "required": false,
+          "tooltip": "Повторный apply без лишних записей при неизменном intent.",
+          "type": "boolean",
+          "verification_note": "device_verified_wpa2: idempotent path в apply service."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "router_credential_ref_id",
+          "required": false,
+          "tooltip": "Sealed credential для SSH-логина на роутер.",
+          "type": "string",
+          "verification_note": "device_verified_wpa2: live path credential ref, не plaintext."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "router_id",
+          "required": false,
+          "tooltip": "ID зарегистрированного роутера; подставляет host/key из store.",
+          "type": "string",
+          "verification_note": "device_verified_wpa2: опциональная indirection для live tuple."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "source_address",
+          "required": false,
+          "tooltip": "Локальный source IP для SSH к роутеру.",
+          "type": "string",
+          "verification_note": "device_verified_wpa2: опциональный bind address live path."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "ssh_host_key_sha256",
+          "required": false,
+          "tooltip": "SHA256 pin host key роутера для fail-closed SSH.",
+          "type": "string",
+          "verification_note": "device_verified_wpa2: Gate A host-key preflight."
+        },
+        {
+          "constraints": {
+            "max_length": 32,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "ssid",
+          "required": true,
+          "tooltip": "Имя беспроводной сети (SSID), 1–32 символа.",
+          "type": "string",
+          "verification_note": "device_verified_wpa2: SSID применяется planner на lab device."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "username",
+          "required": false,
+          "tooltip": "SSH username для live сессии на роутер.",
+          "type": "string",
+          "verification_note": "device_verified_wpa2: часть live connection tuple."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": [
+            "WPA2",
+            "WPA3",
+            "WPA2_WPA3_MIXED"
+          ],
+          "name": "wpa_mode",
+          "required": true,
+          "tooltip": "Режим WPA: WPA2, WPA3 или mixed.",
+          "type": "enum",
+          "verification_note": "device_verified_wpa2: wpa_mode в planner/teardown grammar."
+        }
+      ],
+      "routes": {
+        "apply": "/api/router-control/v1/wifi/apply",
+        "preview": "/api/router-control/v1/wifi/preview",
+        "teardown": "/api/router-control/v1/wifi/teardown"
+      },
+      "title": "Wi‑Fi точка доступа",
+      "verification_status": "device_verified_wpa2"
+    },
+    "wifi_observed": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "allow_insecure_http",
+          "required": false,
+          "tooltip": "Allow insecure HTTP for live path.",
+          "type": "boolean",
+          "verification_note": "fake transport fixture readbacks (wifi_observed_routes.py ~72–115); non-certifying."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "ap_ids",
+          "required": false,
+          "tooltip": "List of AP IDs to observe.",
+          "type": "array",
+          "verification_note": "read-only observed-state; allowlist validated."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "credential_ref_id",
+          "required": false,
+          "tooltip": "Legacy alias for router_credential_ref_id.",
+          "type": "string",
+          "verification_note": "read-only observed-state."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "desired",
+          "required": false,
+          "tooltip": "Optional desired intent for drift compare.",
+          "type": "object",
+          "verification_note": "nested desired.* fields; read-only compare."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": [
+            "BAND_2_4GHZ",
+            "BAND_5GHZ"
+          ],
+          "name": "desired.band",
+          "required": true,
+          "tooltip": "Desired Wi‑Fi band for drift compare.",
+          "type": "enum",
+          "verification_note": "nested desired field; read-only."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "desired.enabled",
+          "required": true,
+          "tooltip": "Desired AP enabled flag for drift compare.",
+          "type": "boolean",
+          "verification_note": "nested desired field; read-only."
+        },
+        {
+          "constraints": {
+            "max_length": 32,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "desired.ssid",
+          "required": true,
+          "tooltip": "Desired SSID for drift compare.",
+          "type": "string",
+          "verification_note": "nested desired field; read-only."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": [
+            "WPA2",
+            "WPA3",
+            "WPA2_WPA3_MIXED"
+          ],
+          "name": "desired.wpa_mode",
+          "required": true,
+          "tooltip": "Desired WPA mode for drift compare.",
+          "type": "enum",
+          "verification_note": "nested desired field; read-only."
+        },
+        {
+          "constraints": {
+            "max_length": 64,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "desired_ap_id",
+          "required": false,
+          "tooltip": "Target AP for desired intent.",
+          "type": "string",
+          "verification_note": "required when desired supplied."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "host",
+          "required": false,
+          "tooltip": "Router host for live observed-state.",
+          "type": "string",
+          "verification_note": "fake fixture or live read session."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "router_credential_ref_id",
+          "required": false,
+          "tooltip": "Sealed SSH credential ref.",
+          "type": "string",
+          "verification_note": "read-only observed-state."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "router_id",
+          "required": false,
+          "tooltip": "Registered router_id for live tuple.",
+          "type": "string",
+          "verification_note": "optional store indirection."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "source_address",
+          "required": false,
+          "tooltip": "Local bind address for SSH.",
+          "type": "string",
+          "verification_note": "optional live param."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "ssh_host_key_sha256",
+          "required": false,
+          "tooltip": "SHA256 SSH host key pin.",
+          "type": "string",
+          "verification_note": "Gate A preflight on live path."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "username",
+          "required": false,
+          "tooltip": "SSH username for live observed-state.",
+          "type": "string",
+          "verification_note": "live tuple field."
+        }
+      ],
+      "routes": {
+        "observed": "/api/router-control/v1/wifi/observed-state"
+      },
+      "title": "Wi‑Fi observed state",
+      "verification_status": "read_only_non_certifying"
+    },
+    "wifi_site_survey": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "allow_insecure_http",
+          "required": false,
+          "tooltip": "Allow insecure HTTP for live path.",
+          "type": "boolean",
+          "verification_note": "fake mode: SYNTH-SSID-* fixtures (wifi_site_survey_routes.py ~68–95); live path Gate A gated."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "credential_ref_id",
+          "required": false,
+          "tooltip": "Legacy alias for router_credential_ref_id.",
+          "type": "string",
+          "verification_note": "read-only site survey; fake or live read session."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "host",
+          "required": false,
+          "tooltip": "Router host for live site survey.",
+          "type": "string",
+          "verification_note": "fake mode uses SYNTH fixtures; live requires full tuple."
+        },
+        {
+          "constraints": {},
+          "default": "WifiMaster0",
+          "disclosure": "simple",
+          "enum": [
+            "WifiMaster0",
+            "WifiMaster1"
+          ],
+          "name": "radio",
+          "required": false,
+          "tooltip": "WifiMaster0 or WifiMaster1 radio.",
+          "type": "enum",
+          "verification_note": "fake mode: SYNTH-SSID-* fixtures (wifi_site_survey_routes.py ~68–95)."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "router_credential_ref_id",
+          "required": false,
+          "tooltip": "Sealed SSH credential ref for live path.",
+          "type": "string",
+          "verification_note": "read-only site survey session."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "router_id",
+          "required": false,
+          "tooltip": "Registered router_id for live tuple indirection.",
+          "type": "string",
+          "verification_note": "optional store indirection."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "source_address",
+          "required": false,
+          "tooltip": "Local bind address for SSH.",
+          "type": "string",
+          "verification_note": "optional live param."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "ssh_host_key_sha256",
+          "required": false,
+          "tooltip": "SHA256 SSH host key pin.",
+          "type": "string",
+          "verification_note": "Gate A preflight on live path."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "username",
+          "required": false,
+          "tooltip": "SSH username for live site survey.",
+          "type": "string",
+          "verification_note": "live tuple field."
+        }
+      ],
+      "routes": {
+        "survey": "/api/router-control/v1/wifi/site-survey"
+      },
+      "title": "Wi‑Fi site survey",
+      "verification_status": "read_only_fake_or_live"
+    },
+    "wifi_station": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": [
+            "wpa2_psk",
+            "open"
+          ],
+          "name": "auth_mode",
+          "required": false,
+          "tooltip": "Режим аутентификации станции (wpa2_psk; open не поддерживается).",
+          "type": "enum",
+          "verification_note": "device_accepted_grammar: OPEN отклоняется API до dispatch."
+        },
+        {
+          "constraints": {},
+          "default": "BAND_2_4GHZ",
+          "disclosure": "simple",
+          "enum": [
+            "BAND_2_4GHZ",
+            "BAND_5GHZ"
+          ],
+          "name": "band",
+          "required": false,
+          "tooltip": "Диапазон для клиентского Wi‑Fi (WISP): 2,4 или 5 ГГц.",
+          "type": "enum",
+          "verification_note": "device_accepted_grammar: band → station_id mapping проверен."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "bssid",
+          "required": false,
+          "tooltip": "Опциональный BSSID для привязки к конкретной AP.",
+          "type": "string",
+          "verification_note": "device_accepted_grammar: опционально в uplink intent."
+        },
+        {
+          "constraints": {},
+          "default": true,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "compensate_on_failure",
+          "required": false,
+          "tooltip": "Компенсация при ошибке live station apply.",
+          "type": "boolean",
+          "verification_note": "device_accepted_grammar: флаг apply service."
+        },
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "confirm_live_apply",
+          "required": false,
+          "tooltip": "Подтверждение live dispatch station apply.",
+          "type": "boolean",
+          "verification_note": "device_accepted_grammar: обязателен true для apply route."
+        },
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "confirm_live_teardown",
+          "required": false,
+          "tooltip": "Подтверждение live station teardown.",
+          "type": "boolean",
+          "verification_note": "device_accepted_grammar: альтернатива confirm_live_apply."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "credential_ref_id",
+          "required": false,
+          "tooltip": "Sealed credential PSK для станции (обязателен для WifiWan).",
+          "type": "string",
+          "verification_note": "device_accepted_grammar: без ref_id preview/apply fail-closed."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "host",
+          "required": false,
+          "tooltip": "Адрес роутера для live station apply.",
+          "type": "string",
+          "verification_note": "device_accepted_grammar: live connection tuple."
+        },
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "idempotent",
+          "required": false,
+          "tooltip": "Идempotent station apply при неизменном intent.",
+          "type": "boolean",
+          "verification_note": "device_accepted_grammar: service flag."
+        },
+        {
+          "constraints": {},
+          "default": "WifiWan",
+          "disclosure": "advanced",
+          "enum": [
+            "Ethernet",
+            "WifiWan",
+            "LocalOnly",
+            "Lte"
+          ],
+          "name": "mode",
+          "required": false,
+          "tooltip": "Режим uplink; station apply требует WifiWan.",
+          "type": "enum",
+          "verification_note": "device_accepted_grammar: иные mode отклоняются API."
+        },
+        {
+          "constraints": {},
+          "default": 100,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "priority",
+          "reject_http_code": "wifi.station_priority_requires_ip_global",
+          "required": false,
+          "tooltip": "Приоритет uplink (default 100). Нестандартное значение offline/preview → 422.",
+          "type": "integer",
+          "verification_note": "priority≠100 без include_ip_global → 422 wifi.station_priority_requires_ip_global; default 100 noop offline; live path применяет ip global."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "router_credential_ref_id",
+          "required": false,
+          "tooltip": "Sealed SSH credential роутера для live path.",
+          "type": "string",
+          "verification_note": "device_accepted_grammar: credential ref, не plaintext."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "router_id",
+          "required": false,
+          "tooltip": "Зарегистрированный router_id для live tuple из store.",
+          "type": "string",
+          "verification_note": "device_accepted_grammar: optional store indirection."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "source_address",
+          "required": false,
+          "tooltip": "Локальный bind address для SSH.",
+          "type": "string",
+          "verification_note": "device_accepted_grammar: optional live param."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "ssh_host_key_sha256",
+          "required": false,
+          "tooltip": "SHA256 pin SSH host key роутера.",
+          "type": "string",
+          "verification_note": "device_accepted_grammar: Gate A preflight."
+        },
+        {
+          "constraints": {
+            "max_length": 32,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "ssid",
+          "required": true,
+          "tooltip": "SSID upstream сети для WISP станции.",
+          "type": "string",
+          "verification_note": "device_accepted_grammar: SSID в station planner CLI."
+        },
+        {
+          "constraints": {
+            "ge": 0
+          },
+          "default": 25.0,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "uplink_settle_seconds",
+          "required": false,
+          "tooltip": "Ожидание uplink settle после apply (сек; clamp на live).",
+          "type": "number",
+          "verification_note": "device_accepted_grammar: bounded settle на live path."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "username",
+          "required": false,
+          "tooltip": "SSH username для live station apply.",
+          "type": "string",
+          "verification_note": "device_accepted_grammar: live tuple field."
+        }
+      ],
+      "routes": {
+        "apply": "/api/router-control/v1/wifi/station/apply",
+        "preview": "/api/router-control/v1/wifi/station/preview",
+        "teardown": "/api/router-control/v1/wifi/station/teardown"
+      },
+      "title": "Wi‑Fi станция (WISP)",
+      "verification_status": "device_accepted_grammar"
+    },
+    "wireguard": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "asc_args",
+          "required": false,
+          "tooltip": "Опциональные ASC аргументы AmneziaWG (массив int).",
+          "type": "array",
+          "verification_note": "offline compile only; live verification varies by profile."
+        },
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "confirm_live_apply",
+          "required": false,
+          "tooltip": "Подтверждение live WireGuard apply.",
+          "type": "boolean",
+          "verification_note": "confirm gate; multi-profile live status not unified."
+        },
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "confirm_live_teardown",
+          "required": false,
+          "tooltip": "Подтверждение live WireGuard teardown.",
+          "type": "boolean",
+          "verification_note": "confirm gate; multi-profile live status not unified."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "enabled",
+          "required": true,
+          "tooltip": "Поднять интерфейс WireGuard после конфигурации.",
+          "type": "boolean",
+          "verification_note": "planner field; device verification profile-dependent."
+        },
+        {
+          "constraints": {
+            "ge": 0
+          },
+          "default": 0,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "handshake_settle_seconds",
+          "required": false,
+          "tooltip": "Ожидание handshake перед recheck (0 = без ожидания).",
+          "type": "number",
+          "verification_note": "live apply option; clamp 20–30s when >0."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "host",
+          "required": false,
+          "tooltip": "Адрес роутера для live WireGuard apply.",
+          "type": "string",
+          "verification_note": "live connection tuple; not single verified profile."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "interface_address",
+          "required": false,
+          "tooltip": "IPv4 адрес или CIDR интерфейса туннеля (interface address).",
+          "type": "string",
+          "verification_note": "device_verified: parse/allowlist — только IPv4 (ipaddress.IPv4Network); IPv6 не принимается; readback через show interface."
+        },
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "ip_global_auto",
+          "required": false,
+          "tooltip": "Автовыбор ip global priority роутером (без явного числа).",
+          "type": "boolean",
+          "verification_note": "device_verified: ip global auto path; 422 если задан одновременно ip_global_priority."
+        },
+        {
+          "constraints": {
+            "ge": 0,
+            "le": 65535
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "ip_global_priority",
+          "required": false,
+          "tooltip": "Приоритет ip global для маршрутизации через туннель (0–65535).",
+          "type": "integer",
+          "verification_note": "device_verified: ip global priority применяется; взаимоисключимо с ip_global_auto."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "peer_allow_ips",
+          "required": false,
+          "tooltip": "Allowed IPs peer (CIDR/spisok через запятую).",
+          "type": "string",
+          "verification_note": "intent grammar compiled; live varies by wg_id/profile."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "peer_endpoint",
+          "required": false,
+          "tooltip": "Endpoint peer host:port для туннеля.",
+          "type": "string",
+          "verification_note": "intent field; nested vs path_style affects RCI shape."
+        },
+        {
+          "constraints": {
+            "ge": 3,
+            "le": 3600
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "peer_keepalive_interval",
+          "required": false,
+          "tooltip": "Persistent keepalive interval (3–3600 сек).",
+          "type": "integer",
+          "verification_note": "optional peer param; bounds from model."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "peer_public_key",
+          "required": false,
+          "tooltip": "Публичный ключ WireGuard peer (base64).",
+          "type": "string",
+          "verification_note": "required for peer config; not a secret field."
+        },
+        {
+          "constraints": {},
+          "default": "nested_rci",
+          "disclosure": "advanced",
+          "enum": [
+            "path_style",
+            "nested_rci"
+          ],
+          "name": "peer_rci_shape",
+          "required": false,
+          "tooltip": "Форма RCI peer: path_style или nested_rci.",
+          "type": "enum",
+          "verification_note": "default nested_rci; shape affects CLI vs nested body."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "preshared_key_credential_ref_id",
+          "required": false,
+          "tooltip": "Sealed credential ref для preshared key (не plaintext).",
+          "type": "string",
+          "verification_note": "credential ref only; no plaintext PSK in manifest."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "private_key_credential_ref_id",
+          "required": false,
+          "tooltip": "Sealed credential ref для private key интерфейса.",
+          "type": "string",
+          "verification_note": "credential ref only; no plaintext private key."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "router_credential_ref_id",
+          "required": false,
+          "tooltip": "Sealed SSH credential для live apply.",
+          "type": "string",
+          "verification_note": "live tuple; credential ref pattern."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "router_id",
+          "required": false,
+          "tooltip": "router_id для live tuple из store.",
+          "type": "string",
+          "verification_note": "optional store indirection."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "source_address",
+          "required": false,
+          "tooltip": "Локальный bind для SSH live session.",
+          "type": "string",
+          "verification_note": "optional live param."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "ssh_host_key_sha256",
+          "required": false,
+          "tooltip": "SHA256 SSH host key pin.",
+          "type": "string",
+          "verification_note": "Gate A preflight on live path."
+        },
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "tcp_mss_pmtu",
+          "required": false,
+          "tooltip": "Включить TCP MSS clamp / PMTU на интерфейсе туннеля.",
+          "type": "boolean",
+          "verification_note": "device_verified: tcp mss pmtu apply/clear на expendable lab; не captive portal."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "username",
+          "required": false,
+          "tooltip": "SSH username live session.",
+          "type": "string",
+          "verification_note": "live tuple field."
+        },
+        {
+          "constraints": {
+            "max_length": 32,
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "wg_id",
+          "required": true,
+          "tooltip": "Идентификатор интерфейса WireguardN из allowlist.",
+          "type": "string",
+          "verification_note": "wg_id validated against allowlist before dispatch."
+        }
+      ],
+      "routes": {
+        "apply": "/api/router-control/v1/wireguard/apply",
+        "observe": "/api/router-control/v1/wireguard/observe",
+        "preview": "/api/router-control/v1/wireguard/preview",
+        "teardown": "/api/router-control/v1/wireguard/teardown"
+      },
+      "title": "WireGuard / AmneziaWG",
+      "verification_status": null
+    },
+    "wizard_draft": {
+      "fields": [
+        {
+          "constraints": {},
+          "default": false,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "allow_insecure_http",
+          "required": false,
+          "tooltip": "Разрешить HTTP management endpoint вместо HTTPS.",
+          "type": "boolean",
+          "verification_note": "lab-only draft enroll; Gate A closed; no live probe."
+        },
+        {
+          "constraints": {},
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "display_name",
+          "required": false,
+          "tooltip": "Отображаемое имя роутера в каталоге.",
+          "type": "string",
+          "verification_note": "lab-only draft enroll; SQLite + vault, no device writes."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "host",
+          "required": true,
+          "tooltip": "IP, hostname или URL management endpoint.",
+          "type": "string",
+          "verification_note": "lab-only draft enroll; parsed to endpoint tuple."
+        },
+        {
+          "constraints": {
+            "ge": 1,
+            "le": 65535
+          },
+          "default": null,
+          "disclosure": "advanced",
+          "enum": null,
+          "name": "port",
+          "required": false,
+          "tooltip": "Порт management endpoint (1–65535).",
+          "type": "integer",
+          "verification_note": "lab-only draft enroll; optional override."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "secret",
+          "required": true,
+          "tooltip": "Management password для vault intake (write-only).",
+          "type": "string",
+          "verification_note": "Значение не сохраняется в manifest и не отображается; sealed в vault при draft enroll."
+        },
+        {
+          "constraints": {
+            "min_length": 1
+          },
+          "default": null,
+          "disclosure": "simple",
+          "enum": null,
+          "name": "username",
+          "required": true,
+          "tooltip": "SSH/management username.",
+          "type": "string",
+          "verification_note": "lab-only draft enroll; stored on router row."
+        }
+      ],
+      "routes": {
+        "create": "/api/router-control/v1/lab/wizard-draft-router"
+      },
+      "title": "Wizard draft router",
+      "verification_status": "lab_draft_enroll"
+    }
+  },
+  "generated_by": "scripts/export-ui-field-manifest.py",
+  "schema_version": 1
+}

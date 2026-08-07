@@ -1,0 +1,50 @@
+{
+  "contract_id": "gate-bc-awg-certification-20260721",
+  "human_decision": "approve",
+  "authorization_recorded_at": "2026-07-21T20:34:31+00:00",
+  "trial_completed_at": "2026-07-21T21:20:19Z",
+  "trial_outcome": "certification_failed_all_candidates_handshake",
+  "certification_result": "docs/gate-b-awg-certification-result.json",
+  "gates": {
+    "B": {
+      "status": "completed_failed",
+      "certification": "CertificationTrialAuthorized",
+      "not_write_certified": true,
+      "capability_family": "AmneziaWG",
+      "approved_scope": "lab_awg_only",
+      "trial_outcome": "certification_failed_all_candidates_handshake"
+    },
+    "C": {
+      "status": "closed",
+      "outcome": "completed_failed",
+      "scope": "dedicated_lab",
+      "capability_family": "AmneziaWG",
+      "opens_at": "2026-07-21T20:34:31+00:00",
+      "expires_at": "2026-07-21T21:34:31+00:00",
+      "completed_at": "2026-07-21T21:20:19Z",
+      "duration_seconds": 3600,
+      "trial_outcome": "certification_failed_all_candidates_handshake"
+    },
+    "D": {
+      "status": "closed"
+    }
+  },
+  "gate_a_tuple_binding": {
+    "model": "NC-1812",
+    "model_display": "Ultra (NC-1812)",
+    "firmware_version": "5.01.C.1.0-0",
+    "firmware_display": "5.1.1",
+    "ndm_build": "0-b592e619a0",
+    "bsp_build": "0-f371d30955",
+    "update_channel": "Main",
+    "region": "EA",
+    "component_set_digest": "sha256:de72a7af2255a1993c382ffd41143b8061525137b0d8e192811a32babf852f2f",
+    "device_fingerprint_digest": "sha256:eb58946c0d18b3cb259c2687e474d10907dfdbbcf39c88992202917c37855169",
+    "physical_id_source": "show.identification_digest",
+    "transport": "ssh_tunnel",
+    "ssh_host_key_algorithm": "ssh-ed25519"
+  },
+  "candidate_order": ["keenetic50-compat", "fi-ip", "de-ip"],
+  "write_shapes_registered": false,
+  "registered_shape_ops": []
+}

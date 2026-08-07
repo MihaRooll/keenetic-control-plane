@@ -32,7 +32,7 @@
 | **BUGBOT.md** | `.cursor/BUGBOT.md` or repo `BUGBOT.md` | Bugbot/review instructions | No — opt-in |
 | **.cursorignore** | `.cursorignore` | Exclude from AI context | User adds as needed |
 | **.cursorindexingignore** | `.cursorindexingignore` | Exclude from index only | User adds as needed |
-| **Browser tool** | Built-in MCP (Cursor) | Page verify, UI checks | Skill `/browser-verify`; Human Gate on auth/untrusted |
+| **Browser tool** | Built-in MCP (Cursor) | Page verify, UI checks | Skill `/browser-verify`; Human Gate on auth/untrusted; MCP broken/missing → [Browser MCP recovery runbook](OPERATOR_BROWSER_MCP_RECOVERY.md) |
 
 ---
 
@@ -59,6 +59,7 @@
 
 - Examples: `templates/cursor/` (Full bootstrap only)
 - Browser verify skill: `.cursor/skills/browser-verify`
+- Browser MCP broken/missing (Windows): [OPERATOR_BROWSER_MCP_RECOVERY.md](OPERATOR_BROWSER_MCP_RECOVERY.md) + `scripts/repair-browser-mcp.ps1`
 - MCP (separate): see [project-integrations.md](project-integrations.md) (Memory and MCP pointers); `mcp-security.md` — Full bootstrap / toolkit only
 
 **Source:** [Cursor permissions](https://cursor.com/docs/agent/permissions) · [Sandbox](https://cursor.com/docs/agent/sandbox) · [Browser](https://cursor.com/docs/agent/browser) · SRC-029/030

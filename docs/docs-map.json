@@ -2,284 +2,2478 @@
   "version": 1,
   "entries": [
     {
+      "path": "docs/OPERATOR_HUB_MODULE_INTEGRATION_READINESS.md",
+      "title": "Hub module_3.0 integration readiness checklist + touchpoint crosswalk (2026-08-06)",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "integration",
+        "module-3.0",
+        "architecture",
+        "checklist",
+        "m7"
+      ],
+      "lastReviewed": "2026-08-06"
+    },
+    {
+      "path": "AGENTS.md",
+      "title": "Agent cold-start; M-44..M-46 human gate + isolation resume order 2026-08-06",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "onboarding",
+        "harness",
+        "navigation",
+        "gate-a-post-wg-rebind-20260731",
+        "local-hub-vpn-next-task",
+        "session-handoff-20260802",
+        "gate-a-parser-fix-20260801",
+        "gate-a-fourth-recert-20260804"
+      ],
+      "lastReviewed": "2026-08-06"
+    },
+    {
       "path": "README.md",
-      "title": "Repository entrypoint; offline mega complete",
+      "title": "Repository entrypoint; cold-start sync 2026-08-06",
       "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-1", "offline-mega", "navigation", "complete"]
-    },
-    {
-      "path": "docs/README.md",
-      "title": "Documentation index; offline mega complete",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-1", "offline-mega", "navigation", "complete"]
-    },
-    {
-      "path": "docs/STATUS.yaml",
-      "title": "Project status (SSOT)",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-1", "offline-mega", "state", "complete"]
-    },
-    {
-      "path": "docs/project-state.md",
-      "title": "Harness session projection (non-competing)",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-1", "offline-mega", "state"]
-    },
-    {
-      "path": "pyproject.toml",
-      "title": "Python package metadata; host and dev extras",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-1", "offline-mega", "package"]
-    },
-    {
-      "path": "router_control",
-      "title": "Domain core, persistence, vault, traffic discovery",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-1", "offline-mega", "package", "domain"]
-    },
-    {
-      "path": "router_control_host",
-      "title": "FastAPI prototype host /api/router-control/v1",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-1", "slice-3", "host", "package"]
-    },
-    {
-      "path": "tests",
-      "title": "Pytest suite: fake, persistence, vault, host",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-1", "offline-mega", "tests"]
-    },
-    {
-      "path": "docs/VISION.md",
-      "title": "Product vision and boundaries",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0a", "phase-0b", "architecture", "complete"]
-    },
-    {
-      "path": "docs/CANONICAL.md",
-      "title": "Canonical legacy and NC-1812 facts",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0a", "architecture"]
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "navigation",
+        "not-write-certified",
+        "session-handoff-20260802",
+        "expendable-lab-envelope",
+        "local-hub-vpn-next-task",
+        "gate-a-parser-fix-20260801",
+        "gate-a-fourth-recert-20260804",
+        "guest-wifi-ap3-live-20260802"
+      ],
+      "lastReviewed": "2026-08-06"
     },
     {
       "path": "docs/ARCHITECTURE.md",
-      "title": "Architecture and trust boundaries",
+      "title": "Architecture and trust boundaries; web UI next",
       "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0a", "phase-0b", "architecture", "complete"]
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0a",
+        "phase-0b",
+        "architecture",
+        "complete",
+        "web-ui-full-coverage-next",
+        "tunnel-healthy-20260731"
+      ],
+      "lastReviewed": "2026-08-05"
     },
     {
-      "path": "docs/DOMAIN_MODEL.md",
-      "title": "Domain model and invariants",
+      "path": "docs/CANONICAL.md",
+      "title": "Canonical legacy and NC-1812 facts; web UI next",
       "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0a", "architecture"]
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0a",
+        "phase-1",
+        "architecture",
+        "fail-safe",
+        "fail-safe-20260723T110000Z",
+        "fail-safe-20260723T094500Z",
+        "completed-failed",
+        "offline-ssh-diagnosis",
+        "not-write-certified",
+        "gate-a-rebind-20260731",
+        "gate-a-post-wg-rebind-20260731",
+        "read-only-certified",
+        "tunnel-healthy-20260731",
+        "web-ui-full-coverage-next"
+      ],
+      "lastReviewed": "2026-08-05"
     },
     {
       "path": "docs/COMPATIBILITY.md",
-      "title": "Firmware and capability matrix",
+      "title": "Firmware and capability matrix; VPN ip_global device-verified",
       "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0a", "hardware"]
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0a",
+        "hardware",
+        "local-hub-vpn-next-task",
+        "tunnel-healthy-20260731",
+        "wg-ip-global-verified-0805",
+        "traffic-via-tunnel-0805"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/DEDICATED_ROUTER_LAB_POLICY.md",
+      "title": "Dedicated lab policy; web UI next major phase",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "hardware",
+        "lab",
+        "policy",
+        "gate-a",
+        "nc1812",
+        "expendable-lab-class-20260730",
+        "gate-a-rebind-20260731",
+        "gate-a-post-wg-rebind-20260731",
+        "read-only-certified",
+        "authorized-rebind",
+        "not-write-certified",
+        "standing-bounded-live-20260724",
+        "carve-outs-non-expendable",
+        "bootstrap-discovery",
+        "bootstrap-chan-warn",
+        "wifi-ap-hardware-bound-20260731",
+        "accesspoint0-6",
+        "wg-component-installed-20260731",
+        "field-rack-offline-lesson",
+        "tunnel-healthy-20260731",
+        "web-ui-full-coverage-next"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/DOMAIN_MODEL.md",
+      "title": "Domain model; dual sealed-apply vs preset pipeline; VLAN/DHCP/DNS/firewall sealed offline executors",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0a",
+        "architecture",
+        "wifi-intent-product-model",
+        "wireguard-intent-product-model",
+        "wpa3-offline-ready",
+        "wpa3-device-verified",
+        "wpa3-grammar-correction",
+        "wpa3-mixed-device-verified",
+        "awg-secret-ops-offline",
+        "awg-path-style-peer-grammar",
+        "private-key-partial-planner",
+        "peer-nested-rci-available",
+        "peer-nested-rci-device-verified",
+        "peer-nested-rci-default",
+        "dual-apply-path",
+        "deferred-verticals",
+        "vlan-sealed-offline-executor",
+        "dhcp-dns-fw-sealed-offline",
+        "network-family-preview-20260801",
+        "wifi-apply-reliability",
+        "asc9-uint32-h-bounds",
+        "path-style-rejected-422",
+        "grammar-doc-ref-registry",
+        "comp-dhcp-unknown-fail-closed",
+        "wg-ip-global-verified-0805",
+        "set-ip-address-verified-0805",
+        "traffic-via-tunnel-0805"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/ENGINEERING_LESSONS.md",
+      "title": "Engineering lessons — lab methodology, reliability traps, agent delegation",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "methodology",
+        "lab",
+        "cold-start",
+        "judgement",
+        "ai-first",
+        "offline-reliability-0801",
+        "agent-delegation"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/HUMAN_GATE_GATE_A_IDENTITY_DRIFT_20260801.md",
+      "title": "Gate A identity drift 2026-08-01 — resolved as our parser defect; tuple unchanged",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "gate-a",
+        "identity-drift",
+        "human-gate",
+        "resolved",
+        "component-set-v2",
+        "parser-defect",
+        "no-rebind-performed",
+        "evidence-stale",
+        "not-write-certified",
+        "gate-a-drift-20260801"
+      ],
+      "lastReviewed": "2026-08-01"
+    },
+    {
+      "path": "docs/HUMAN_GATE_KEENDNS_CLOUD_BOOKING_20260801.md",
+      "title": "Human Gate packet: KeenDNS cloud booking — APPROVED standing expendable 2026-08-08",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "keendns",
+        "external-write",
+        "cloud",
+        "human-gate",
+        "approved-standing",
+        "expendable-lab",
+        "do-not-reask",
+        "docs-sourced-unconfirmed",
+        "not-write-certified"
+      ],
+      "lastReviewed": "2026-08-08"
+    },
+    {
+      "path": "docs/HUMAN_GATE_STAFF_GUEST_MAIN_MENU_20260805.md",
+      "title": "Human Gate packet: staff/guest main menu — operator decision granted; resume order set (§M-46)",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "human-gate",
+        "t3",
+        "principal-arbiter-exhausted",
+        "standing-network-preferences",
+        "schema-migration",
+        "operator-main-menu",
+        "resume-ordered",
+        "decision-granted-20260805"
+      ],
+      "lastReviewed": "2026-08-06"
+    },
+    {
+      "path": "docs/IMPLEMENTATION_STATUS.md",
+      "title": "LOCAL HUB redesign: living implementation status (SSOT); connection-context restore L-2",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "local-hub",
+        "operator-ui",
+        "pwa",
+        "living-status",
+        "local-hub-packet-1",
+        "local-hub-packet-2",
+        "local-hub-packet-4-vpn",
+        "local-hub-packet-4-domain",
+        "overview-screen",
+        "connection-screen",
+        "staff-wifi-screen",
+        "guest-wifi-screen",
+        "vpn-screen",
+        "domain-screen",
+        "host-side-probes",
+        "wireguard-observe",
+        "wifi-shared-layer",
+        "conn-ctx-restore-l2",
+        "mgmt-username-post-20260803",
+        "restore-candidate-20260803"
+      ],
+      "lastReviewed": "2026-08-03"
+    },
+    {
+      "path": "docs/INTEGRATION.md",
+      "title": "Third-party FastAPI integration facade and guide",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "integration",
+        "facade",
+        "fastapi",
+        "offline",
+        "not-write-certified",
+        "source-bound-192.168.2.10"
+      ]
     },
     {
       "path": "docs/LEGACY_MAP.md",
-      "title": "Legacy code classification",
+      "title": "Legacy code classification; accept-new forbidden",
       "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0a", "legacy"]
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0a",
+        "legacy",
+        "ssh-host-key-pin"
+      ],
+      "lastReviewed": "2026-07-31"
+    },
+    {
+      "path": "docs/NEW_CHAT_COLD_START_2026-07-24.md",
+      "title": "Cold-start paste (deprecated); superseded by 2026-08-01",
+      "status": "deprecated",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "handoff",
+        "cold-start",
+        "lab",
+        "delegation",
+        "not-write-certified",
+        "superseded-by-20260801"
+      ],
+      "lastReviewed": "2026-08-01"
+    },
+    {
+      "path": "docs/NEW_CHAT_COLD_START_2026-07-24b.md",
+      "title": "Cold-start paste (deprecated); superseded by 2026-08-01",
+      "status": "deprecated",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "handoff",
+        "cold-start",
+        "lab",
+        "delegation",
+        "not-write-certified",
+        "continued-session",
+        "superseded-by-20260801"
+      ],
+      "lastReviewed": "2026-08-01"
+    },
+    {
+      "path": "docs/NEW_CHAT_COLD_START_2026-07-31.md",
+      "title": "Cold-start paste (deprecated); superseded by 2026-08-01",
+      "status": "deprecated",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "handoff",
+        "cold-start",
+        "lab",
+        "post-rebind",
+        "gate-a-post-wg-rebind-20260731",
+        "stn-uplink-persisted-20260731",
+        "dead-peer-confirmed-20260731",
+        "tunnel-healthy-20260731",
+        "not-write-certified",
+        "offline-session-20260801",
+        "superseded-by-20260801"
+      ],
+      "lastReviewed": "2026-08-01"
+    },
+    {
+      "path": "docs/NEW_CHAT_ORCHESTRATOR_HANDOFF_2026-07-24.md",
+      "title": "Orchestrator handoff paste (deprecated); superseded by 2026-08-01",
+      "status": "deprecated",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "handoff",
+        "cold-start",
+        "lab",
+        "delegation",
+        "orchestrator",
+        "not-write-certified",
+        "continued-session",
+        "superseded-by-20260801"
+      ],
+      "lastReviewed": "2026-08-01"
+    },
+    {
+      "path": "docs/NEW_CHAT_ORCHESTRATOR_PROMPT_2026-08-01.md",
+      "title": "New-chat orchestrator paste prompt (historical; superseded 2026-08-02)",
+      "status": "deprecated",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "handoff",
+        "cold-start",
+        "orchestrator",
+        "harness",
+        "not-write-certified",
+        "offline-session-20260801",
+        "web-ui-full-coverage-next",
+        "superseded-by-20260802"
+      ],
+      "lastReviewed": "2026-08-01"
+    },
+    {
+      "path": "docs/NEW_CHAT_ORCHESTRATOR_PROMPT_2026-08-02.md",
+      "title": "New-chat orchestrator paste prompt (historical); superseded by the 2026-08-03 prompt",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "onboarding",
+        "orchestrator",
+        "paste-prompt",
+        "autonomy-levels",
+        "subagents",
+        "verify-baseline",
+        "live-envelope",
+        "historical",
+        "not-write-certified"
+      ],
+      "lastReviewed": "2026-08-03"
+    },
+    {
+      "path": "docs/NEW_CHAT_ORCHESTRATOR_PROMPT_2026-08-03.md",
+      "title": "New-chat orchestrator paste prompt (historical); superseded by the 2026-08-04 prompt",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "onboarding",
+        "orchestrator",
+        "paste-prompt",
+        "autonomy-levels",
+        "subagents",
+        "verify-baseline",
+        "live-envelope",
+        "local-hub",
+        "live-verification",
+        "not-write-certified"
+      ],
+      "lastReviewed": "2026-08-04"
+    },
+    {
+      "path": "docs/NEW_CHAT_ORCHESTRATOR_PROMPT_2026-08-04.md",
+      "title": "New-chat orchestrator paste prompt (historical); superseded by the 2026-08-05 prompt",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "onboarding",
+        "orchestrator",
+        "paste-prompt",
+        "autonomy-levels",
+        "subagents",
+        "verify-baseline",
+        "live-envelope",
+        "local-hub",
+        "live-verification",
+        "internet-uplink",
+        "not-write-certified"
+      ],
+      "lastReviewed": "2026-08-04"
+    },
+    {
+      "path": "docs/NEW_CHAT_ORCHESTRATOR_PROMPT_2026-08-05.md",
+      "title": "New-chat orchestrator paste prompt (historical); superseded by 2026-08-06",
+      "status": "deprecated",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "onboarding",
+        "orchestrator",
+        "paste-prompt",
+        "autonomy-levels",
+        "subagents",
+        "verify-baseline",
+        "live-envelope",
+        "local-hub",
+        "live-verification",
+        "vpn",
+        "principal-arbiter",
+        "ui-responsiveness",
+        "not-write-certified"
+      ],
+      "lastReviewed": "2026-08-06"
+    },
+    {
+      "path": "docs/NEW_CHAT_ORCHESTRATOR_PROMPT_2026-08-06.md",
+      "title": "New-chat orchestrator paste prompt (historical); superseded by the 2026-08-07 prompt",
+      "status": "deprecated",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "onboarding",
+        "orchestrator",
+        "paste-prompt",
+        "autonomy-levels",
+        "subagents",
+        "verify-baseline",
+        "live-envelope",
+        "local-hub",
+        "live-verification",
+        "vpn",
+        "principal-arbiter",
+        "ui-responsiveness",
+        "human-gate-staff-guest",
+        "db-isolation-resume",
+        "browser-mcp-usable",
+        "not-write-certified"
+      ],
+      "lastReviewed": "2026-08-06"
+    },
+    {
+      "path": "docs/NEW_CHAT_ORCHESTRATOR_PROMPT_2026-08-07-EVENING.md",
+      "title": "New-chat orchestrator prompt (current) — Overview card grid polished by parallel agents, final steps pending",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "onboarding",
+        "orchestrator",
+        "paste-prompt",
+        "autonomy-levels",
+        "subagents",
+        "parallel-delegation",
+        "verify-baseline",
+        "live-envelope",
+        "local-hub",
+        "live-verification",
+        "overview-card-grid",
+        "svg-classname-trap",
+        "css-token-trap",
+        "not-write-certified"
+      ],
+      "lastReviewed": "2026-08-07"
+    },
+    {
+      "path": "docs/NEW_CHAT_ORCHESTRATOR_PROMPT_2026-08-07.md",
+      "title": "New-chat orchestrator prompt — router-safe uplink watchdog, Wi-Fi remembered, SSID fix, Overview redesign",
+      "status": "deprecated",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "onboarding",
+        "orchestrator",
+        "paste-prompt",
+        "autonomy-levels",
+        "subagents",
+        "verify-baseline",
+        "live-envelope",
+        "local-hub",
+        "live-verification",
+        "gate-a-freshness-auto-20260806",
+        "gate-a-refresh-watchdog",
+        "ssh-transient-retry",
+        "wifi-ssid-display",
+        "host-internet-heartbeat",
+        "not-write-certified"
+      ],
+      "lastReviewed": "2026-08-07"
+    },
+    {
+      "path": "docs/OPERATOR_AWG_APPLY.md",
+      "title": "AWG/WireGuard apply/verify; catalog keepalive metadata path; tunnel_healthy DEVICE-CONFIRMED",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "operator",
+        "nc1812",
+        "awg-apply",
+        "wireguard-apply",
+        "not-write-certified",
+        "confirm-gated",
+        "bounded-test-interface",
+        "offline-fake",
+        "asc9-verified",
+        "asc16-pending",
+        "secret-ops-offline",
+        "pending-live-verification",
+        "private-key-partial-planner",
+        "private-key-partial-live",
+        "peer-nested-rci-available",
+        "peer-nested-rci-device-verified",
+        "peer-nested-rci-default",
+        "awg-path-style-peer-grammar",
+        "credential-ref-only",
+        "api",
+        "ui-config",
+        "per-request-live",
+        "dpapi",
+        "win32",
+        "premature-success-hazard",
+        "applied-not-egress",
+        "tunnel-health-observe",
+        "tunnel-never-handshaked",
+        "tunnel-healthy-20260731",
+        "show-interface-only-not-show-rc",
+        "handshake-settle-20-30s",
+        "handshake-settle-api",
+        "handshake-settle-cap-20260801",
+        "settle-unconfirmed-lh",
+        "handshake-sentinel-honesty",
+        "peer-array-extraction",
+        "teardown-clear-pk-quirk",
+        "config-verification-status",
+        "interface-present-down",
+        "interface-address-not-configured",
+        "wg-addr-dispatch-ok-20260801",
+        "wg-traffic-intent-log-20260801",
+        "ipv6-allow-ips-refused",
+        "dualstack-allowedips-soft-drop",
+        "settle-final-observation",
+        "asc9-uint32-h-bounds",
+        "teardown-gate-a-backup",
+        "platform-gate-parity-20260801",
+        "wg-intent-error-map-20260801",
+        "path-style-rejected-422",
+        "wg-verdict-literals-20260801",
+        "verdict-explanation-20260801",
+        "gate-a-backup-split-20260801",
+        "compensating-rollback",
+        "rollback-uncovered-ops",
+        "compensation-baseline-20260801",
+        "comp-foreign-if-20260801",
+        "comp-private-key-unknown",
+        "pre-apply-read-timeout-20260801",
+        "rollback-errors-20260801",
+        "wg-rollback-offline-20260801",
+        "catalog-keepalive-20260805"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/OPERATOR_AWG_DISCOVERY.md",
+      "title": "AWG discovery; WG component installed; post-WG Gate A tuple",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "hardware",
+        "operator",
+        "nc1812",
+        "awg-discovery",
+        "wireguard",
+        "read-only",
+        "not-write-certified",
+        "gate-a",
+        "gate-a-post-wg-rebind-20260731",
+        "source-bound-192.168.2.10",
+        "write-shape-discovery",
+        "live-ro-done",
+        "t4-executed-20260724",
+        "offline-secret-ops",
+        "pending-live-verification",
+        "awg-path-style-peer-grammar",
+        "live-write-shape-verify",
+        "extended-asc-rejected",
+        "offline-encoding-probe",
+        "plan-only",
+        "wg-component-installed-20260731",
+        "prior-unit-vs-current",
+        "comp-unavail-not-unsupported",
+        "asc9-uint32-h-bounds"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/OPERATOR_CAPTIVE_PORTAL_DISCOVERY.md",
+      "title": "Greenfield captive portal write-shape discovery; Coova-Chilli; component install T4",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "hardware",
+        "operator",
+        "nc1812",
+        "captive-portal-discovery",
+        "greenfield",
+        "documentation-sourced",
+        "not-write-certified",
+        "not-device-certified",
+        "gate-a",
+        "write-shape-discovery",
+        "coova-chilli",
+        "deferred-t3",
+        "t4-component-install"
+      ]
+    },
+    {
+      "path": "docs/OPERATOR_ENTRY_PAGES.md",
+      "title": "Entry pages operator runbook; public zone listener; guest reachability honesty",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "operator",
+        "entry-pages",
+        "public-zone",
+        "local-hub",
+        "not-device-certified"
+      ],
+      "lastReviewed": "2026-08-04"
+    },
+    {
+      "path": "docs/OPERATOR_GATE_A.md",
+      "title": "Gate A runbook; post-WG identity-drift rebind; WG component installed",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "slice-4",
+        "hardware",
+        "operator",
+        "navigation",
+        "lab",
+        "policy",
+        "gate-a",
+        "gate-a-rebind-20260731",
+        "gate-a-post-wg-rebind-20260731",
+        "read-only-certified",
+        "authorized-rebind-expendable",
+        "not-write-certified",
+        "source-bound-192.168.2.10",
+        "bootstrap-discovery",
+        "bootstrap-components-inventory",
+        "bootstrap-ssh-shape-fix",
+        "bootstrap-chan-warn",
+        "usb-modem-components-installed",
+        "wg-component-installed-20260731",
+        "topology-parser-v2.3",
+        "topology-link-parser-20260801",
+        "corr-link-up-only",
+        "component-version-only-20260801",
+        "gate-a-parser-fix-20260801",
+        "parser-false-drift-no-rebind",
+        "gate-a-freshness-auto-20260806",
+        "schtasks-non-elevated"
+      ],
+      "lastReviewed": "2026-08-06"
+    },
+    {
+      "path": "docs/OPERATOR_GATE_B_C_AWG.md",
+      "title": "Gate B/C AmneziaWG certification operator runbook (historical trial failed)",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "hardware",
+        "operator",
+        "gate-b",
+        "gate-c",
+        "awg",
+        "completed-failed",
+        "not-write-certified"
+      ],
+      "lastReviewed": "2026-08-01"
+    },
+    {
+      "path": "docs/OPERATOR_GATE_FAIL_SAFE.md",
+      "title": "Fail-safe timer discovery runbook; both trials completed_failed; offline SSH diagnosis next",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "hardware",
+        "operator",
+        "fail-safe",
+        "fail-safe-20260723T110000Z",
+        "fail-safe-20260723T094500Z",
+        "completed-failed",
+        "offline-ssh-diagnosis",
+        "vpn-absent",
+        "no-vpn-default-route",
+        "source-bound-192.168.1.144",
+        "not-write-certified",
+        "no-promotion",
+        "no-replay",
+        "root-cause-unproven",
+        "ssh-dispatch-failed",
+        "lab",
+        "gate-b",
+        "gate-c"
+      ]
+    },
+    {
+      "path": "docs/OPERATOR_KEENDNS_DISCOVERY.md",
+      "title": "KeenDNS/CrazeDNS discovery + apply (offline shipped; standing expendable 2026-08-08)",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "hardware",
+        "operator",
+        "nc1812",
+        "keendns-discovery",
+        "crazedns",
+        "greenfield",
+        "documentation-sourced",
+        "not-write-certified",
+        "not-device-certified",
+        "gate-a",
+        "write-shape-discovery",
+        "apply-shipped-offline",
+        "standing-approved",
+        "do-not-reask"
+      ]
+    },
+    {
+      "path": "docs/OPERATOR_NETWORK_FAMILY_APPLY_SCAFFOLD.md",
+      "title": "Network-family apply security scaffold (PreState, compensation, trail hooks; apply disabled)",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "operator",
+        "vlan",
+        "dhcp",
+        "dns",
+        "firewall",
+        "vpn-policy",
+        "offline-unverified",
+        "help-verified-grammar-unapplied",
+        "not-write-certified",
+        "network-family-preview-20260801",
+        "compensation-baseline-20260801",
+        "sealed-trail-scaffold-not-http",
+        "no-apply-routes",
+        "uncovered-ops-honest"
+      ],
+      "lastReviewed": "2026-08-01"
+    },
+    {
+      "path": "docs/OPERATOR_RCI_TYPED_OPS.md",
+      "title": "Sealed typed RCI interface/save operator CLIs; validate-default; T4 live template",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "hardware",
+        "operator",
+        "nc1812",
+        "rci",
+        "interface-rci",
+        "system-save",
+        "validate-default",
+        "not-write-certified",
+        "source-bound-192.168.1.144",
+        "source-bound-192.168.2.10",
+        "network-migration",
+        "gate-a"
+      ]
+    },
+    {
+      "path": "docs/OPERATOR_ROUTER_CONFIG_UI.md",
+      "title": "Router config UI; #config credentials, VPN parse-preview, preview panels, sealed RCI",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "operator",
+        "ui",
+        "vpn",
+        "read-only",
+        "not-write-certified",
+        "source-bound-192.168.2.10",
+        "network-migration",
+        "wpa3-device-verified",
+        "awg-peer-rci-shape",
+        "peer-pending-live-verification",
+        "path-style-peer-rejected",
+        "expendable-lab-class-20260730",
+        "gate-a-post-wg-rebind-20260731",
+        "wifi-ap-hardware-bound-20260731",
+        "vpn-policy-preview-ui",
+        "network-family-preview-ui",
+        "offline-session-20260801",
+        "teardown-wpa-mode-required"
+      ],
+      "lastReviewed": "2026-08-01"
+    },
+    {
+      "path": "docs/OPERATOR_ROUTER_DISCOVERY_CONNECTION_HEALTH.md",
+      "title": "Router discovery and connection health; bounded read-only, green from five facts",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "operator",
+        "discovery",
+        "connection-health",
+        "read-only",
+        "non-certifying",
+        "fail-closed",
+        "tri-state-identity",
+        "not-write-certified",
+        "simple-mode-20260801",
+        "local-subnet-gateway-20260802"
+      ],
+      "lastReviewed": "2026-08-02"
+    },
+    {
+      "path": "docs/OPERATOR_SIMPLE_MODE.md",
+      "title": "Simple mode: connect, link, Wi-Fi uplink, VPN, guest Wi-Fi, domain",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "operator",
+        "ui",
+        "simple-mode",
+        "progressive-disclosure",
+        "honesty",
+        "tri-state-link",
+        "wifi-station-uplink",
+        "not-device-verified",
+        "not-write-certified",
+        "simple-mode-20260801",
+        "step1-auto-connect-20260802",
+        "wifi-uplink-step-20260802",
+        "simple-wizard-shell-20260802",
+        "wizard-session-honesty-20260802",
+        "wifi-picker-step3-20260802",
+        "uplink-rid-resolve-20260802",
+        "wizard-live-params-20260802"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/OPERATOR_SSH_CLI_DISCOVERY.md",
+      "title": "SSH CLI discovery runbook (delivered); web UI is next_task",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "hardware",
+        "operator",
+        "nc1812",
+        "ssh-cli-discovery",
+        "read-only",
+        "offline-validate",
+        "not-write-certified",
+        "gate-a",
+        "source-bound-192.168.2.10",
+        "fail-safe-20260723T110000Z",
+        "fail-safe-20260723T094500Z",
+        "cli-question-mark-hazard",
+        "web-ui-full-coverage-next",
+        "harness-delivered"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/OPERATOR_UI.md",
+      "title": "Operator UI prototype; next full-coverage phase",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "operator",
+        "ui",
+        "auth",
+        "csp",
+        "not-write-certified",
+        "p2-fake-confirm-apply",
+        "add-router-wizard",
+        "bootstrap-discovery",
+        "bootstrap-components-inventory",
+        "uplink-spa",
+        "technician-uplink",
+        "tunnel-healthy-20260731",
+        "station-apply-http-delivered",
+        "station-device-verified-20260805",
+        "station-apply-ui-wired",
+        "vpn-catalog-tile-grid-r7",
+        "uplink-readback-status-table",
+        "vpn-policy-preview-ui",
+        "network-family-preview-ui",
+        "wifi-on-air-honesty-ui",
+        "verdict-explanation-ui",
+        "toast-overall-first",
+        "toast-no-false-success",
+        "offline-session-20260801",
+        "toast-overall-gate-20260801",
+        "web-ui-full-coverage-next",
+        "ui-dom-runtime-20260801",
+        "advanced-settings-details",
+        "unsafe-disable-auth-20260802",
+        "local-hub-internet-uplink-screen",
+        "local-hub-motion-pwa",
+        "local-hub-vpn-screen",
+        "local-hub-vpn-notes-keepalive",
+        "vpn-catalog-remove-r14",
+        "standing-prefs-r3-r6",
+        "domain-publish-r8",
+        "internet-source-r2-wip",
+        "overview-simple-main-menu-r9"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/OPERATOR_VPN_CONNECTION_POLICY_DISCOVERY.md",
+      "title": "VPN policy grammar; ip_global + traffic-via-tunnel device-verified",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "hardware",
+        "operator",
+        "nc1812",
+        "vpn",
+        "connection-policy",
+        "policy-routing",
+        "read-only",
+        "not-write-certified",
+        "gate-a",
+        "gate-a-post-wg-rebind-20260731",
+        "kill-switch-unresolved",
+        "permit-global-rejected",
+        "grammar-visibility-only",
+        "wg-component-installed-20260731",
+        "tunnel-4-state",
+        "tunnel-healthy-20260731",
+        "deploy-order-dependency",
+        "field-rack-offline-lesson",
+        "offline-planner-layer-20260801",
+        "help-verified-grammar-unapplied",
+        "deploy-order-step6-offline-sync",
+        "wg-canonical-name-refusal",
+        "wg-like-detection-allowlist",
+        "wg-like-refusal-before-charset",
+        "station-interface-id-allowlist",
+        "ip-global-bounds-sealed",
+        "ip-global-shared-validator",
+        "preview-strict-int-bounds",
+        "ansi-strip-line-suffix-only",
+        "ansi-strip-crlf-repeat",
+        "ansi-strip-vpn-probe-parsers",
+        "wg-ip-global-verified-0805",
+        "set-ip-address-verified-0805",
+        "traffic-via-tunnel-0805",
+        "clear-ip-global-not-proven"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/OPERATOR_WEB_UI_FULL_COVERAGE_PLAN.md",
+      "title": "Full operator web UI autonomous plan",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "operator",
+        "ui",
+        "web-ui-plan",
+        "full-coverage",
+        "simple-by-default",
+        "agent-plan",
+        "not-write-certified",
+        "preview-only-families"
+      ],
+      "lastReviewed": "2026-08-01"
+    },
+    {
+      "path": "docs/OPERATOR_WIFI_APPLY.md",
+      "title": "Wi-Fi apply/verify server flow; AP + station preview/apply/teardown API; observed-state read-only",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "operator",
+        "nc1812",
+        "wifi-apply",
+        "wifi-station-apply",
+        "wifi-verify",
+        "wifi-observed-state",
+        "live-observed-wiring",
+        "not-write-certified",
+        "confirm-gated",
+        "bounded-test-ap",
+        "offline-fake",
+        "wpa2-verified",
+        "wpa3-device-verified",
+        "wpa3-mixed-device-verified",
+        "wpa3-grammar-correction",
+        "api",
+        "ui-config",
+        "per-request-live",
+        "dpapi",
+        "win32",
+        "offline-reliability",
+        "compensating-rollback",
+        "rollback-uncovered-ops",
+        "compensation-baseline-20260801",
+        "comp-psk-unknown-fail-closed",
+        "comp-open-network-20260801",
+        "pre-apply-read-timeout-20260801",
+        "rollback-errors-20260801",
+        "idempotent-apply",
+        "read-only",
+        "wifi-ap-hardware-bound-20260731",
+        "accesspoint3-6",
+        "sealed-path-live-20260731",
+        "wifi-obs-quality-20260731",
+        "station-apply-http-delivered",
+        "station-device-verified-20260805",
+        "station-uplink-honest-observe",
+        "station-planned-uplink-preview",
+        "wifi-ap-on-air-honest-observe",
+        "link-parser-unified-20260801",
+        "overall-config-on-air-20260801",
+        "verdict-explanation-20260801",
+        "wifi-intent-required-fields",
+        "teardown-gate-a-backup",
+        "platform-gate-parity-20260801",
+        "host-fake-redact-20260801",
+        "planned-uplink-runtime-split",
+        "gate-a-backup-split-20260801",
+        "station-ip-global-uncovered",
+        "structured-error-codes-0801",
+        "guest-wifi-ap3-live-20260802",
+        "preview-apply-ops-not-ops"
+      ],
+      "lastReviewed": "2026-08-02"
+    },
+    {
+      "path": "docs/OPERATOR_WIFI_DISCOVERY.md",
+      "title": "Wi-Fi discovery; WG component installed; station uplink bounded persisted",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "hardware",
+        "operator",
+        "nc1812",
+        "wifi-discovery",
+        "read-only",
+        "not-write-certified",
+        "gate-a",
+        "write-shape-discovery",
+        "offline-compiler",
+        "live-write-shape-verify",
+        "wpa-verified-20260724",
+        "wpa3-device-verified",
+        "wifi-ap-hardware-bound-20260731",
+        "accesspoint0-6",
+        "stn-grammar-confirmed",
+        "stn-assoc-bounded-20260731",
+        "stn-uplink-verified-bounded",
+        "site-survey-api",
+        "wifi-wan-not-certified",
+        "show-rc-psk-scrub",
+        "usb-modem-components-installed",
+        "station-apply-http-delivered",
+        "station-device-verified-20260805",
+        "station-priority-teardown-0801",
+        "planner-reject-422-0801",
+        "guest-wifi-ap3-live-20260802"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/README.md",
+      "title": "Documentation index; cold-start aligned with AGENTS",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "navigation",
+        "cold-start-aligned",
+        "not-write-certified",
+        "session-handoff-20260802",
+        "expendable-lab-envelope",
+        "tunnel-healthy-20260731",
+        "local-hub-vpn-next-task",
+        "wg-ip-global-verified-0805"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/SCENARIO_PORTABLE_EQUIPMENT_RACK.md",
+      "title": "Portable rack; traffic-via-tunnel device-verified; station apply live",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "scenario",
+        "uplink",
+        "wifi-wan",
+        "portable-rack",
+        "offline-only",
+        "not-write-certified",
+        "gate-a-post-wg-rebind-20260731",
+        "stn-grammar-confirmed",
+        "stn-uplink-verified-bounded",
+        "site-survey-api",
+        "wifi-wan-not-certified",
+        "uplink-spa",
+        "technician-uplink",
+        "vpn-policy-grammar",
+        "kill-switch-unresolved",
+        "vpn-policy-preview-offline",
+        "wg-component-installed-20260731",
+        "deploy-order-dependency",
+        "pre-provision-before-ship",
+        "usb-modem-components-installed",
+        "tunnel-4-state",
+        "tunnel-healthy-20260731",
+        "field-rack-offline-lesson",
+        "station-apply-http-delivered",
+        "station-device-verified-20260805",
+        "offline-session-20260801",
+        "planner-reject-422-0801",
+        "wg-ip-global-verified-0805",
+        "traffic-via-tunnel-0805",
+        "clear-ip-global-not-proven"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/SESSION_HANDOFF_REAL_ROUTER_2026-07-23.md",
+      "title": "Session handoff — real router lab; session closeout 2.1; Gate A recert 192.168.2.10",
+      "status": "deprecated",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "handoff",
+        "lab",
+        "gate-a",
+        "t4",
+        "fail-safe",
+        "fail-safe-20260723T110000Z",
+        "fail-safe-20260723T094500Z",
+        "completed-failed",
+        "offline-ssh-diagnosis",
+        "not-write-certified",
+        "ssh-dispatch-failed",
+        "root-cause-unproven",
+        "source-bound-192.168.2.10",
+        "network-migration",
+        "session-closeout",
+        "superseded-by-20260724",
+        "superseded-by-20260731"
+      ]
+    },
+    {
+      "path": "docs/SESSION_HANDOFF_REAL_ROUTER_2026-07-24.md",
+      "title": "Session handoff 2026-07-24; historical prior-unit methods",
+      "status": "deprecated",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "handoff",
+        "lab",
+        "gate-a",
+        "t4",
+        "wifi",
+        "awg",
+        "not-write-certified",
+        "source-bound-192.168.2.10",
+        "session-closeout",
+        "continued-session",
+        "wpa3-device-verified",
+        "wpa3-mixed-device-verified",
+        "awg-private-key-partial",
+        "peer-nested-rci-live-rejected",
+        "peer-nested-rci-accepted",
+        "awg-2nd-campaign-partial",
+        "psk-write-acked",
+        "peer-readback-pending",
+        "web-apply",
+        "standing-bounded-live-20260724",
+        "carve-outs-explicit-per-action",
+        "historical-methods",
+        "superseded-by-20260731"
+      ],
+      "lastReviewed": "2026-07-31"
+    },
+    {
+      "path": "docs/SESSION_HANDOFF_REAL_ROUTER_2026-07-31.md",
+      "title": "Session handoff 2026-07-31; historical methods companion",
+      "status": "deprecated",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "handoff",
+        "lab",
+        "gate-a",
+        "post-rebind",
+        "gate-a-post-wg-rebind-20260731",
+        "expendable",
+        "wifi-device-verified",
+        "station-grammar-accepted",
+        "stn-first-assoc-bounded",
+        "stn-uplink-persisted-20260731",
+        "wg-component-installed-20260731",
+        "dead-peer-confirmed-20260731",
+        "tunnel-healthy-20260731",
+        "not-write-certified",
+        "source-bound-192.168.2.10",
+        "session-closeout",
+        "assumption-traps",
+        "show-rc-psk-scrub",
+        "default-route-v1.3",
+        "open-items",
+        "station-apply-http-delivered",
+        "station-device-verified-20260805",
+        "offline-session-20260801",
+        "link-parser-unified-20260801",
+        "vpn-policy-preview-offline",
+        "source-address-fixed",
+        "teardown-gate-a-backup",
+        "offline-reliability-ssot-0801",
+        "docs-audit-ssot-sync-0801",
+        "historical-methods",
+        "superseded-by-20260802"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/SESSION_HANDOFF_REAL_ROUTER_2026-08-02.md",
+      "title": "Session handoff 2026-08-02; Gate A parser recert; guest AP3 live",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "handoff",
+        "lab",
+        "gate-a",
+        "post-rebind",
+        "expendable",
+        "gate-a-parser-fix-20260801",
+        "parser-false-drift-no-rebind",
+        "guest-wifi-ap3-live-20260802",
+        "not-write-certified",
+        "source-bound-192.168.2.10",
+        "session-closeout",
+        "assumption-traps",
+        "guest-isolation-unsupported",
+        "apply-ops-not-ops",
+        "human-gate-20260801",
+        "simple-mode-docs",
+        "keendns-ro-preview"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/SESSION_HANDOFF_UI_AUTH_2026-07-22.md",
+      "title": "UI auth bootstrap session handoff (historical)",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "handoff",
+        "ui-auth",
+        "historical",
+        "complete"
+      ],
+      "lastReviewed": "2026-08-01"
+    },
+    {
+      "path": "docs/STATUS.yaml",
+      "title": "Project status (SSOT); web UI next major phase",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "state",
+        "fail-safe",
+        "fail-safe-20260723T110000Z",
+        "fail-safe-20260723T094500Z",
+        "completed-failed",
+        "offline-ssh-diagnosis",
+        "vpn-absent",
+        "no-vpn-default-route",
+        "source-bound-192.168.2.10",
+        "network-migration",
+        "not-write-certified",
+        "no-promotion",
+        "no-replay",
+        "root-cause-unproven",
+        "ssh-dispatch-failed",
+        "continued-session",
+        "wpa3-device-verified",
+        "awg-private-key-partial",
+        "peer-nested-rci-available",
+        "peer-nested-rci-live-rejected",
+        "peer-nested-rci-accepted",
+        "awg-2nd-campaign-partial",
+        "psk-write-acked",
+        "peer-readback-pending",
+        "deferred-verticals",
+        "dual-apply-path",
+        "standing-bounded-live-20260724",
+        "carve-outs-explicit-per-action",
+        "gate-a-rebind-20260731",
+        "gate-a-post-wg-rebind-20260731",
+        "read-only-certified",
+        "wifi-ap-hardware-bound-20260731",
+        "wisp-grammar-probe-20260731",
+        "wg-component-installed-20260731",
+        "wg-connectivity-blocker-20260731",
+        "comp-unavail-not-unsupported",
+        "usb-modem-components-installed",
+        "offline-session-20260801",
+        "vpn-policy-preview-offline",
+        "source-address-fixed",
+        "station-apply-http-delivered",
+        "offline-reliability-ssot-0801",
+        "web-ui-full-coverage-next",
+        "docs-ssot-sync-post-session-0801"
+      ],
+      "lastReviewed": "2026-08-06"
+    },
+    {
+      "path": "docs/T4_GATE_PACKET_AWG_EXTENDED_ASC_I1_I5_2026-07-24.md",
+      "title": "T4 Human Gate Packet — extended ASC I1-I5 encoding probe (DRAFT; awaiting human approval)",
+      "status": "draft",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "hardware",
+        "operator",
+        "nc1812",
+        "t4",
+        "awg",
+        "wireguard",
+        "extended-asc",
+        "i1-i5-encoding",
+        "encoding-probe",
+        "not-write-certified",
+        "not-device-certified",
+        "plan-only-harness",
+        "deferred-t3",
+        "draft-t4",
+        "source-bound-192.168.2.10"
+      ]
+    },
+    {
+      "path": "docs/T4_GATE_PACKET_AWG_PEER_NESTED_RCI_2026-07-24.md",
+      "title": "T4 Human Gate Packet — AWG peer nested-RCI live re-probe (re-verify ACCEPTED 2026-07-24)",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "hardware",
+        "operator",
+        "nc1812",
+        "t4",
+        "awg",
+        "wireguard",
+        "peer-nested-rci",
+        "nested-rci-transport",
+        "secret-tunnel-reprobe",
+        "not-write-certified",
+        "peer-nested-rci-device-verified",
+        "peer-nested-rci-default",
+        "private-key-partial-live",
+        "path-style-peer-rejected",
+        "t4-executed-20260724",
+        "source-bound-192.168.2.10",
+        "credential-ref-only"
+      ]
+    },
+    {
+      "path": "docs/T4_GATE_PACKET_AWG_WRITESHAPE_VERIFY_2026-07-23.md",
+      "title": "T4 Human Gate Packet — AWG write-shape verification (create/asc-9/remove executed 2026-07-24)",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "hardware",
+        "operator",
+        "nc1812",
+        "t4",
+        "awg",
+        "wireguard",
+        "write-shape-verify",
+        "not-write-certified",
+        "t4-executed-20260724",
+        "deferred-t3",
+        "extended-asc-rejected",
+        "secret-wg-ops-deferred"
+      ]
+    },
+    {
+      "path": "docs/T4_GATE_PACKET_WIFI_WRITESHAPE_VERIFY_2026-07-23.md",
+      "title": "T4 Human Gate Packet — Wi-Fi write-shape verification (ssid/up + WPA/encryption executed 2026-07-24)",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "hardware",
+        "operator",
+        "nc1812",
+        "t4",
+        "wifi",
+        "write-shape-verify",
+        "not-write-certified",
+        "t4-executed-20260724",
+        "deferred-t3",
+        "wpa-verified-20260724"
+      ]
+    },
+    {
+      "path": "docs/VISION.md",
+      "title": "Product vision; VPN traffic-via-tunnel device-verified",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0a",
+        "phase-0b",
+        "architecture",
+        "complete",
+        "session-handoff-20260802",
+        "tunnel-healthy-20260731",
+        "local-hub-vpn-next-task",
+        "wg-ip-global-verified-0805",
+        "traffic-via-tunnel-0805"
+      ],
+      "lastReviewed": "2026-08-05"
     },
     {
       "path": "docs/adrs/0001-python-package-fastapi-host.md",
       "title": "ADR-0001 Python package and FastAPI host",
       "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0a", "adr"]
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0a",
+        "adr"
+      ]
     },
     {
       "path": "docs/adrs/0002-persistence-jobs-sqlite.md",
       "title": "ADR-0002 Persistence, jobs, SQLite",
       "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0a", "adr"]
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0a",
+        "adr"
+      ]
     },
     {
       "path": "docs/adrs/0003-security-auth-secrets.md",
       "title": "ADR-0003 Security, auth, secrets",
       "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0a", "adr"]
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0a",
+        "adr"
+      ]
     },
     {
       "path": "docs/adrs/0004-product-capability-scope.md",
       "title": "ADR-0004 Product capability scope",
       "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0a", "adr"]
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0a",
+        "adr"
+      ]
     },
     {
-      "path": "docs/contracts/README.md",
-      "title": "Contracts program index; offline mega complete, next SLICE-4",
+      "path": "docs/adrs/0005-local-first-commissioning-roadmap.md",
+      "title": "ADR-0005 Local-first commissioning roadmap M0–M8",
       "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0b", "contracts", "navigation", "complete"]
-    },
-    {
-      "path": "docs/contracts/RCI_POLICY.md",
-      "title": "RCI policy contract",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0b", "contracts", "rci", "complete"]
-    },
-    {
-      "path": "docs/contracts/HARDWARE_GATES.md",
-      "title": "Hardware safety gates contract",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0b", "contracts", "hardware", "complete"]
-    },
-    {
-      "path": "docs/contracts/SECURITY_OPS.md",
-      "title": "Security and operations contract",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0b", "contracts", "security", "complete"]
-    },
-    {
-      "path": "docs/contracts/PERSISTENCE_CONTRACT.md",
-      "title": "Persistence contract; cancel idempotency MUST update 202→200 (§5.3/§6)",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0b", "contracts", "persistence", "complete"]
-    },
-    {
-      "path": "docs/contracts/API_CONTRACT.md",
-      "title": "HTTP/API contract (v0); cancel idempotency MUST update 202→200",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0b", "contracts", "api", "complete"]
-    },
-    {
-      "path": "docs/contracts/TEST_STRATEGY.md",
-      "title": "Test strategy and evidence contract",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0b", "contracts", "test-strategy", "complete"]
-    },
-    {
-      "path": "docs/contracts/SCENARIOS.md",
-      "title": "Operator/event scenarios; Phase 1 offline mega complete",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0b", "contracts", "scenarios", "complete"]
-    },
-    {
-      "path": "docs/contracts/ROADMAP.md",
-      "title": "Implementation roadmap contract",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0b", "phase-1", "offline-mega", "slice-4", "contracts", "roadmap", "complete"]
-    },
-    {
-      "path": "docs/contracts/AI_HANDOFF.md",
-      "title": "AI agent handoff contract; offline mega complete, next SLICE-4",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["phase-0b", "phase-1", "offline-mega", "slice-4", "contracts", "handoff", "complete"]
-    },
-    {
-      "path": "docs/docs-map.json",
-      "title": "Documentation map",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["docs", "harness"]
-    },
-    {
-      "path": "docs/docs-map-schema.md",
-      "title": "docs-map.json schema",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["docs", "schema"]
-    },
-    {
-      "path": "docs/living-documentation.md",
-      "title": "Living documentation",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["docs", "harness"]
-    },
-    {
-      "path": "docs/project-environment.md",
-      "title": "Project environment",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["environment", "harness"]
-    },
-    {
-      "path": "docs/papercuts.md",
-      "title": "Papercuts workflow",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["harness", "papercuts"]
-    },
-    {
-      "path": "docs/bootstrap-scaffold.md",
-      "title": "Bootstrap scaffold reference",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["harness", "bootstrap"]
-    },
-    {
-      "path": "docs/project-integrations.md",
-      "title": "Project integrations",
-      "status": "active",
-      "owners": ["team"],
-      "tags": ["integrations", "harness"]
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0a",
+        "m0",
+        "adr",
+        "roadmap"
+      ],
+      "lastReviewed": "2026-08-01"
     },
     {
       "path": "docs/autonomous-agent-orchestration.md",
       "title": "Autonomous agent orchestration",
       "status": "active",
-      "owners": ["team"],
-      "tags": ["harness", "orchestration"]
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "harness",
+        "orchestration"
+      ]
     },
     {
-      "path": "docs/cursor-native-controls.md",
-      "title": "Cursor native controls",
+      "path": "docs/bootstrap-scaffold.md",
+      "title": "Bootstrap scaffold reference",
       "status": "active",
-      "owners": ["team"],
-      "tags": ["cursor", "harness"]
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "harness",
+        "bootstrap"
+      ]
+    },
+    {
+      "path": "docs/contracts/AI_HANDOFF.md",
+      "title": "AI handoff; §4 tunnel_healthy + prototype UI truth",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0b",
+        "phase-1",
+        "p3",
+        "contracts",
+        "handoff",
+        "fail-safe",
+        "fail-safe-20260723T110000Z",
+        "fail-safe-20260723T094500Z",
+        "completed-failed",
+        "not-write-certified",
+        "default-route-discovery",
+        "session-handoff-20260731",
+        "dead-peer-confirmed-20260731",
+        "tunnel-healthy-20260731",
+        "web-ui-full-coverage-next",
+        "corr-link-up-only",
+        "prototype-ui-exists",
+        "docs-audit-ssot-sync-0801",
+        "session-handoff-20260802",
+        "wg-ip-global-verified-0805",
+        "traffic-via-tunnel-0805",
+        "local-hub-vpn-next-task"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/contracts/API_CONTRACT.md",
+      "title": "HTTP/API contract (v0); web UI next major phase",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0b",
+        "contracts",
+        "api",
+        "openapi-pinned-sync-20260801",
+        "http-domain-alignment-20260801",
+        "openapi-verdict-schemas-20260801",
+        "verdict-explanation-20260801",
+        "apply-overall-enum-20260801",
+        "compile-verdict-literals",
+        "wifi-intent-required-fields",
+        "wifi-ap-on-air-honest-observe",
+        "wifi-ap-verdict-runtime-20260801",
+        "link-parser-unified-20260801",
+        "station-planned-uplink-preview",
+        "web-ui-full-coverage-next",
+        "platform-gate-parity-20260801",
+        "wg-intent-error-map-20260801",
+        "planned-uplink-runtime-split",
+        "wg-verdict-literals-20260801",
+        "wg-addr-dispatch-ok-20260801",
+        "network-family-preview-20260801",
+        "gate-a-backup-split-20260801",
+        "audit-redaction-20260801",
+        "rollback-errors-20260801",
+        "compensation-baseline-20260801",
+        "comp-psk-unknown-fail-closed",
+        "comp-foreign-if-unknown",
+        "sealed-trail-begin-failed",
+        "station-grammar-source-notes",
+        "local-subnet-gateway-20260802",
+        "discovery-src-diag-20260802",
+        "restore-candidate-20260803",
+        "connection-context-get-20260803",
+        "dualstack-allowedips-soft-drop",
+        "operator-notes-vpn-profile"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/contracts/HARDWARE_GATES.md",
+      "title": "Hardware safety gates; post-WG Gate A ReadOnlyCertified; web UI next",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0b",
+        "contracts",
+        "hardware",
+        "fail-safe",
+        "fail-safe-20260723T110000Z",
+        "fail-safe-20260723T094500Z",
+        "completed-failed",
+        "not-write-certified",
+        "gate-a-post-wg-rebind-20260731",
+        "read-only-certified",
+        "session-handoff-20260731",
+        "tunnel-healthy-20260731",
+        "web-ui-full-coverage-next"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/contracts/PERSISTENCE_CONTRACT.md",
+      "title": "Persistence contract; M9–M12 management_username + sealed_apply_runs trail",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0b",
+        "contracts",
+        "persistence",
+        "complete",
+        "ssh-host-key-pin",
+        "sealed-apply-trail-20260801",
+        "sealed-apply-lease-m10",
+        "management-username-m12",
+        "conn-binding-ep-20260803",
+        "secret-scan-schema-derived",
+        "stale-run-null-lease-20260801"
+      ],
+      "lastReviewed": "2026-08-03"
+    },
+    {
+      "path": "docs/contracts/RCI_POLICY.md",
+      "title": "RCI policy contract; web UI next major phase",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0b",
+        "contracts",
+        "rci",
+        "complete",
+        "peer-nested-rci-available",
+        "web-ui-full-coverage-next",
+        "secret-redaction-20260801",
+        "path-style-rejected-422"
+      ],
+      "lastReviewed": "2026-08-01"
+    },
+    {
+      "path": "docs/contracts/README.md",
+      "title": "Contracts program index; web UI next major phase",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0b",
+        "phase-1",
+        "p3",
+        "contracts",
+        "navigation",
+        "fail-safe",
+        "fail-safe-20260723T110000Z",
+        "fail-safe-20260723T094500Z",
+        "completed-failed",
+        "not-write-certified",
+        "session-handoff-20260731",
+        "web-ui-full-coverage-next",
+        "tunnel-healthy-20260731"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/contracts/ROADMAP.md",
+      "title": "Implementation roadmap; web UI next major phase §3.3",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0b",
+        "phase-1",
+        "p3",
+        "contracts",
+        "roadmap",
+        "fail-safe",
+        "fail-safe-20260723T110000Z",
+        "fail-safe-20260723T094500Z",
+        "completed-failed",
+        "not-write-certified",
+        "deferred-verticals",
+        "dual-apply-path",
+        "vlan-sealed-offline-executor",
+        "dhcp-dns-fw-sealed-offline",
+        "network-family-preview-20260801",
+        "network-family-preview-ui",
+        "portable-rack",
+        "wifi-wan",
+        "gate-a-post-wg-rebind-20260731",
+        "vpn-policy-grammar",
+        "kill-switch-unresolved",
+        "wg-component-installed-20260731",
+        "stn-uplink-verified-bounded",
+        "usb-modem-components-installed",
+        "pre-provision-before-ship",
+        "field-rack-offline-lesson",
+        "sealed-apply-trail-20260801",
+        "web-ui-full-coverage-next",
+        "traffic-discovery-ui",
+        "docs-audit-ssot-sync-0801"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/contracts/SCENARIOS.md",
+      "title": "Operator/event scenarios; web UI next major phase",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0b",
+        "contracts",
+        "scenarios",
+        "complete",
+        "portable-rack",
+        "web-ui-full-coverage-next",
+        "tunnel-healthy-20260731",
+        "station-apply-http-delivered",
+        "offline-session-20260801"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/contracts/SECURITY_OPS.md",
+      "title": "Security and operations contract; explicit SSH host-key TOFU",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0b",
+        "contracts",
+        "security",
+        "complete",
+        "ssh-host-key-pin",
+        "audit-redaction-20260801",
+        "sealed-apply-trail-20260801",
+        "err-msg-structural-20260801",
+        "err-scrub-nested-20260801",
+        "unsafe-disable-auth-20260802",
+        "unsafe-bypass-fail-closed-0802"
+      ],
+      "lastReviewed": "2026-08-02"
+    },
+    {
+      "path": "docs/contracts/TEST_STRATEGY.md",
+      "title": "Test strategy; local-hub VPN next task 2026-08-05",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0b",
+        "phase-1",
+        "p3",
+        "contracts",
+        "test-strategy",
+        "fail-safe",
+        "fail-safe-20260723T110000Z",
+        "fail-safe-20260723T094500Z",
+        "completed-failed",
+        "not-write-certified",
+        "field-name-discovery",
+        "default-route-discovery",
+        "route-list-shape-fingerprint",
+        "local-hub-vpn-next-task",
+        "tunnel-healthy-20260731",
+        "secret-redaction-20260801",
+        "topology-parser-v2.3",
+        "corr-link-up-only",
+        "ui-dom-runtime-20260801"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/contracts/openapi-v0.json",
+      "title": "Pinned OpenAPI v0 export (regenerate via scripts/export-openapi.py)",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-0b",
+        "contracts",
+        "api",
+        "openapi-pinned-sync-20260801",
+        "connection-context-get-20260803",
+        "mgmt-username-post-20260803",
+        "restore-candidate-20260803",
+        "conn-ctx-manifest-20260803",
+        "generated-artifact",
+        "compile-verdict-literals"
+      ],
+      "lastReviewed": "2026-08-03"
     },
     {
       "path": "docs/cursor-agent-best-practices.md",
       "title": "Cursor agent best practices",
       "status": "active",
-      "owners": ["team"],
-      "tags": ["cursor", "harness"]
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "cursor",
+        "harness"
+      ]
+    },
+    {
+      "path": "docs/cursor-native-controls.md",
+      "title": "Cursor native controls",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "cursor",
+        "harness"
+      ]
     },
     {
       "path": "docs/cursor-primitives.md",
       "title": "Cursor primitives",
       "status": "active",
-      "owners": ["team"],
-      "tags": ["cursor", "harness"]
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "cursor",
+        "harness"
+      ]
+    },
+    {
+      "path": "docs/docs-map-schema.md",
+      "title": "docs-map.json schema; lastReviewed optional field",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "docs",
+        "schema"
+      ],
+      "lastReviewed": "2026-08-01"
+    },
+    {
+      "path": "docs/docs-map.json",
+      "title": "Documentation map",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "docs",
+        "harness"
+      ]
+    },
+    {
+      "path": "docs/gate-a-certification.json",
+      "title": "Gate A certification config; nested gates SSOT note; post-WG rebind 2026-07-31",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "gate-a",
+        "hardware",
+        "certification",
+        "gate-a-rebind-20260731",
+        "gate-a-post-wg-rebind-20260731",
+        "read-only-certified",
+        "not-write-certified",
+        "nested-gates-ssot-note"
+      ],
+      "lastReviewed": "2026-08-01"
+    },
+    {
+      "path": "docs/gate-b-awg-certification-result.json",
+      "title": "Gate B AWG certification trial result evidence (completed_failed)",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "gate-b",
+        "awg",
+        "completed-failed",
+        "not-write-certified"
+      ]
+    },
+    {
+      "path": "docs/gate-b-c-awg-authorization.json",
+      "title": "Gate B/C AWG certification authorization record (historical)",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "gate-b",
+        "gate-c",
+        "awg",
+        "authorization",
+        "not-write-certified"
+      ]
+    },
+    {
+      "path": "docs/living-documentation.md",
+      "title": "Living documentation",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "docs",
+        "harness"
+      ]
+    },
+    {
+      "path": "docs/netcraze-source-catalog.json",
+      "title": "Netcraze M5 per-family capability source catalog",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "m5",
+        "certification",
+        "catalog"
+      ]
+    },
+    {
+      "path": "docs/papercuts.md",
+      "title": "Papercuts workflow",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "harness",
+        "papercuts"
+      ]
+    },
+    {
+      "path": "docs/project-environment.md",
+      "title": "Project environment",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "environment",
+        "harness"
+      ]
+    },
+    {
+      "path": "docs/project-integrations.md",
+      "title": "Project integrations",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "integrations",
+        "harness"
+      ]
+    },
+    {
+      "path": "docs/project-state.md",
+      "title": "Harness projection; web UI next major phase",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "state",
+        "fail-safe",
+        "fail-safe-20260723T110000Z",
+        "fail-safe-20260723T094500Z",
+        "completed-failed",
+        "not-write-certified",
+        "no-promotion",
+        "no-replay",
+        "source-bound-192.168.2.10",
+        "gate-a-rebind-20260731",
+        "gate-a-post-wg-rebind-20260731",
+        "read-only-certified",
+        "wg-component-installed-20260731",
+        "stn-uplink-persisted-20260731",
+        "dead-peer-confirmed-20260731",
+        "tunnel-healthy-20260731",
+        "default-route-v1.3",
+        "offline-session-20260801",
+        "vpn-policy-preview-offline",
+        "station-apply-http-delivered",
+        "offline-reliability-ssot-0801",
+        "web-ui-full-coverage-next",
+        "planner-reject-422-0801",
+        "gate-a-parser-fix-20260801",
+        "guest-wifi-ap3-live-20260802",
+        "session-handoff-20260802"
+      ],
+      "lastReviewed": "2026-08-05"
+    },
+    {
+      "path": "docs/schemas/fail-safe-trial-authorization.schema.json",
+      "title": "Fail-safe trial authorization JSON schema",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "schema",
+        "fail-safe",
+        "authorization"
+      ]
+    },
+    {
+      "path": "docs/schemas/netcraze-evidence-manifest.schema.json",
+      "title": "Netcraze evidence manifest JSON schema (M5 certification)",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "m5",
+        "schema",
+        "certification"
+      ]
+    },
+    {
+      "path": "docs/schemas/ssh-cli-discovery-authorization.schema.json",
+      "title": "SSH CLI discovery authorization JSON schema",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "schema",
+        "ssh-cli-discovery",
+        "authorization",
+        "replay-guard",
+        "source-bound-192.168.2.10"
+      ]
     },
     {
       "path": "docs/skills-russian-descriptions.md",
       "title": "Skill descriptions (Russian)",
       "status": "active",
-      "owners": ["team"],
-      "tags": ["harness", "skills"]
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "harness",
+        "skills"
+      ]
+    },
+    {
+      "path": "pyproject.toml",
+      "title": "Python package metadata; host and dev extras",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "offline-mega",
+        "package"
+      ]
+    },
+    {
+      "path": "router_control",
+      "title": "Domain core, persistence, vault, traffic discovery",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "offline-mega",
+        "package",
+        "domain"
+      ]
+    },
+    {
+      "path": "router_control_host",
+      "title": "FastAPI prototype host /api/router-control/v1",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "slice-3",
+        "host",
+        "package"
+      ]
+    },
+    {
+      "path": "scripts/probe-nc1812-awg-asc-encoding.py",
+      "title": "NC-1812 extended AWG asc I1-I5 encoding probe (plan-only)",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "hardware",
+        "operator",
+        "nc1812",
+        "awg-discovery",
+        "extended-asc",
+        "plan-only",
+        "not-write-certified",
+        "offline-validate",
+        "i1-i5-encoding"
+      ]
+    },
+    {
+      "path": "scripts/probe-nc1812-awg-peer-nested-rci-web-e2e.py",
+      "title": "NC-1812 nested-RCI AWG peer web-E2E probe (plan-only default)",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "p3",
+        "hardware",
+        "operator",
+        "nc1812",
+        "awg-apply",
+        "nested-rci",
+        "web-e2e",
+        "plan-only",
+        "confirm-live-gated",
+        "not-write-certified",
+        "peer-nested-rci-live-rejected"
+      ]
+    },
+    {
+      "path": "scripts/project-docs.ps1",
+      "title": "Project docs lifecycle PowerShell wrapper",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "harness",
+        "tooling",
+        "docs"
+      ]
+    },
+    {
+      "path": "scripts/project-docs.py",
+      "title": "Project docs lifecycle CLI (audit, sync-marker, impact)",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "harness",
+        "tooling",
+        "docs"
+      ]
+    },
+    {
+      "path": "scripts/validate-project-docs.ps1",
+      "title": "docs-map.json schema validator",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "harness",
+        "tooling",
+        "docs"
+      ]
+    },
+    {
+      "path": "tests",
+      "title": "Pytest suite: fake, persistence, vault, host",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "phase-1",
+        "offline-mega",
+        "tests"
+      ]
+    },
+    {
+      "path": "docs/OPERATOR_BROWSER_MCP_RECOVERY.md",
+      "title": "Browser MCP recovery runbook (Windows); symptom-cause-fix map + script",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "cursor",
+        "harness",
+        "browser-mcp",
+        "windows",
+        "plugin-browse-browser",
+        "browser-mcp-recovery-20260806"
+      ],
+      "lastReviewed": "2026-08-06"
+    },
+    {
+      "path": "scripts/repair-browser-mcp.ps1",
+      "title": "Idempotent Windows repair for plugin-browse-browser MCP server",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "harness",
+        "tooling",
+        "browser-mcp",
+        "windows"
+      ]
+    },
+    {
+      "path": "docs/OPERATOR_SIMPLE_MAIN_MENU_SPEC.md",
+      "title": "Simple main menu — living operator spec and readiness tracker",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "local-hub",
+        "operator-spec",
+        "main-menu",
+        "living-tracker",
+        "vpn-tile-grid-r7-code-ready",
+        "vpn-egress-prio-r12a",
+        "vpn-catalog-remove-r14",
+        "standing-prefs-r3-r6",
+        "domain-publish-r8-code-ready",
+        "internet-source-r2-wip",
+        "wifi-station-allowlist-r15",
+        "overview-simple-main-menu-r9"
+      ],
+      "lastReviewed": "2026-08-06"
     }
   ],
   "rules": {

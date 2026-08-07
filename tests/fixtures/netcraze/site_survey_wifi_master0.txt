@@ -1,0 +1,3 @@
+SSID                MAC                 Ch  Mode  Q
+SYNTH-SSID-Alpha    aa:bb:cc:dd:ee:01   6   n     85
+SYNTH-SSID-Beta     aa:bb:cc:dd:ee:02   11  ac    72
