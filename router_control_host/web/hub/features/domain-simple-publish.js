@@ -31,6 +31,7 @@ import {
  * @property {() => string} getDomain
  * @property {(value: string) => void} setDomain
  * @property {boolean} [disabled]
+ * @property {() => boolean} [getDisabled]
  * @property {() => void} onPublishApply
  * @property {boolean} [showSuffixSelect]
  * @property {string} [idPrefix]
@@ -68,10 +69,18 @@ export function mountDomainSimplePublishAffordance(container, options) {
     getDomain,
     setDomain,
     disabled = false,
+    getDisabled,
     onPublishApply,
     showSuffixSelect = true,
     idPrefix = 'hub-domain-simple',
   } = options;
+
+  function resolveDisabled() {
+    if (typeof getDisabled === 'function') {
+      return getDisabled();
+    }
+    return disabled;
+  }
 
   const card = createCard({
     title: 'Имя для черновика',
@@ -94,7 +103,7 @@ export function mountDomainSimplePublishAffordance(container, options) {
   const starterBtn = createButton({
     label: 'Подставить стартовое имя',
     variant: 'secondary',
-    disabled,
+    disabled: resolveDisabled(),
     onActivate: () => {
       setName(resolveDomainSimpleDefaultName());
       if (nameInput instanceof HTMLInputElement) {
@@ -139,7 +148,7 @@ export function mountDomainSimplePublishAffordance(container, options) {
   const publishBtn = createButton({
     label: 'Опубликовать',
     variant: 'primary',
-    disabled,
+    disabled: resolveDisabled(),
     onActivate: () => {
       onPublishApply();
     },
@@ -156,7 +165,7 @@ export function mountDomainSimplePublishAffordance(container, options) {
       id: `${idPrefix}-name`,
       label: 'Имя',
       value: getName(),
-      disabled,
+      disabled: resolveDisabled(),
       onInput: (event) => {
         if (event.target instanceof HTMLInputElement) {
           setName(event.target.value);
@@ -171,7 +180,7 @@ export function mountDomainSimplePublishAffordance(container, options) {
         id: `${idPrefix}-suffix`,
         label: 'Домен',
         value: getDomain(),
-        disabled,
+        disabled: resolveDisabled(),
         options: KEENDNS_DOMAIN_OPTIONS.map((item) => ({
           value: item.value,
           label: item.label,
@@ -203,11 +212,12 @@ export function mountDomainSimplePublishAffordance(container, options) {
     if (suffixSelect instanceof HTMLSelectElement && !suffixFocused) {
       suffixSelect.value = getDomain();
     }
+    const isDisabled = resolveDisabled();
     if (nameInput instanceof HTMLInputElement) {
-      nameInput.disabled = disabled;
+      nameInput.disabled = isDisabled;
     }
     if (suffixSelect instanceof HTMLSelectElement) {
-      suffixSelect.disabled = disabled;
+      suffixSelect.disabled = isDisabled;
     }
   }
 
@@ -219,8 +229,9 @@ export function mountDomainSimplePublishAffordance(container, options) {
 
     syncFieldValuesWithoutFocusLoss();
 
-    starterBtn.disabled = disabled;
-    publishBtn.disabled = disabled || !state.valid;
+    const isDisabled = resolveDisabled();
+    starterBtn.disabled = isDisabled;
+    publishBtn.disabled = isDisabled || !state.valid;
 
     if (state.formatMessage) {
       formatLine.textContent = state.formatMessage;

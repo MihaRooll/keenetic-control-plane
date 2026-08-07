@@ -16,6 +16,7 @@ HUB = REPO_ROOT / "router_control_host" / "web" / "hub"
 DOMAIN_MODEL_JS = HUB / "features" / "domain-model.js"
 DOMAIN_SIMPLE_PUBLISH_JS = HUB / "features" / "domain-simple-publish.js"
 DOMAIN_SCREEN_JS = HUB / "screens" / "domain.js"
+UI_DOM_HARNESS = REPO_ROOT / "tests" / "support" / "ui_dom_harness.js"
 
 NODE_SKIP_ENV = "HUB_TESTS_ALLOW_SKIP_NODE"
 
@@ -1014,3 +1015,153 @@ def test_domain_simple_publish_syntax_via_mjs_copy(tmp_path: Path) -> None:
         check=False,
     )
     assert proc.returncode == 0, proc.stderr or proc.stdout
+
+
+def _extract_function_body(source: str, signature: str) -> str | None:
+    """Извлекает тело function по сигнатуре (пропускает `{` в параметрах)."""
+    start = source.find(signature)
+    if start == -1:
+        return None
+    paren = source.find("(", start)
+    if paren == -1:
+        return None
+    depth = 0
+    i = paren
+    while i < len(source):
+        char = source[i]
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                brace = source.find("{", i + 1)
+                if brace == -1:
+                    return None
+                body_depth = 0
+                j = brace
+                while j < len(source):
+                    c = source[j]
+                    if c == "{":
+                        body_depth += 1
+                    elif c == "}":
+                        body_depth -= 1
+                        if body_depth == 0:
+                            return source[brace + 1 : j]
+                    j += 1
+                return None
+        i += 1
+    return None
+
+
+def test_domain_simple_publish_get_disabled_tracks_live_state(tmp_path: Path) -> None:
+    """getDisabled flip + update() syncs CTA/inputs without remount (mount-time boolean close fails)."""
+    harness_uri = json.dumps(str(UI_DOM_HARNESS))
+    simple_uri = json.dumps(DOMAIN_SIMPLE_PUBLISH_JS.as_uri())
+    script = f"""import {{ createRequire }} from 'node:module';
+
+const require = createRequire(import.meta.url);
+const {{ createUiDomHarness }} = require({harness_uri});
+const dom = createUiDomHarness();
+
+function patchElement(el) {{
+  if (!el.getAttributeNames) {{
+    el.getAttributeNames = () => Object.keys(el.attributes || {{}});
+  }}
+  if (!Object.getOwnPropertyDescriptor(el, 'id')) {{
+    Object.defineProperty(el, 'id', {{
+      get() {{ return this.attributes.id || ''; }},
+      set(v) {{ this.setAttribute('id', String(v)); }},
+      configurable: true,
+    }});
+  }}
+  return el;
+}}
+
+globalThis.document = dom.document;
+const origCreateElement = dom.document.createElement.bind(dom.document);
+dom.document.createElement = (tag) => patchElement(origCreateElement(tag));
+dom.document.createElementNS = (_ns, tag) => patchElement(origCreateElement(tag));
+dom.document.createTextNode = (text) => {{
+  const node = patchElement(origCreateElement('span'));
+  node.textContent = String(text ?? '');
+  return node;
+}};
+dom.document.addEventListener = () => {{}};
+dom.document.removeEventListener = () => {{}};
+
+const sampleBtn = dom.document.createElement('button');
+const sampleInput = dom.document.createElement('input');
+globalThis.HTMLElement = sampleBtn.constructor;
+globalThis.HTMLButtonElement = sampleBtn.constructor;
+globalThis.HTMLInputElement = sampleInput.constructor;
+globalThis.HTMLSelectElement = dom.document.createElement('select').constructor;
+globalThis.HTMLTextAreaElement = dom.document.createElement('textarea').constructor;
+
+Object.defineProperty(globalThis, 'navigator', {{ value: {{ onLine: true }}, configurable: true }});
+globalThis.localStorage = dom.localStorage;
+globalThis.window = {{
+  ...dom.window,
+  localStorage: dom.localStorage,
+  open() {{ return null; }},
+  addEventListener() {{}},
+  removeEventListener() {{}},
+  dispatchEvent() {{ return true; }},
+}};
+globalThis.requestAnimationFrame = (fn) => setTimeout(fn, 0);
+globalThis.cancelAnimationFrame = (id) => clearTimeout(id);
+
+const mod = await import({simple_uri});
+const container = dom.document.createElement('div');
+dom.document.body.appendChild(container);
+
+let locked = true;
+const mount = mod.mountDomainSimplePublishAffordance(container, {{
+  getName: () => 'promo',
+  setName: () => {{}},
+  getDomain: () => 'netcraze.pro',
+  setDomain: () => {{}},
+  getDisabled: () => locked,
+  onPublishApply: () => {{}},
+  idPrefix: 'test-domain-simple',
+}});
+
+function publishDisabled() {{
+  const btn = dom.document.getElementById('test-domain-simple-publish-btn');
+  return Boolean(btn?.disabled);
+}}
+function nameInputDisabled() {{
+  const input = dom.document.getElementById('test-domain-simple-name');
+  return Boolean(input?.disabled);
+}}
+
+mount.update();
+const whenLocked = {{ publish: publishDisabled(), name: nameInputDisabled() }};
+locked = false;
+mount.update();
+const whenUnlocked = {{ publish: publishDisabled(), name: nameInputDisabled() }};
+locked = true;
+mount.update();
+const lockedAgain = {{ publish: publishDisabled(), name: nameInputDisabled() }};
+
+console.log(JSON.stringify({{ whenLocked, whenUnlocked, lockedAgain }}));
+"""
+    result = _run_node_harness(script, tmp_path, "simple-get-disabled-flip")
+    assert result["whenLocked"]["publish"] is True
+    assert result["whenLocked"]["name"] is True
+    assert result["whenUnlocked"]["publish"] is False
+    assert result["whenUnlocked"]["name"] is False
+    assert result["lockedAgain"]["publish"] is True
+    assert result["lockedAgain"]["name"] is True
+
+
+def test_domain_screen_passes_get_disabled_to_simple_publish() -> None:
+    """Domain screen mounts simple publish with live getDisabled (controlsLocked || offline)."""
+    source = DOMAIN_SCREEN_JS.read_text(encoding="utf-8")
+    mount_body = _extract_function_body(source, "function mountSimpleAffordanceInto(")
+    assert mount_body is not None
+    normalized = re.sub(r"\s+", " ", mount_body)
+    assert "getDisabled: () => controlsLocked() || offline" in normalized
+    assert "disabled: controlsLocked() || offline" not in normalized.replace(
+        "getDisabled: () => controlsLocked() || offline",
+        "",
+    )

@@ -984,7 +984,7 @@ export function render(container, ctx) {
       setDomain: (value) => {
         domainDraftSuffix = value;
       },
-      disabled: offline,
+      getDisabled: () => offline,
       showSuffixSelect: true,
       idPrefix: 'hub-overview-domain',
       onPublishApply: () => {
@@ -2541,12 +2541,14 @@ export function render(container, ctx) {
       recovering = false;
       updateRefreshButton();
       renderSummary();
+      domainMount?.update();
       return;
     }
     offline = false;
     recovering = true;
     updateRefreshButton();
     renderSummary();
+    domainMount?.update();
     void requestReloadOverview();
   });
   updateRefreshButton();

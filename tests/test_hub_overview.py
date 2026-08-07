@@ -3022,3 +3022,61 @@ console.log(JSON.stringify({{ ok: true }}));
 """
     payload = _run_node_harness(script, tmp_path, "overview-skeleton-a11y")
     assert payload["ok"] is True
+
+
+def _extract_subscribe_connectivity_callback(source: str) -> str:
+    """Извлекает тело subscribeConnectivity((online) => { ... }) в render()."""
+    render_body = _extract_function_body(source, "export function render(")
+    assert render_body is not None
+    marker = "subscribeConnectivity((online) => {"
+    start = render_body.find(marker)
+    assert start != -1, "subscribeConnectivity callback missing"
+    brace = render_body.find("{", start + len(marker) - 1)
+    depth = 0
+    j = brace
+    while j < len(render_body):
+        c = render_body[j]
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                return render_body[brace + 1 : j]
+        j += 1
+    raise AssertionError("subscribeConnectivity callback body not closed")
+
+
+def test_overview_domain_publish_connectivity_syncs_domain_mount() -> None:
+    """Overview domain CTA: both connectivity arms call domainMount?.update(); mount uses getDisabled."""
+    source = _read(OVERVIEW_JS)
+    callback = _extract_subscribe_connectivity_callback(source)
+    normalized = _normalize_whitespace(callback)
+
+    offline_arm_start = callback.find("if (!online)")
+    assert offline_arm_start != -1
+    offline_arm = callback[offline_arm_start:]
+    offline_return = offline_arm.find("return")
+    offline_block = offline_arm[: offline_return + len("return")]
+    assert "offline = true" in _normalize_whitespace(offline_block)
+    assert "domainMount?.update()" in offline_block
+    update_idx = offline_block.find("domainMount?.update()")
+    return_idx = offline_block.find("return")
+    assert update_idx != -1 and return_idx != -1 and update_idx < return_idx
+
+    online_offline_false = callback.split("if (!online)", 1)[1].split("}", 1)[1]
+    reload_idx = online_offline_false.find("void requestReloadOverview()")
+    assert reload_idx != -1
+    before_reload = online_offline_false[:reload_idx]
+    assert "offline = false" in before_reload
+    assert "domainMount?.update()" in before_reload
+    assert ".then" not in before_reload.split("domainMount?.update()")[-1]
+
+    slots_body = _extract_function_body(source, "function mountOverviewActionSlots(")
+    assert slots_body is not None
+    mount_start = slots_body.find("mountDomainSimplePublishAffordance(")
+    assert mount_start != -1
+    mount_end = slots_body.find("});", mount_start)
+    assert mount_end != -1
+    mount_block = slots_body[mount_start : mount_end + 3]
+    assert _normalize_whitespace("getDisabled: () => offline") in _normalize_whitespace(mount_block)
+    assert "disabled: offline" not in mount_block

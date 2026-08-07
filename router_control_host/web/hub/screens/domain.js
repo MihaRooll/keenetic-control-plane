@@ -481,7 +481,7 @@ export function render(container, ctx) {
         domainSuffix = value;
         updateDraftDependentUi();
       },
-      disabled: controlsLocked() || offline,
+      getDisabled: () => controlsLocked() || offline,
       onPublishApply: () => {
         openPublishApplyModal('book');
       },
