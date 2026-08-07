@@ -16,6 +16,7 @@ import {
   createInlineState,
   createSkeleton,
   createStatePanel,
+  getStateDescriptor,
 } from '../core/states.js';
 import { createIdempotencyKey } from '../features/connection-flow.js';
 import {
@@ -1796,14 +1797,26 @@ export function render(container, ctx) {
           return;
         }
         storeMutationOutcome(wgId, response);
-        const stored = tunnelOutcomesByWgId[wgId];
-        const healthy = stored?.tunnelVerificationStatus === 'tunnel_healthy';
-        if (!healthy && !disposed) {
+        const overall =
+          typeof response?.overall === 'string' ? response.overall : null;
+        if (overall !== 'applied' && !disposed) {
+          const outcome = describeConfigurationOutcome(response);
+          const tone = getStateDescriptor(outcome.hubState).tone;
           ctx.showToast({
-            tone: 'warning',
-            title: 'Туннель применён, ответ сервера не подтверждён',
-            message: VPN_POST_SETTLE_RECHECK_HINT,
+            tone,
+            title: outcome.title,
+            message: outcome.message,
           });
+        } else {
+          const stored = tunnelOutcomesByWgId[wgId];
+          const healthy = stored?.tunnelVerificationStatus === 'tunnel_healthy';
+          if (!healthy && !disposed) {
+            ctx.showToast({
+              tone: 'warning',
+              title: 'Туннель применён, ответ сервера не подтверждён',
+              message: VPN_POST_SETTLE_RECHECK_HINT,
+            });
+          }
         }
       }
     } catch (error) {

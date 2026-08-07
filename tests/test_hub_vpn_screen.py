@@ -593,6 +593,33 @@ def test_vpn_model_exports_tile_grid_helpers() -> None:
     assert "hub-vpn-activate-${profileId}" in source
 
 
+def test_vpn_screen_connect_toast_overall_first() -> None:
+    """AC1–AC5: connect/reconnect toast branches on response.overall before tunnel health."""
+    source = _read(VPN_SCREEN_JS)
+    body = _extract_function_body(source, "async function runTunnelMutation(")
+    assert body is not None
+    assert "const response = await applyVpnTunnel(" in body
+    assert "getStateDescriptor" in source
+    post_apply = body.split("const response = await applyVpnTunnel(", 1)[1]
+    post_apply = post_apply.split("storeMutationOutcome(wgId, response);", 1)[1]
+    assert re.search(r"response\?\.overall|typeof response\?\.overall", post_apply)
+    assert "overall !== 'applied'" in post_apply
+    assert "describeConfigurationOutcome(response)" in post_apply
+    assert "getStateDescriptor(outcome.hubState).tone" in post_apply
+    overall_idx = post_apply.find("overall !== 'applied'")
+    healthy_idx = post_apply.find("tunnel_healthy")
+    assert overall_idx != -1 and healthy_idx != -1
+    assert overall_idx < healthy_idx
+    non_applied_branch = post_apply.split("overall !== 'applied'", 1)[1].split("} else", 1)[0]
+    assert "describeConfigurationOutcome" in non_applied_branch
+    assert "Туннель применён, ответ сервера не подтверждён" not in non_applied_branch
+    assert "tone: 'success'" not in non_applied_branch
+    assert "tone: 'primary'" not in non_applied_branch
+    applied_region = post_apply.split("} else", 1)[1]
+    assert "Туннель применён, ответ сервера не подтверждён" in applied_region
+    assert "tunnel_healthy" in applied_region
+
+
 def test_vpn_screen_connect_handshake_only_on_apply_phase() -> None:
     """AC-2: handshake message only when mutationPhase === 'apply', not bare connecting."""
     source = _read(VPN_SCREEN_JS)
