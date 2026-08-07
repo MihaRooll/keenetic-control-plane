@@ -488,6 +488,24 @@ def test_vpn_screen_deactivate_toast_gated_on_deactivated_flag() -> None:
     assert "describeConfigurationOutcome" not in body
 
 
+def test_vpn_screen_validate_toast_gated_on_validation_status() -> None:
+    """AC1/AC2/AC4: validateCatalogProfile success toast only when validation_status === 'Valid'."""
+    source = _read(VPN_SCREEN_JS)
+    body = _extract_function_body(source, "async function validateCatalogProfile(")
+    assert body is not None
+    assert "const response = await validateVpnProfile(" in body
+    assert "validation_status" in body
+    assert "=== 'Valid'" in body
+    success_branch = body.split("=== 'Valid'", 1)[1].split("} else {", 1)[0]
+    assert "tone: 'success'" in success_branch
+    assert "title: 'Проверка завершена'" in success_branch
+    non_valid_branch = body.split("} else {", 1)[1].split("await loadCatalogFlow()", 1)[0]
+    assert "tone: 'success'" not in non_valid_branch
+    assert "tone: 'warning'" in non_valid_branch
+    assert "title: 'Проверка не пройдена'" in non_valid_branch
+    assert "describeVpnProfileItem" in non_valid_branch
+
+
 def test_vpn_screen_mutation_phase_only_discrete_awaits() -> None:
     """mutationPhase — только reconnect_teardown|preview|apply|teardown."""
     source = _read(VPN_SCREEN_JS)

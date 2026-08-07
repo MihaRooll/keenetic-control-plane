@@ -2504,16 +2504,29 @@ export function render(container, ctx) {
     renderCatalogSlot();
     renderFooter();
     try {
-      await validateVpnProfile({
+      const response = await validateVpnProfile({
         profileId,
         idempotencyKey: createIdempotencyKey(),
       });
       if (!disposed) {
-        ctx.showToast({
-          tone: 'success',
-          title: 'Проверка завершена',
-          message: 'Статус профиля в каталоге обновлён.',
-        });
+        const validationStatus =
+          typeof response?.validation_status === 'string' ? response.validation_status : '';
+        if (validationStatus === 'Valid') {
+          ctx.showToast({
+            tone: 'success',
+            title: 'Проверка завершена',
+            message: 'Статус профиля в каталоге обновлён.',
+          });
+        } else {
+          const described = describeVpnProfileItem(
+            typeof response === 'object' && response !== null ? response : {},
+          );
+          ctx.showToast({
+            tone: 'warning',
+            title: 'Проверка не пройдена',
+            message: described.validationLabel,
+          });
+        }
       }
       await loadCatalogFlow();
     } catch (error) {
