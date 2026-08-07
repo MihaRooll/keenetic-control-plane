@@ -1773,8 +1773,23 @@ export function render(container, ctx) {
               session: getSession(),
             });
             await teardownVpnTunnel({ teardownBody, signal: myController.signal });
-          } catch {
-            // optional teardown before reconnect
+          } catch (error) {
+            if (disposed || gen !== generation || mutateGeneration !== gen || isAborted(error)) {
+              return;
+            }
+            const described = describeError(error);
+            operationError = error;
+            operationRetry = () => {
+              openVpnRiskModal(action, () => runTunnelMutation(action), null);
+            };
+            if (!disposed) {
+              ctx.showToast({
+                tone: 'danger',
+                title: described.title,
+                message: described.message,
+              });
+            }
+            return;
           }
           if (disposed || gen !== generation || mutateGeneration !== gen) {
             return;

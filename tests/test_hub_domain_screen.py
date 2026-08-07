@@ -475,3 +475,28 @@ def test_domain_simple_publish_module_honesty_guards() -> None:
     assert not CONSOLE_EMIT_RE.search(source)
     assert "createObjectURL" not in source
     assert "blob:" not in source
+
+
+def test_domain_apply_clears_operation_error_only_on_applied() -> None:
+    """operationError сбрасывается только при overall === 'applied', не при любом non-failed."""
+    source = _read(DOMAIN_SCREEN_JS)
+    apply_body = _extract_function_body(source, "function openPublishApplyModal(")
+    assert apply_body is not None
+    assert "overall === 'applied'" in apply_body
+    assert "operationError = null" in apply_body
+    assert "overall !== 'failed'" not in apply_body
+
+
+def test_domain_save_local_bounded_network_retry() -> None:
+    """runSaveLocalAddress: bounded NETWORK/TIMEOUT retry, fail-closed без бесконечного continue."""
+    source = _read(DOMAIN_SCREEN_JS)
+    save_body = _extract_function_body(source, "async function runSaveLocalAddress(")
+    assert save_body is not None
+    assert "SAVE_LOCAL_NETWORK_MAX_ATTEMPTS" in source
+    assert "networkAttempt" in save_body
+    assert re.search(
+        r"networkAttempt\s*\+=\s*1;\s*if\s*\(\s*networkAttempt\s*<\s*SAVE_LOCAL_NETWORK_MAX_ATTEMPTS\s*\)\s*\{\s*continue;\s*\}",
+        save_body,
+    )
+    network_block = save_body.split("ERROR_KIND.NETWORK", 1)[1].split("throw error", 1)[0]
+    assert network_block.count("continue") == 1

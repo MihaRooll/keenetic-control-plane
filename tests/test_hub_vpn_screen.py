@@ -638,6 +638,30 @@ def test_vpn_screen_connect_toast_overall_first() -> None:
     assert "tunnel_healthy" in applied_region
 
 
+def test_vpn_screen_reconnect_teardown_failure_does_not_continue() -> None:
+    """Reconnect teardown errors abort before preview/apply; no empty catch."""
+    source = _read(VPN_SCREEN_JS)
+    body = _extract_function_body(source, "async function runTunnelMutation(")
+    assert body is not None
+    assert "optional teardown before reconnect" not in body
+    first_teardown = body.find("mutationPhase = 'reconnect_teardown'")
+    reconnect_teardown_idx = body.find("mutationPhase = 'reconnect_teardown'", first_teardown + 1)
+    assert reconnect_teardown_idx != -1
+    preview_idx = body.find("mutationPhase = 'preview'", reconnect_teardown_idx)
+    assert preview_idx != -1
+    reconnect_region = body[reconnect_teardown_idx:preview_idx]
+    assert "await teardownVpnTunnel({ teardownBody, signal: myController.signal });" in reconnect_region
+    assert "} catch (error) {" in reconnect_region
+    assert "isAborted(error)" in reconnect_region
+    assert "operationError = error" in reconnect_region
+    assert "ctx.showToast(" in reconnect_region
+    assert re.search(r"tone:\s*'danger'", reconnect_region)
+    catch_start = reconnect_region.find("} catch (error) {")
+    catch_block = reconnect_region[catch_start:]
+    assert "return;" in catch_block
+    assert "mutationPhase = 'preview'" not in catch_block
+
+
 def test_vpn_screen_connect_handshake_only_on_apply_phase() -> None:
     """AC-2: handshake message only when mutationPhase === 'apply', not bare connecting."""
     source = _read(VPN_SCREEN_JS)

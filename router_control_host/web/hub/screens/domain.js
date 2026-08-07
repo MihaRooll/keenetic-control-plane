@@ -82,6 +82,8 @@ const KEENDNS_NO_CONFIG_NOTE =
 const PROBE_SCOPE_DISCLAIMER =
   'Строки ниже описывают проверки с компьютера оператора, а не состояние роутера или доступность из интернета.';
 
+const SAVE_LOCAL_NETWORK_MAX_ATTEMPTS = 2;
+
 /**
  * @param {{ message: string, action: string|null }} described
  * @returns {string}
@@ -1107,6 +1109,7 @@ export function render(container, ctx) {
     const myController = operationAbort;
     const gen = ++operationGeneration;
     saveLoadGeneration = gen;
+    let networkAttempt = 0;
     try {
       for (;;) {
         if (!isOperationContextCurrent(gen, capturedPresetId)) {
@@ -1147,7 +1150,11 @@ export function render(container, ctx) {
             return;
           }
           if (error.kind === ERROR_KIND.NETWORK || error.kind === ERROR_KIND.TIMEOUT) {
-            continue;
+            networkAttempt += 1;
+            if (networkAttempt < SAVE_LOCAL_NETWORK_MAX_ATTEMPTS) {
+              continue;
+            }
+            throw error;
           }
           throw error;
         }
@@ -1278,7 +1285,7 @@ export function render(container, ctx) {
           result && typeof result === 'object' && 'overall' in result
             ? /** @type {{ overall?: string }} */ (result).overall
             : undefined;
-        if (overall !== 'failed') {
+        if (overall === 'applied') {
           operationError = null;
         }
         return result;
