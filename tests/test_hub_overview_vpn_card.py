@@ -120,14 +120,13 @@ def test_render_vpn_slot_badge_honesty(render_vpn_body: str, vpn_shell_block: st
     assert "routed_through_tunnel" in combined
     assert "describeCatalogConnectionBadge" not in render_vpn_body
     assert "Подключён" in combined
+    assert "vpnIsConnectedRouted" in render_vpn_body, (
+        "renderVpnSlot must gate active tile chrome on vpnIsConnectedRouted"
+    )
     assert re.search(
-        r"routed_through_tunnel\s*===\s*true",
+        r"vpnIsConnectedRouted\(item\)[\s\S]*hub-vpn-card__tile--active",
         render_vpn_body,
-    ), "renderVpnSlot must gate badge on routed_through_tunnel === true"
-    assert re.search(
-        r"item\.routed_through_tunnel\s*===\s*true[\s\S]*hub-vpn-card__tile--active",
-        render_vpn_body,
-    ), "renderVpnSlot must gate active tile chrome on routed_through_tunnel === true"
+    ), "renderVpnSlot must gate active tile chrome on vpnIsConnectedRouted(item)"
 
 
 def test_vpn_helpers_honesty_strings(vpn_shell_block: str) -> None:

@@ -314,7 +314,7 @@ export function computeOverviewReadiness(model, context = {}) {
   let vpnReady = false;
   const vpnItems = context.vpnItems ?? [];
   for (const item of vpnItems) {
-    if (item?.is_active === true && item?.routed_through_tunnel === true) {
+    if (vpnIsConnectedRouted(item)) {
       vpnReady = true;
       break;
     }
@@ -895,6 +895,14 @@ function vpnIsSetMember(source, profileId) {
 }
 
 /**
+ * @param {Record<string, unknown>|null|undefined} item
+ * @returns {boolean}
+ */
+export function vpnIsConnectedRouted(item) {
+  return describeVpnProfileTileStatus(item).kind === 'connected_routed';
+}
+
+/**
  * @param {Array<Record<string, unknown>>} projectedItems
  * @param {{ busy?: boolean, checkingProfileIds?: Set<string>|Record<string, unknown> }} [options]
  * @returns {{ label: string, tone: 'success'|'neutral' }}
@@ -940,9 +948,7 @@ export function vpnDeriveCardStatus(projectedItems, options = {}) {
   if (anyChecking) {
     return { label: 'Проверяем…', tone: 'neutral' };
   }
-  const connected = projectedItems.some(
-    (item) => item.is_active === true && item.routed_through_tunnel === true,
-  );
+  const connected = projectedItems.some((item) => vpnIsConnectedRouted(item));
   if (connected) {
     return { label: 'Подключён', tone: 'success' };
   }
@@ -1103,7 +1109,7 @@ export function buildOverviewVpnProfilePicker(options) {
     if (isPicked) {
       tile.classList.add('hub-vpn-card__tile--picked');
     }
-    if (isActive && item.routed_through_tunnel === true) {
+    if (vpnIsConnectedRouted(item)) {
       tile.classList.add('hub-vpn-card__tile--active');
     } else if (isActive) {
       tile.classList.add('hub-vpn-card__tile--selected');

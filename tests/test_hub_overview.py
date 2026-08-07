@@ -2827,7 +2827,12 @@ const allReady = gridMod.computeOverviewReadiness(
   {{ router: {{ state: HubState.SUCCESS }} }},
   {{
     routerInternetObserve: {{ internet: true }},
-    vpnItems: [{{ is_active: true, routed_through_tunnel: true }}],
+    vpnItems: [{{
+      is_active: true,
+      live_probed: true,
+      live_tunnel_verification_status: 'tunnel_healthy',
+      routed_through_tunnel: true,
+    }}],
     domainDraftName: 'lab-event',
     eventPresetId: 'preset-1',
   }},
@@ -2836,7 +2841,12 @@ const noneReady = gridMod.computeOverviewReadiness(
   {{ router: {{ state: HubState.WARNING }} }},
   {{
     routerInternetObserve: {{ internet: false }},
-    vpnItems: [{{ is_active: true, routed_through_tunnel: false }}],
+    vpnItems: [{{
+      is_active: true,
+      live_probed: true,
+      live_tunnel_verification_status: 'tunnel_no_peer',
+      routed_through_tunnel: true,
+    }}],
     domainDraftName: '',
     eventPresetId: null,
   }},

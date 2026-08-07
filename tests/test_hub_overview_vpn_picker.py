@@ -146,9 +146,10 @@ def test_picker_accessibility_and_data_attributes(picker_block: str) -> None:
     assert "hub-vpn-card__tile--picked" in picker_block
     assert "createIcon('vpn'" in picker_block or 'createIcon("vpn"' in picker_block
     assert re.search(
-        r"isActive\s*&&\s*item\.routed_through_tunnel\s*===\s*true",
+        r"vpnIsConnectedRouted\(item\)"
+        r"|describeVpnProfileTileStatus\(item\)\.kind\s*===\s*['\"]connected_routed['\"]",
         picker_block,
-    ), "picker must gate --active on routed_through_tunnel === true"
+    ), "picker must gate --active on connected_routed only"
     assert "hub-vpn-card__tile--selected" in picker_block
     assert "vpnDeriveProfileQuality" in picker_block
     assert "hub-vpn-card__tile-status--" in picker_block
@@ -266,13 +267,15 @@ def test_vpn_badge_honesty_unchanged(
     render_vpn_body: str,
 ) -> None:
     assert re.search(
-        r"item\.is_active\s*===\s*true\s*&&\s*item\.routed_through_tunnel\s*===\s*true",
+        r"vpnIsConnectedRouted\(item\)"
+        r"|describeVpnProfileTileStatus\(item\)\.kind\s*===\s*['\"]connected_routed['\"]",
         vpn_helper_block,
-    ), "vpnDeriveCardStatus must gate «Подключён» on active AND routed"
+    ), "vpnDeriveCardStatus must gate «Подключён» on connected_routed only"
     assert re.search(
-        r"isActive\s*&&\s*item\.routed_through_tunnel\s*===\s*true",
+        r"vpnIsConnectedRouted\(item\)"
+        r"|describeVpnProfileTileStatus\(item\)\.kind\s*===\s*['\"]connected_routed['\"]",
         picker_block,
-    ), "picker must gate --active on routed_through_tunnel === true"
+    ), "picker must gate --active on connected_routed only"
     assert "vpnDeriveCardStatus" in render_vpn_body
 
 

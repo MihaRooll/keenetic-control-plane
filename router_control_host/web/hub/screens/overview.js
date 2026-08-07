@@ -69,6 +69,7 @@ import {
   createOverviewGrid,
   createOverviewGridItem,
   vpnDeriveCardStatus,
+  vpnIsConnectedRouted,
   wireOverviewCardNavigate,
 } from '../features/overview-card-grid.js';
 import { runSystemCheck, SystemCheckLevel, SYSTEM_CHECK_TRANSIENT_MAX_ATTEMPTS } from '../features/system-check.js';
@@ -1611,7 +1612,7 @@ export function render(container, ctx) {
         if (!(tile instanceof HTMLElement)) {
           continue;
         }
-        if (item.is_active === true && item.routed_through_tunnel === true) {
+        if (vpnIsConnectedRouted(item)) {
           tile.classList.add('hub-vpn-card__tile--active');
         } else if (item.is_active === true) {
           tile.classList.add('hub-vpn-card__tile--selected');

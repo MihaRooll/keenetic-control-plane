@@ -235,9 +235,10 @@ def test_vpn_helpers_negative_and_unknown_labels(vpn_helper_block: str) -> None:
     assert "Трафик не через VPN" in vpn_helper_block
     assert "Трафик не проверен" in vpn_helper_block
     assert re.search(
-        r"item\.is_active\s*===\s*true\s*&&\s*item\.routed_through_tunnel\s*===\s*true",
+        r"describeVpnProfileTileStatus\(item\)\.kind\s*===\s*['\"]connected_routed['\"]"
+        r"|vpnIsConnectedRouted\(item\)",
         vpn_helper_block,
-    ), "vpnDeriveCardStatus must gate «Подключён» on active AND routed"
+    ), "vpnDeriveCardStatus must gate «Подключён» on connected_routed only"
 
 
 def test_domain_card_negative_and_unknown_labels(domain_card_block: str) -> None:
@@ -296,26 +297,50 @@ console.log(JSON.stringify({{ labels: pills.map((pill) => pill.label) }}));
     assert payload["labels"] == ["Отвечает", "Доступ сохранён", "Совпадает: неизвестно"]
 
 
-def test_vpn_derive_card_status_connected_only_when_active_and_routed(
+def test_vpn_derive_card_status_connected_only_when_connected_routed(
     tmp_path: Path,
 ) -> None:
     card_grid_uri = json.dumps(OVERVIEW_CARD_GRID_JS.as_uri())
     script = f"""
 const gridMod = await import({card_grid_uri});
+const connectedRouted = {{
+  is_active: true,
+  live_probed: true,
+  live_tunnel_verification_status: 'tunnel_healthy',
+  routed_through_tunnel: true,
+}};
 const activeNotRouted = gridMod.vpnDeriveCardStatus([
-  {{ is_active: true, routed_through_tunnel: false }},
+  {{
+    is_active: true,
+    live_probed: true,
+    live_tunnel_verification_status: 'tunnel_healthy',
+    routed_through_tunnel: false,
+  }},
 ]);
-const connected = gridMod.vpnDeriveCardStatus([
+const deadPeerRouted = gridMod.vpnDeriveCardStatus([
+  {{
+    is_active: true,
+    live_probed: true,
+    live_tunnel_verification_status: 'tunnel_no_peer',
+    routed_through_tunnel: true,
+  }},
+]);
+const routingOnly = gridMod.vpnDeriveCardStatus([
   {{ is_active: true, routed_through_tunnel: true }},
 ]);
+const connected = gridMod.vpnDeriveCardStatus([connectedRouted]);
 const idle = gridMod.vpnDeriveCardStatus([]);
 console.log(JSON.stringify({{
   activeNotRouted: activeNotRouted.label,
+  deadPeerRouted: deadPeerRouted.label,
+  routingOnly: routingOnly.label,
   connected: connected.label,
   idle: idle.label,
 }}));
 """
     payload = _run_node_harness(script, tmp_path, "label-honesty-vpn-status")
     assert payload["activeNotRouted"] == "Не подключён"
+    assert payload["deadPeerRouted"] == "Не подключён"
+    assert payload["routingOnly"] == "Не подключён"
     assert payload["connected"] == "Подключён"
     assert payload["idle"] == "Не подключён"
