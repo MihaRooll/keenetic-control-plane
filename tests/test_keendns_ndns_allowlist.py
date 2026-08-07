@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from router_control.adapters.netcraze.allowlist import (
+    LAB_CLASS_EXPENDABLE,
     build_sealed_parse_body,
     is_ndns_parse_body,
     is_write_allowlisted,
@@ -22,10 +23,29 @@ _VALID_DROP = "ndns drop-name sample-name keenetic.link"
         "ndns book-name ab netcraze.club direct",
     ],
 )
-def test_ndns_book_drop_bodies_allowlisted(command: str) -> None:
+def test_ndns_book_drop_bodies_allowlisted(
+    command: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ROUTER_CONTROL_LAB_CLASS", LAB_CLASS_EXPENDABLE)
     body = build_sealed_parse_body(command)
     assert is_ndns_parse_body(body) is True
     assert is_write_allowlisted("POST", "/rci/", body) is True
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        _VALID_BOOK,
+        _VALID_DROP,
+    ],
+)
+def test_ndns_shape_valid_but_not_allowlisted_without_expendable_lab(
+    command: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("ROUTER_CONTROL_LAB_CLASS", raising=False)
+    body = build_sealed_parse_body(command)
+    assert is_ndns_parse_body(body) is True
+    assert is_write_allowlisted("POST", "/rci/", body) is False
 
 
 @pytest.mark.parametrize(

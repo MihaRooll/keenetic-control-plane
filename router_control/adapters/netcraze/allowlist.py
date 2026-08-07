@@ -1024,7 +1024,7 @@ def is_write_allowlisted(method: str, path: str, body: bytes) -> bool:
         or is_wifi_station_parse_body(body)
         or is_wireguard_parse_body(body)
         or is_wireguard_nested_peer_body(body)
-        or is_ndns_parse_body(body)
+        or (is_ndns_parse_body(body) and is_expendable_lab_class())
     )
 
 

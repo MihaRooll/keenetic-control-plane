@@ -6,7 +6,11 @@ import importlib
 import json
 
 import pytest
-from router_control.adapters.netcraze.allowlist import build_sealed_parse_body, is_write_allowlisted
+from router_control.adapters.netcraze.allowlist import (
+    LAB_CLASS_EXPENDABLE,
+    build_sealed_parse_body,
+    is_write_allowlisted,
+)
 from router_control.application.keendns_apply_service import (
     ERROR_CODE_COMPONENT_ABSENT,
     ERROR_CODE_INVENTORY_UNREADABLE,
@@ -95,7 +99,8 @@ def test_no_apply_keendns_in_preview_service() -> None:
     assert not hasattr(module, "apply_keendns")
 
 
-def test_allowlist_accepts_apply_command_body() -> None:
+def test_allowlist_accepts_apply_command_body(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ROUTER_CONTROL_LAB_CLASS", LAB_CLASS_EXPENDABLE)
     body = build_sealed_parse_body("ndns book-name sample-name netcraze.pro auto")
     assert is_write_allowlisted("POST", "/rci/", body) is True
 
