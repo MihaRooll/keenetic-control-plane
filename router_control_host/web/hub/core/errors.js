@@ -354,6 +354,11 @@ export const ERROR_MESSAGES = Object.freeze({
     userAction: 'Установите компонент ndns на роутере или обратитесь к администратору.',
     kind: ERROR_KIND.DEVICE,
   },
+  'keendns.inventory_unreadable': {
+    userMessage: 'Не удалось прочитать список компонентов роутера.',
+    userAction: 'Проверьте подключение к роутеру и повторите через несколько секунд.',
+    kind: ERROR_KIND.DEVICE,
+  },
   'keendns.expendable_required': {
     userMessage: 'Публикация в облаке доступна только на expendable lab.',
     userAction: 'Проверьте класс lab-роутера или обратитесь к администратору.',

@@ -160,6 +160,19 @@ def test_live_apply_inventory_unreadable_fail_closed() -> None:
     assert transport.dispatched is False
 
 
+def test_keendns_apply_inventory_unreadable_maps_503(keendns_client, monkeypatch) -> None:
+    def _raise_inventory_unreadable(**_kwargs: object) -> None:
+        raise KeenDnsApplyServiceError(ERROR_CODE_INVENTORY_UNREADABLE)
+
+    monkeypatch.setattr(
+        "router_control_host.keendns_apply_routes.apply_keendns_intent",
+        _raise_inventory_unreadable,
+    )
+    resp = keendns_client.post(f"{_API}/keendns/apply", json=_APPLY_BODY)
+    assert resp.status_code == 503
+    assert resp.json()["error"]["code"] == "keendns.inventory_unreadable"
+
+
 def test_live_apply_without_backup_callback_fail_closed() -> None:
     transport = _LiveTransportNoNdns()
 
