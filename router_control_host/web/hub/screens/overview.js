@@ -954,6 +954,7 @@ export function render(container, ctx) {
         categories: readiness.categories,
         loaded: readiness.loaded,
         checkBusy: systemCheckRunning,
+        offline,
         onCheckAll: () => {
           void runSystemCheckOnly();
         },
@@ -2562,6 +2563,7 @@ export function render(container, ctx) {
       domainMount?.update();
       networksMount?.update();
       renderVpnSlot();
+      renderStatusStrip();
       return;
     }
     offline = false;
@@ -2571,6 +2573,7 @@ export function render(container, ctx) {
     domainMount?.update();
     networksMount?.update();
     renderVpnSlot();
+    renderStatusStrip();
     void requestReloadOverview();
   });
   updateRefreshButton();

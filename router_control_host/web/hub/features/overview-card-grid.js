@@ -1529,11 +1529,20 @@ export function buildDiagnosticsStatusCard(
  *   loaded?: boolean,
  *   onCheckAll: () => void,
  *   checkBusy?: boolean,
+ *   offline?: boolean,
+ *   disabled?: boolean,
  * }} options
  * @returns {HTMLElement}
  */
 export function buildOverviewStatusStrip(options) {
-  const { categories, loaded = true, onCheckAll, checkBusy = false } = options;
+  const {
+    categories,
+    loaded = true,
+    onCheckAll,
+    checkBusy = false,
+    offline = false,
+    disabled = offline,
+  } = options;
 
   const strip = document.createElement('div');
   strip.className = 'hub-overview__status-strip';
@@ -1561,6 +1570,7 @@ export function buildOverviewStatusStrip(options) {
   const checkBtn = createButton({
     label: 'Проверить всё',
     variant: 'secondary',
+    disabled: disabled || false,
     busy: checkBusy,
     onActivate: () => {
       onCheckAll();

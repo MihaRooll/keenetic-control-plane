@@ -3299,6 +3299,51 @@ def test_overview_connectivity_both_arms_refresh_networks_after_domain() -> None
     assert online_domain_idx < online_networks_idx < online_render_idx
 
 
+def test_overview_status_strip_system_check_disabled_when_offline() -> None:
+    """AC-1: «Проверить всё» createButton disabled when offline."""
+    grid_source = _read(OVERVIEW_CARD_GRID_JS)
+    strip_body = _extract_function_body(grid_source, "export function buildOverviewStatusStrip(")
+    assert strip_body is not None
+    normalized = _normalize_whitespace(strip_body)
+    assert "offline" in normalized
+    assert "disabled" in normalized
+    create_btn = strip_body.split("createButton(")[1].split("});", 1)[0]
+    assert "disabled:" in create_btn
+    assert "offline" in create_btn or "disabled" in create_btn
+    assert "busy: checkBusy" in _normalize_whitespace(create_btn) or "busy:checkBusy" in _normalize_whitespace(create_btn)
+
+    screen_source = _read(OVERVIEW_JS)
+    render_body = _extract_function_body(screen_source, "function renderStatusStrip(")
+    assert render_body is not None
+    assert "offline" in render_body
+    build_call = render_body.split("buildOverviewStatusStrip(")[1].split("}),", 1)[0]
+    assert "offline" in build_call
+
+
+def test_overview_connectivity_both_arms_call_render_status_strip() -> None:
+    """AC-2: subscribeConnectivity offline/online arms call renderStatusStrip()."""
+    source = _read(OVERVIEW_JS)
+    callback = _extract_subscribe_connectivity_callback(source)
+
+    offline_arm_start = callback.find("if (!online)")
+    assert offline_arm_start != -1
+    offline_arm = callback[offline_arm_start:]
+    offline_return = offline_arm.find("return")
+    offline_block = offline_arm[: offline_return + len("return")]
+    assert "renderStatusStrip()" in offline_block
+    render_idx = offline_block.find("renderStatusStrip()")
+    return_idx = offline_block.find("return")
+    assert render_idx != -1 and return_idx != -1 and render_idx < return_idx
+
+    online_offline_false = callback.split("if (!online)", 1)[1].split("}", 1)[1]
+    reload_idx = online_offline_false.find("void requestReloadOverview()")
+    assert reload_idx != -1
+    before_reload = online_offline_false[:reload_idx]
+    assert "renderStatusStrip()" in before_reload
+    online_render_idx = before_reload.find("renderStatusStrip()")
+    assert online_render_idx != -1
+
+
 def test_overview_networks_run_mutation_resolve_disabled_guard() -> None:
     """AC-2: runMutation early-returns when resolveDisabled() is true."""
     source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
