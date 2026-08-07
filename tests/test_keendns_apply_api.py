@@ -240,3 +240,20 @@ def test_live_apply_ack_mixed_message_then_error_fails() -> None:
     assert result.overall == "failed"
     assert any(step.ok is False for step in result.steps)
     assert transport.dispatched is True
+
+
+def test_live_apply_ack_error_on_second_item_fails() -> None:
+    ack = [
+        {"parse": {"status": [{"ident": "Cloud::KeenDNS", "message": "ok"}]}},
+        {"parse": {"status": [{"status": "error", "message": "booking failed"}]}},
+    ]
+    transport = _LiveTransportNdnsPresent(ack)
+    result = apply_keendns_intent(
+        intent=_APPLY_INTENT,
+        transport=transport,
+        live_dispatch=True,
+        backup_callback=lambda: None,
+    )
+    assert result.overall == "failed"
+    assert any(step.ok is False for step in result.steps)
+    assert transport.dispatched is True

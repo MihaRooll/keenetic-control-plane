@@ -284,19 +284,21 @@ def _status_ident_from_ack(ack: Any) -> str | None:
 def _ack_has_error_status(ack: Any) -> bool:
     if not isinstance(ack, list) or not ack:
         return False
-    first = ack[0]
-    if not isinstance(first, dict):
-        return False
-    parse_block = first.get("parse")
-    if not isinstance(parse_block, dict):
-        return False
-    status_entries = parse_block.get("status")
-    if not isinstance(status_entries, list) or not status_entries:
-        return False
-    return any(
-        isinstance(entry, dict) and entry.get("status") == "error"
-        for entry in status_entries
-    )
+    for item in ack:
+        if not isinstance(item, dict):
+            continue
+        parse_block = item.get("parse")
+        if not isinstance(parse_block, dict):
+            continue
+        status_entries = parse_block.get("status")
+        if not isinstance(status_entries, list) or not status_entries:
+            continue
+        if any(
+            isinstance(entry, dict) and entry.get("status") == "error"
+            for entry in status_entries
+        ):
+            return True
+    return False
 
 
 def _probe_ndns_component_present(transport: object) -> bool | None:
