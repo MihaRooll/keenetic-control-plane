@@ -57,6 +57,8 @@ import {
   deriveWifiPreviewEnabled,
   ensureWifiCredentialRef,
   listWifiApOptions,
+  parseWifiApplyVerdict,
+  shouldRefreshWifiObservedAfterMutation,
 } from './wifi-ap-model.js';
 import {
   createOverviewStepCardActions,
@@ -77,6 +79,7 @@ export const OVERVIEW_NETWORKS_UNASSIGNED_NOTE = 'Настройка и сост
 /**
  * @typedef {import('./staff-wifi-model.js').ParsedObservedAccessPoint} ParsedObservedAccessPoint
  * @typedef {import('./wifi-ap-model.js').StandingNetworkPreferences} StandingNetworkPreferences
+ * @typedef {import('./wifi-ap-model.js').WifiApplyVerdict} WifiApplyVerdict
  * @typedef {import('./wifi-ap-model.js').WifiCredentialRefCache} WifiCredentialRefCache
  */
 
@@ -387,6 +390,7 @@ export function mountOverviewSimpleNetworks(options) {
 
   /**
    * @param {AbortSignal|undefined} signal
+   * @returns {Promise<WifiApplyVerdict>}
    */
   async function runStaffEnable(signal) {
     const session = options.getSession();
@@ -458,8 +462,9 @@ export function mountOverviewSimpleNetworks(options) {
       credentialRefId,
     });
 
-    await applyStaffWifiChanges({ previewBody, session, signal });
-    if (standing && session.routerId) {
+    const response = await applyStaffWifiChanges({ previewBody, session, signal });
+    const verdict = parseWifiApplyVerdict(response);
+    if (standing && session.routerId && verdict.success) {
       try {
         const body = buildStaffStandingPreferencesUpdate({
           ssid: staffDraft.ssid,
@@ -470,16 +475,20 @@ export function mountOverviewSimpleNetworks(options) {
         // non-blocking
       }
     }
-    staffObserved = await fetchStaffWifiObservedState({
-      apId: selectedStaffApId,
-      session,
-      adapterMode,
-      signal,
-    });
+    if (shouldRefreshWifiObservedAfterMutation(verdict)) {
+      staffObserved = await fetchStaffWifiObservedState({
+        apId: selectedStaffApId,
+        session,
+        adapterMode,
+        signal,
+      });
+    }
+    return verdict;
   }
 
   /**
    * @param {AbortSignal|undefined} signal
+   * @returns {Promise<WifiApplyVerdict|null>}
    */
   async function runStaffApplyDefaults(signal) {
     const session = options.getSession();
@@ -489,7 +498,7 @@ export function mountOverviewSimpleNetworks(options) {
       standing,
       mutationReadiness: readiness,
     }) || !standing) {
-      return;
+      return null;
     }
     staffDraft = buildStaffStandingDefaultsDraft(standing);
     const credIntent = resolveStaffWifiCredentialIntent({
@@ -519,18 +528,23 @@ export function mountOverviewSimpleNetworks(options) {
       enabled: true,
       credentialRefId: credIntent.credentialRefId,
     });
-    await applyStaffWifiChanges({ previewBody, session, signal });
-    staffObserved = await fetchStaffWifiObservedState({
-      apId: selectedStaffApId,
-      session,
-      adapterMode,
-      signal,
-    });
+    const response = await applyStaffWifiChanges({ previewBody, session, signal });
+    const verdict = parseWifiApplyVerdict(response);
+    if (shouldRefreshWifiObservedAfterMutation(verdict)) {
+      staffObserved = await fetchStaffWifiObservedState({
+        apId: selectedStaffApId,
+        session,
+        adapterMode,
+        signal,
+      });
+    }
+    return verdict;
   }
 
   /**
    * @param {boolean} enabled
    * @param {AbortSignal|undefined} signal
+   * @returns {Promise<WifiApplyVerdict>}
    */
   async function runGuestApply(enabled, signal) {
     const session = options.getSession();
@@ -539,19 +553,22 @@ export function mountOverviewSimpleNetworks(options) {
     }
 
     if (!enabled) {
-      await teardownGuestWifiNetwork({
+      const response = await teardownGuestWifiNetwork({
         apId: selectedGuestApId,
         wpaMode: guestDraft.wpaMode,
         session,
         signal,
       });
-      guestObserved = await fetchGuestWifiObservedState({
-        apId: selectedGuestApId,
-        session,
-        adapterMode,
-        signal,
-      });
-      return;
+      const verdict = parseWifiApplyVerdict(response, { intent: 'teardown' });
+      if (shouldRefreshWifiObservedAfterMutation(verdict)) {
+        guestObserved = await fetchGuestWifiObservedState({
+          apId: selectedGuestApId,
+          session,
+          adapterMode,
+          signal,
+        });
+      }
+      return verdict;
     }
 
     const trimmedPassword = guestDraft.password.trim();
@@ -613,9 +630,10 @@ export function mountOverviewSimpleNetworks(options) {
       credentialRefId,
     });
 
-    await applyGuestWifiChanges({ previewBody, session, signal });
+    const response = await applyGuestWifiChanges({ previewBody, session, signal });
+    const verdict = parseWifiApplyVerdict(response);
 
-    if (guestRememberDefault && enabled) {
+    if (guestRememberDefault && enabled && verdict.success) {
       try {
         const body = buildGuestStandingPreferencesUpdate(guestDraft.ssid);
         standing = await updateGuestStandingNetworkPreferences(body);
@@ -624,12 +642,15 @@ export function mountOverviewSimpleNetworks(options) {
       }
     }
 
-    guestObserved = await fetchGuestWifiObservedState({
-      apId: selectedGuestApId,
-      session,
-      adapterMode,
-      signal,
-    });
+    if (shouldRefreshWifiObservedAfterMutation(verdict)) {
+      guestObserved = await fetchGuestWifiObservedState({
+        apId: selectedGuestApId,
+        session,
+        adapterMode,
+        signal,
+      });
+    }
+    return verdict;
   }
 
   /**
@@ -657,24 +678,28 @@ export function mountOverviewSimpleNetworks(options) {
           : 'Сохраняем гостевую сеть…',
     );
     try {
+      /** @type {WifiApplyVerdict|null} */
+      let verdict = null;
       if (action === 'staff-enable') {
-        await runStaffEnable(signal);
+        verdict = await runStaffEnable(signal);
       } else if (action === 'staff-defaults') {
-        await runStaffApplyDefaults(signal);
+        verdict = await runStaffApplyDefaults(signal);
       } else {
-        await runGuestApply(targetEnabled, signal);
+        verdict = await runGuestApply(targetEnabled, signal);
       }
-      if (typeof options.showToast === 'function') {
+      if (verdict && typeof options.showToast === 'function') {
         options.showToast({
-          tone: 'success',
-          title: 'Готово',
-          message: 'Настройки отправлены на роутер',
+          tone: verdict.success ? 'success' : 'warning',
+          title: verdict.title,
+          message: verdict.message,
         });
       }
-      if (action.startsWith('staff')) {
-        staffFormDirty = false;
-      } else {
-        guestFormDirty = false;
+      if (verdict?.success) {
+        if (action.startsWith('staff')) {
+          staffFormDirty = false;
+        } else {
+          guestFormDirty = false;
+        }
       }
     } catch (error) {
       if (typeof options.showToast === 'function') {

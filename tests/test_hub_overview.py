@@ -2039,6 +2039,90 @@ def test_overview_networks_guest_off_early_teardown_branch() -> None:
     assert "deriveWifiPreviewEnabled" not in off_branch
 
 
+def test_overview_networks_wifi_apply_verdict_import() -> None:
+    """AC-1: overview-simple-networks imports parseWifiApplyVerdict helpers from wifi-ap-model."""
+    source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
+    wifi_import = source.split("from './wifi-ap-model.js';", 1)[0]
+    assert "parseWifiApplyVerdict" in wifi_import
+    assert "shouldRefreshWifiObservedAfterMutation" in wifi_import
+    assert "from './wifi-ap-model.js'" in source
+
+
+def test_overview_networks_helpers_return_verdict_or_null() -> None:
+    """AC-2: Wi-Fi mutation helpers parse apply response and return verdict|null."""
+    source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
+    for fn_name in ("runStaffEnable", "runStaffApplyDefaults", "runGuestApply"):
+        body = _extract_function_body(source, f"async function {fn_name}(")
+        assert body is not None
+        assert "parseWifiApplyVerdict" in body
+        assert "return verdict" in body
+    defaults_body = _extract_function_body(source, "async function runStaffApplyDefaults(")
+    assert defaults_body is not None
+    assert "return null" in defaults_body
+
+
+def test_overview_networks_guest_off_teardown_verdict_intent() -> None:
+    """AC-3: guest OFF branch parses teardown response with { intent: 'teardown' }."""
+    source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
+    guest_apply_body = _extract_function_body(source, "async function runGuestApply(")
+    assert guest_apply_body is not None
+    off_branch = _extract_if_branch(guest_apply_body, "if (!enabled")
+    assert off_branch is not None
+    assert "parseWifiApplyVerdict(response, { intent: 'teardown' })" in off_branch
+
+
+def test_overview_networks_run_mutation_toast_from_verdict() -> None:
+    """AC-4: runMutation shows toast only when verdict exists; tone from verdict.success."""
+    source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
+    run_mutation_body = _extract_function_body(source, "async function runMutation(")
+    assert run_mutation_body is not None
+    assert "verdict = await runStaffEnable(signal)" in run_mutation_body
+    assert "verdict = await runStaffApplyDefaults(signal)" in run_mutation_body
+    assert "verdict = await runGuestApply(targetEnabled, signal)" in run_mutation_body
+    assert "if (verdict && typeof options.showToast === 'function')" in run_mutation_body
+    assert "tone: verdict.success ? 'success' : 'warning'" in run_mutation_body
+    assert "title: verdict.title" in run_mutation_body
+    assert "message: verdict.message" in run_mutation_body
+    assert "title: 'Готово'" not in run_mutation_body
+    assert "Настройки отправлены на роутер" not in run_mutation_body
+
+
+def test_overview_networks_form_dirty_and_standing_gated_on_verdict_success() -> None:
+    """AC-5: formDirty clear and standing PUT require verdict.success."""
+    source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
+    run_mutation_body = _extract_function_body(source, "async function runMutation(")
+    assert run_mutation_body is not None
+    assert "if (verdict?.success)" in run_mutation_body
+    assert "staffFormDirty = false" in run_mutation_body
+    assert "guestFormDirty = false" in run_mutation_body
+
+    staff_enable_body = _extract_function_body(source, "async function runStaffEnable(")
+    assert staff_enable_body is not None
+    assert "if (standing && session.routerId && verdict.success)" in staff_enable_body
+
+    guest_apply_body = _extract_function_body(source, "async function runGuestApply(")
+    assert guest_apply_body is not None
+    assert "if (guestRememberDefault && enabled && verdict.success)" in guest_apply_body
+
+
+def test_overview_networks_observed_refresh_gated_on_should_refresh() -> None:
+    """AC-6: observed refresh runs only when shouldRefreshWifiObservedAfterMutation(verdict)."""
+    source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
+    for fn_name in ("runStaffEnable", "runStaffApplyDefaults", "runGuestApply"):
+        body = _extract_function_body(source, f"async function {fn_name}(")
+        assert body is not None
+        assert "shouldRefreshWifiObservedAfterMutation(verdict)" in body
+        refresh_branch = _extract_if_branch(body, "if (shouldRefreshWifiObservedAfterMutation(verdict)")
+        assert refresh_branch is not None
+        assert "fetchStaffWifiObservedState" in refresh_branch or "fetchGuestWifiObservedState" in refresh_branch
+    guest_body = _extract_function_body(source, "async function runGuestApply(")
+    assert guest_body is not None
+    # Guest OFF (teardown) and guest ON (apply) each gate refresh — not only the first match.
+    assert guest_body.count("shouldRefreshWifiObservedAfterMutation(verdict)") >= 2
+    assert "parseWifiApplyVerdict(response, { intent: 'teardown' })" in guest_body
+    assert "parseWifiApplyVerdict(response)" in guest_body
+
+
 def test_overview_guest_overlap_uses_persisted_staff_ap_id() -> None:
     """Overview overlap warning reads standing staff_ap_id, not session.wifiRoles."""
     source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
