@@ -611,6 +611,37 @@ def test_vpn_model_exports_tile_grid_helpers() -> None:
     assert "hub-vpn-activate-${profileId}" in source
 
 
+def test_vpn_screen_disconnect_toast_overall_first() -> None:
+    """Disconnect toast branches on response.overall before tunnel health (mirror connect)."""
+    source = _read(VPN_SCREEN_JS)
+    body = _extract_function_body(source, "async function runTunnelMutation(")
+    assert body is not None
+    disconnect_idx = body.find("if (action === 'disconnect') {")
+    assert disconnect_idx != -1
+    disconnect_region = body[disconnect_idx:]
+    assert "const response = await teardownVpnTunnel(" in disconnect_region
+    post_teardown = disconnect_region.split(
+        "const response = await teardownVpnTunnel(", 1,
+    )[1]
+    post_teardown = post_teardown.split("storeMutationOutcome(wgId, response);", 1)[1]
+    assert re.search(r"response\?\.overall|typeof response\?\.overall", post_teardown)
+    assert "overall !== 'applied'" in post_teardown
+    assert "describeConfigurationOutcome(response)" in post_teardown
+    assert "getStateDescriptor(outcome.hubState).tone" in post_teardown
+    overall_idx = post_teardown.find("overall !== 'applied'")
+    healthy_idx = post_teardown.find("tunnel_healthy")
+    assert overall_idx != -1 and healthy_idx != -1
+    assert overall_idx < healthy_idx
+    non_applied_branch = post_teardown.split("overall !== 'applied'", 1)[1].split("} else", 1)[0]
+    assert "describeConfigurationOutcome" in non_applied_branch
+    assert "Туннель отключён, ответ сервера не подтверждён" not in non_applied_branch
+    assert "tone: 'success'" not in non_applied_branch
+    assert "tone: 'primary'" not in non_applied_branch
+    applied_region = post_teardown.split("} else", 1)[1]
+    assert "Туннель отключён, ответ сервера не подтверждён" in applied_region
+    assert "tunnel_healthy" in applied_region
+
+
 def test_vpn_screen_connect_toast_overall_first() -> None:
     """AC1–AC5: connect/reconnect toast branches on response.overall before tunnel health."""
     source = _read(VPN_SCREEN_JS)
