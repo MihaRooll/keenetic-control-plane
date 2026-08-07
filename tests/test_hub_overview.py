@@ -3232,3 +3232,86 @@ def test_overview_connectivity_both_arms_call_render_vpn_slot() -> None:
     online_render_idx = before_reload.find("renderVpnSlot()")
     assert online_update_idx != -1 and online_render_idx != -1
     assert online_update_idx < online_render_idx
+
+
+def test_overview_networks_connectivity_syncs_networks_mount() -> None:
+    """Overview networks: both connectivity arms call networksMount?.update(); mount uses getDisabled."""
+    source = _read(OVERVIEW_JS)
+    callback = _extract_subscribe_connectivity_callback(source)
+
+    offline_arm_start = callback.find("if (!online)")
+    assert offline_arm_start != -1
+    offline_arm = callback[offline_arm_start:]
+    offline_return = offline_arm.find("return")
+    offline_block = offline_arm[: offline_return + len("return")]
+    assert "networksMount?.update()" in offline_block
+    update_idx = offline_block.find("networksMount?.update()")
+    return_idx = offline_block.find("return")
+    assert update_idx != -1 and return_idx != -1 and update_idx < return_idx
+
+    online_offline_false = callback.split("if (!online)", 1)[1].split("}", 1)[1]
+    reload_idx = online_offline_false.find("void requestReloadOverview()")
+    assert reload_idx != -1
+    before_reload = online_offline_false[:reload_idx]
+    assert "networksMount?.update()" in before_reload
+    assert ".then" not in before_reload.split("networksMount?.update()")[-1]
+
+    slots_body = _extract_function_body(source, "function mountOverviewActionSlots(")
+    assert slots_body is not None
+    mount_start = slots_body.find("mountOverviewSimpleNetworks(")
+    assert mount_start != -1
+    mount_end = slots_body.find("});", mount_start)
+    assert mount_end != -1
+    mount_block = slots_body[mount_start : mount_end + 3]
+    assert _normalize_whitespace("getDisabled: () => offline") in _normalize_whitespace(mount_block)
+
+
+def test_overview_connectivity_both_arms_refresh_networks_after_domain() -> None:
+    """AC-3: subscribeConnectivity offline/online arms call networksMount?.update() after domainMount."""
+    source = _read(OVERVIEW_JS)
+    callback = _extract_subscribe_connectivity_callback(source)
+
+    offline_arm_start = callback.find("if (!online)")
+    assert offline_arm_start != -1
+    offline_arm = callback[offline_arm_start:]
+    offline_return = offline_arm.find("return")
+    offline_block = offline_arm[: offline_return + len("return")]
+    assert "domainMount?.update()" in offline_block
+    assert "networksMount?.update()" in offline_block
+    domain_idx = offline_block.find("domainMount?.update()")
+    networks_idx = offline_block.find("networksMount?.update()")
+    render_idx = offline_block.find("renderVpnSlot()")
+    return_idx = offline_block.find("return")
+    assert domain_idx != -1 and networks_idx != -1 and render_idx != -1 and return_idx != -1
+    assert domain_idx < networks_idx < render_idx < return_idx
+
+    online_offline_false = callback.split("if (!online)", 1)[1].split("}", 1)[1]
+    reload_idx = online_offline_false.find("void requestReloadOverview()")
+    assert reload_idx != -1
+    before_reload = online_offline_false[:reload_idx]
+    assert "domainMount?.update()" in before_reload
+    assert "networksMount?.update()" in before_reload
+    assert "renderVpnSlot()" in before_reload
+    online_domain_idx = before_reload.find("domainMount?.update()")
+    online_networks_idx = before_reload.find("networksMount?.update()")
+    online_render_idx = before_reload.find("renderVpnSlot()")
+    assert online_domain_idx != -1 and online_networks_idx != -1 and online_render_idx != -1
+    assert online_domain_idx < online_networks_idx < online_render_idx
+
+
+def test_overview_networks_run_mutation_resolve_disabled_guard() -> None:
+    """AC-2: runMutation early-returns when resolveDisabled() is true."""
+    source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
+    assert "function resolveDisabled()" in source
+    assert "typeof getDisabled === 'function'" in source
+    run_mutation_body = _extract_function_body(source, "async function runMutation(")
+    assert run_mutation_body is not None
+    disabled_check = run_mutation_body.find("if (resolveDisabled())")
+    restore_check = run_mutation_body.find("if (isRestorePending())")
+    show_progress = run_mutation_body.find("showSlotProgress(")
+    assert restore_check != -1 and disabled_check != -1 and show_progress != -1
+    assert restore_check < disabled_check < show_progress
+    assert "resolveDisabled() ? '1' : '0'" in source
+    assert "disabled: staffBusy || loading || resolveDisabled()" in source
+    assert "disabled: guestBusy || loading || resolveDisabled()" in source
+    assert "disabled: busy || resolveDisabled()" in source

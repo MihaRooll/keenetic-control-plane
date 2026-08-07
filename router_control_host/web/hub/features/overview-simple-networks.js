@@ -92,6 +92,7 @@ export const OVERVIEW_NETWORKS_UNASSIGNED_NOTE = 'Настройка и сост
  * @property {(routeId: string) => void} navigate
  * @property {(opts: object) => void} [showToast]
  * @property {() => boolean} isRestorePending
+ * @property {() => boolean} [getDisabled]
  * @property {() => AbortSignal|undefined} [getSignal]
  * @property {string} [idPrefix]
  */
@@ -135,9 +136,14 @@ export function mountOverviewSimpleNetworks(options) {
     adapterMode = null,
     navigate,
     isRestorePending,
+    getDisabled,
     getSignal,
     idPrefix = 'hub-overview-networks',
   } = options;
+
+  function resolveDisabled() {
+    return typeof getDisabled === 'function' && getDisabled();
+  }
 
   /**
    * @param {{
@@ -369,6 +375,7 @@ export function mountOverviewSimpleNetworks(options) {
       loading ? '1' : '0',
       standing?.staff_ssid ?? '',
       standing?.staff_password_configured ? '1' : '0',
+      resolveDisabled() ? '1' : '0',
     ].join('|');
   }
 
@@ -661,6 +668,9 @@ export function mountOverviewSimpleNetworks(options) {
     if (isRestorePending()) {
       return;
     }
+    if (resolveDisabled()) {
+      return;
+    }
     const signal = typeof getSignal === 'function' ? getSignal() : undefined;
     const slot = action.startsWith('staff') ? staffBody : guestBody;
     if (action.startsWith('staff')) {
@@ -835,8 +845,11 @@ export function mountOverviewSimpleNetworks(options) {
       label,
       value: currentApId ?? '',
       options: buildApSelectOptions(),
-      disabled: busy,
+      disabled: busy || resolveDisabled(),
       onChange: (event) => {
+        if (resolveDisabled()) {
+          return;
+        }
         if (event.target instanceof HTMLSelectElement) {
           const nextApId = event.target.value || null;
           if (nextApId === currentApId) {
@@ -907,7 +920,7 @@ export function mountOverviewSimpleNetworks(options) {
         );
         const enableBtn = createButton({
           label: 'Включить рабочую сеть',
-          disabled: staffBusy || loading,
+          disabled: staffBusy || loading || resolveDisabled(),
           busy: staffBusy,
           onActivate: () => {
             void runMutation('staff-enable');
@@ -926,7 +939,7 @@ export function mountOverviewSimpleNetworks(options) {
         const defaultsBtn = createButton({
           label: STAFF_WIFI_APPLY_DEFAULTS_LABEL,
           variant: 'secondary',
-          disabled: staffBusy || loading,
+          disabled: staffBusy || loading || resolveDisabled(),
           busy: staffBusy,
           onActivate: () => {
             void runMutation('staff-defaults');
@@ -951,7 +964,7 @@ export function mountOverviewSimpleNetworks(options) {
             type: 'password',
             value: staffDraft.password,
             autocomplete: 'new-password',
-            disabled: staffBusy,
+            disabled: staffBusy || resolveDisabled(),
             onInput: (event) => {
               staffDraft = { ...staffDraft, password: readInputEventValue(event) };
               staffFormDirty = true;
@@ -1016,7 +1029,7 @@ export function mountOverviewSimpleNetworks(options) {
             id: `${idPrefix}-guest-enabled`,
             label: 'Гостевая сеть',
             checked: enabled,
-            disabled: guestBusy || loading,
+            disabled: guestBusy || loading || resolveDisabled(),
             onChange: (checked) => {
               void runMutation('guest-toggle', checked);
             },
@@ -1028,7 +1041,7 @@ export function mountOverviewSimpleNetworks(options) {
             id: `${idPrefix}-guest-ssid`,
             label: 'Имя сети',
             value: guestDraft.ssid,
-            disabled: guestBusy || loading,
+            disabled: guestBusy || loading || resolveDisabled(),
             onInput: (event) => {
               guestDraft = { ...guestDraft, ssid: readInputEventValue(event) };
               guestFormDirty = true;
@@ -1047,7 +1060,7 @@ export function mountOverviewSimpleNetworks(options) {
               id: `${idPrefix}-guest-remember`,
               label: GUEST_WIFI_REMEMBER_DEFAULT_LABEL,
               checked: guestRememberDefault,
-              disabled: guestBusy || loading,
+              disabled: guestBusy || loading || resolveDisabled(),
               onChange: (checked) => {
                 guestRememberDefault = checked;
                 lastSignature = null;
@@ -1065,7 +1078,7 @@ export function mountOverviewSimpleNetworks(options) {
               type: 'password',
               value: guestDraft.password,
               autocomplete: 'new-password',
-              disabled: guestBusy || loading,
+              disabled: guestBusy || loading || resolveDisabled(),
               onInput: (event) => {
                 guestDraft = { ...guestDraft, password: readInputEventValue(event) };
                 guestFormDirty = true;
@@ -1085,7 +1098,7 @@ export function mountOverviewSimpleNetworks(options) {
               options: wpaOptions,
               value: guestDraft.wpaMode,
               hint: guestWifiWpaFieldHint(guestObserved) || undefined,
-              disabled: guestBusy || loading,
+              disabled: guestBusy || loading || resolveDisabled(),
               onChange: (event) => {
                 if (event.target instanceof HTMLSelectElement) {
                   guestDraft = { ...guestDraft, wpaMode: event.target.value };

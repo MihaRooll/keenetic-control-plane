@@ -973,6 +973,7 @@ export function render(container, ctx) {
       navigate: (routeId) => ctx.navigate(routeId),
       showToast: ctx.showToast,
       isRestorePending: () => isConnectionRestorePending(getSession()),
+      getDisabled: () => offline,
       getSignal: () => enrichmentAbort?.signal,
       idPrefix: 'hub-overview-networks',
     });
@@ -2559,6 +2560,7 @@ export function render(container, ctx) {
       updateRefreshButton();
       renderSummary();
       domainMount?.update();
+      networksMount?.update();
       renderVpnSlot();
       return;
     }
@@ -2567,6 +2569,7 @@ export function render(container, ctx) {
     updateRefreshButton();
     renderSummary();
     domainMount?.update();
+    networksMount?.update();
     renderVpnSlot();
     void requestReloadOverview();
   });
