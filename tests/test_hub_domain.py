@@ -1165,3 +1165,73 @@ def test_domain_screen_passes_get_disabled_to_simple_publish() -> None:
         "getDisabled: () => controlsLocked() || offline",
         "",
     )
+
+
+def test_domain_simple_publish_apply_toast_uses_danger_not_error() -> None:
+    """KeenDNS publish fail toast uses toast-whitelist tone danger (not error→neutral)."""
+    source = DOMAIN_SIMPLE_PUBLISH_JS.read_text(encoding="utf-8")
+    assert "tone: 'error'" not in source
+    confirm_body = _extract_function_body(source, "export function openDomainPublishApplyConfirm(")
+    assert confirm_body is not None
+    assert confirm_body.count("tone: 'danger'") >= 2
+
+
+def test_domain_describe_keendns_apply_outcome_dispatched_offline(tmp_path: Path) -> None:
+    """dispatched_offline must not claim dispatch sent; uses offline WARNING copy."""
+    result = _run_export(
+        tmp_path,
+        label="keendns-apply-offline",
+        script_body="""
+const outcome = mod.describeKeendnsApplyOutcome({ overall: 'dispatched_offline' });
+console.log(JSON.stringify({
+  hubState: outcome.hubState,
+  title: outcome.title,
+  message: outcome.message,
+  dispatchTitle: mod.KEENDNS_APPLY_DISPATCH_TITLE,
+  dispatchHonesty: mod.KEENDNS_APPLY_DISPATCH_HONESTY,
+}));
+""",
+    )
+    assert result["hubState"] == "WARNING"
+    assert result["title"] == "Команда не отправлена на роутер"
+    assert result["title"] != result["dispatchTitle"]
+    assert result["message"] != result["dispatchHonesty"]
+    assert "Команда отправлена" not in result["message"]
+    assert "не менялись" in result["message"]
+
+
+@pytest.mark.parametrize(
+    "overall,expected_hub_state,uses_dispatch_constants",
+    [
+        ("failed", "ERROR", False),
+        ("applied", "WARNING", True),
+    ],
+)
+def test_domain_describe_keendns_apply_outcome_failed_and_applied(
+    tmp_path: Path,
+    overall: str,
+    expected_hub_state: str,
+    uses_dispatch_constants: bool,
+) -> None:
+    """failed → ERROR; applied → existing KEENDNS_APPLY_DISPATCH_* WARNING."""
+    result = _run_export(
+        tmp_path,
+        label=f"keendns-apply-{overall}",
+        script_body=f"""
+const outcome = mod.describeKeendnsApplyOutcome({{ overall: {json.dumps(overall)} }});
+console.log(JSON.stringify({{
+  hubState: outcome.hubState,
+  title: outcome.title,
+  message: outcome.message,
+  dispatchTitle: mod.KEENDNS_APPLY_DISPATCH_TITLE,
+  dispatchHonesty: mod.KEENDNS_APPLY_DISPATCH_HONESTY,
+}}));
+""",
+    )
+    assert result["hubState"] == expected_hub_state
+    if uses_dispatch_constants:
+        assert result["title"] == result["dispatchTitle"]
+        assert result["message"] == result["dispatchHonesty"]
+    else:
+        assert result["hubState"] == "ERROR"
+        assert result["title"] != result["dispatchTitle"]

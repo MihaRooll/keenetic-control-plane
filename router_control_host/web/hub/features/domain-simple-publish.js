@@ -352,7 +352,7 @@ export function openDomainPublishApplyConfirm(params) {
               const outcome = describeKeendnsApplyOutcome(response);
               if (outcome.hubState === HubState.ERROR) {
                 params.showToast({
-                  tone: 'error',
+                  tone: 'danger',
                   title: outcome.title,
                   message: outcome.message,
                 });
@@ -365,7 +365,7 @@ export function openDomainPublishApplyConfirm(params) {
               }
             } catch (error) {
               params.showToast({
-                tone: 'error',
+                tone: 'danger',
                 title: 'Не удалось отправить команду',
                 message: error instanceof Error ? error.message : 'Повторите позже.',
               });

@@ -1011,7 +1011,7 @@ export function render(container, ctx) {
             });
             const payload = /** @type {Record<string, unknown>} */ (response ?? {});
             const overall = typeof payload.overall === 'string' ? payload.overall : 'failed';
-            if (overall !== 'failed') {
+            if (overall === 'applied') {
               domainPublishedSession = true;
               if (!disposed) {
                 renderReadinessHeader();

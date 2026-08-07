@@ -1144,6 +1144,16 @@ export function describeKeendnsApplyOutcome(applyResponse) {
     };
   }
 
+  if (overall === 'dispatched_offline') {
+    return {
+      hubState: HubState.WARNING,
+      title: 'Команда не отправлена на роутер',
+      message:
+        'Команда выполнена без связи с роутером — на устройстве настройки не менялись. Проверьте подключение и повторите.',
+      notes,
+    };
+  }
+
   return {
     hubState: HubState.WARNING,
     title: KEENDNS_APPLY_DISPATCH_TITLE,
