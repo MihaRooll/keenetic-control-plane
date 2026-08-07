@@ -170,3 +170,55 @@ def test_live_apply_without_backup_callback_fail_closed() -> None:
             live_dispatch=True,
         )
     assert transport.dispatched is False
+
+
+class _LiveTransportNdnsPresent:
+    keendns_live_dispatch = True
+
+    def __init__(self, ack: list[dict[str, object]]) -> None:
+        self.ack = ack
+        self.dispatched = False
+
+    def read_json(self, command: object, body: bytes | None = None) -> dict[str, object]:
+        return {"component": {"ndns": {}, "wifi": {}}}
+
+    def execute_sealed_rci_write(self, request: SealedRciWriteRequest) -> list[dict[str, object]]:
+        self.dispatched = True
+        return self.ack
+
+
+def test_live_apply_ack_single_error_status_fails() -> None:
+    ack = [{"parse": {"status": [{"status": "error", "message": "booking failed"}]}}]
+    transport = _LiveTransportNdnsPresent(ack)
+    result = apply_keendns_intent(
+        intent=_APPLY_INTENT,
+        transport=transport,
+        live_dispatch=True,
+        backup_callback=lambda: None,
+    )
+    assert result.overall == "failed"
+    assert any(step.ok is False for step in result.steps)
+    assert transport.dispatched is True
+
+
+def test_live_apply_ack_mixed_message_then_error_fails() -> None:
+    ack = [
+        {
+            "parse": {
+                "status": [
+                    {"ident": "Cloud::KeenDNS", "message": "ok"},
+                    {"status": "error", "message": "booking failed after message"},
+                ]
+            }
+        }
+    ]
+    transport = _LiveTransportNdnsPresent(ack)
+    result = apply_keendns_intent(
+        intent=_APPLY_INTENT,
+        transport=transport,
+        live_dispatch=True,
+        backup_callback=lambda: None,
+    )
+    assert result.overall == "failed"
+    assert any(step.ok is False for step in result.steps)
+    assert transport.dispatched is True

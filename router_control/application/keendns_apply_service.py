@@ -281,6 +281,24 @@ def _status_ident_from_ack(ack: Any) -> str | None:
 
 
 
+def _ack_has_error_status(ack: Any) -> bool:
+    if not isinstance(ack, list) or not ack:
+        return False
+    first = ack[0]
+    if not isinstance(first, dict):
+        return False
+    parse_block = first.get("parse")
+    if not isinstance(parse_block, dict):
+        return False
+    status_entries = parse_block.get("status")
+    if not isinstance(status_entries, list) or not status_entries:
+        return False
+    return any(
+        isinstance(entry, dict) and entry.get("status") == "error"
+        for entry in status_entries
+    )
+
+
 def _probe_ndns_component_present(transport: object) -> bool | None:
 
     read_json = getattr(transport, "read_json", None)
@@ -429,7 +447,22 @@ def _dispatch_plan(
 
             return tuple(steps), tuple(errors)
 
-
+        if _ack_has_error_status(ack):
+            failure = KeenDnsApplyStep(
+                op=op_name,
+                ok=False,
+                command_redacted=command,
+                error=_MSG_OP_DISPATCH_FAILED,
+            )
+            if intent_recorded and trail is not None:
+                trail.record_op_failure(
+                    op_name,
+                    op_evidence_redacted=build_sealed_apply_op_evidence(failure),
+                )
+            steps.append(failure)
+            errors.append(_MSG_OP_DISPATCH_FAILED)
+            logs.append(f"dispatch failed for {op_name}")
+            return tuple(steps), tuple(errors)
 
         success = KeenDnsApplyStep(
 
