@@ -1276,7 +1276,7 @@ export function render(container, ctx) {
     renderVpnSlot();
     try {
       const wgId = resolveVpnProfileWgId(profileId);
-      await activateVpnProfile({
+      const response = await activateVpnProfile({
         profileId,
         session: getSession(),
         wgId,
@@ -1285,11 +1285,19 @@ export function render(container, ctx) {
       if (disposed) {
         return;
       }
-      ctx.showToast({
-        tone: 'success',
-        title: 'Профиль активирован',
-        message: 'Запрос отправлен — «Работает» только при подтверждённой связи туннеля.',
-      });
+      if (response?.activated === true) {
+        ctx.showToast({
+          tone: 'success',
+          title: 'Профиль активирован',
+          message: 'Запрос отправлен — «Работает» только при подтверждённой связи туннеля.',
+        });
+      } else {
+        ctx.showToast({
+          tone: 'warning',
+          title: 'Не активирован',
+          message: 'Запрос отправлен, но подтверждения нет — проверьте состояние туннеля.',
+        });
+      }
       vpnCheckingProfileIds = { ...vpnCheckingProfileIds, [profileId]: '1' };
       lastVpnSignature = null;
       renderVpnSlot();
@@ -1341,7 +1349,7 @@ export function render(container, ctx) {
     renderVpnSlot();
     try {
       const wgId = resolveVpnProfileWgId(profileId);
-      await deactivateVpnProfile({
+      const response = await deactivateVpnProfile({
         wgId,
         session: getSession(),
         signal: enrichmentAbort?.signal,
@@ -1349,11 +1357,19 @@ export function render(container, ctx) {
       if (disposed) {
         return;
       }
-      ctx.showToast({
-        tone: 'success',
-        title: 'Профиль отключён',
-        message: 'Запрос на отключение отправлен.',
-      });
+      if (response?.deactivated === true) {
+        ctx.showToast({
+          tone: 'success',
+          title: 'Профиль отключён',
+          message: 'Запрос на отключение отправлен.',
+        });
+      } else {
+        ctx.showToast({
+          tone: 'warning',
+          title: 'Не отключён',
+          message: 'Запрос отправлен, но подтверждения нет — проверьте состояние туннеля.',
+        });
+      }
       vpnCheckingProfileIds = { ...vpnCheckingProfileIds, [profileId]: '1' };
       lastVpnSignature = null;
       renderVpnSlot();

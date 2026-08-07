@@ -2275,7 +2275,7 @@ export function render(container, ctx) {
     renderCatalogSlot();
     renderFooter();
     try {
-      await activateVpnProfile({
+      const response = await activateVpnProfile({
         profileId,
         session: getSession(),
         wgId: selectedWgId,
@@ -2283,11 +2283,19 @@ export function render(container, ctx) {
       if (disposed) {
         return;
       }
-      ctx.showToast({
-        tone: 'success',
-        title: 'Профиль активирован',
-        message: 'Запрос на подключение отправлен — проверьте состояние туннеля.',
-      });
+      if (response?.activated === true) {
+        ctx.showToast({
+          tone: 'success',
+          title: 'Профиль активирован',
+          message: 'Запрос на подключение отправлен — проверьте состояние туннеля.',
+        });
+      } else {
+        ctx.showToast({
+          tone: 'warning',
+          title: 'Не активирован',
+          message: 'Запрос отправлен, но подтверждения нет — проверьте состояние туннеля.',
+        });
+      }
       await loadCatalogFlow();
     } catch (error) {
       if (disposed) {
@@ -2327,18 +2335,26 @@ export function render(container, ctx) {
     renderCatalogSlot();
     renderFooter();
     try {
-      await deactivateVpnProfile({
+      const response = await deactivateVpnProfile({
         wgId: selectedWgId,
         session: getSession(),
       });
       if (disposed) {
         return;
       }
-      ctx.showToast({
-        tone: 'success',
-        title: 'Профиль отключён',
-        message: 'Запрос на отключение отправлен.',
-      });
+      if (response?.deactivated === true) {
+        ctx.showToast({
+          tone: 'success',
+          title: 'Профиль отключён',
+          message: 'Запрос на отключение отправлен.',
+        });
+      } else {
+        ctx.showToast({
+          tone: 'warning',
+          title: 'Не отключён',
+          message: 'Запрос отправлен, но подтверждения нет — проверьте состояние туннеля.',
+        });
+      }
       await loadCatalogFlow();
     } catch (error) {
       if (disposed) {

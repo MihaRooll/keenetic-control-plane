@@ -1943,6 +1943,34 @@ def test_overview_vpn_on_activate_wires_activate_profile_not_navigate() -> None:
     assert "«Работает» только при подтверждённой связи туннеля" in activate_body
 
 
+def test_overview_vpn_activate_toast_gated_on_activated_flag() -> None:
+    """AC-3/AC-4/AC-5: runOverviewVpnActivate success toast only when activated === true."""
+    source = _read(OVERVIEW_JS)
+    body = _extract_function_body(source, "async function runOverviewVpnActivate(")
+    assert body is not None
+    assert "const response = await activateVpnProfile(" in body
+    assert "response?.activated === true" in body
+    success_branch = body.split("response?.activated === true", 1)[1].split("} else {", 1)[0]
+    assert "tone: 'success'" in success_branch
+    assert "title: 'Не активирован'" in body
+    assert "tone: 'warning'" in body
+    assert "describeConfigurationOutcome" not in body
+
+
+def test_overview_vpn_deactivate_toast_gated_on_deactivated_flag() -> None:
+    """AC-3b/AC-4/AC-5: runOverviewVpnDeactivate success toast only when deactivated === true."""
+    source = _read(OVERVIEW_JS)
+    body = _extract_function_body(source, "async function runOverviewVpnDeactivate(")
+    assert body is not None
+    assert "const response = await deactivateVpnProfile(" in body
+    assert "response?.deactivated === true" in body
+    success_branch = body.split("response?.deactivated === true", 1)[1].split("} else {", 1)[0]
+    assert "tone: 'success'" in success_branch
+    assert "title: 'Не отключён'" in body
+    assert "tone: 'warning'" in body
+    assert "describeConfigurationOutcome" not in body
+
+
 def test_overview_vpn_slot_no_status_note_prose() -> None:
     """Overview VPN card no longer renders the long status note paragraph."""
     source = _read(OVERVIEW_JS)

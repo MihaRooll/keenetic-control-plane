@@ -72,6 +72,42 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _extract_function_body(source: str, signature: str) -> str | None:
+    """Извлекает тело function по сигнатуре (пропускает `{` в параметрах)."""
+    start = source.find(signature)
+    if start == -1:
+        return None
+    paren = source.find("(", start)
+    if paren == -1:
+        return None
+    depth = 0
+    i = paren
+    while i < len(source):
+        char = source[i]
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                brace = source.find("{", i + 1)
+                if brace == -1:
+                    return None
+                body_depth = 0
+                j = brace
+                while j < len(source):
+                    c = source[j]
+                    if c == "{":
+                        body_depth += 1
+                    elif c == "}":
+                        body_depth -= 1
+                        if body_depth == 0:
+                            return source[brace + 1 : j]
+                    j += 1
+                return None
+        i += 1
+    return None
+
+
 def _require_node() -> str:
     node = shutil.which("node")
     if node is None:
@@ -422,6 +458,34 @@ def test_vpn_screen_activate_deactivate_set_mutating_and_long_op_kind() -> None:
     assert "longOpKind = 'deactivate'" in deactivate.group(1)
     assert "busyProfileIds: activatingProfileIds" in source
     assert "deactivatingProfileIds" in source
+
+
+def test_vpn_screen_activate_toast_gated_on_activated_flag() -> None:
+    """AC-1/AC-4/AC-5: runActivateProfile success toast only when activated === true."""
+    source = _read(VPN_SCREEN_JS)
+    body = _extract_function_body(source, "async function runActivateProfile(")
+    assert body is not None
+    assert "const response = await activateVpnProfile(" in body
+    assert "response?.activated === true" in body
+    success_branch = body.split("response?.activated === true", 1)[1].split("} else {", 1)[0]
+    assert "tone: 'success'" in success_branch
+    assert "title: 'Не активирован'" in body
+    assert "tone: 'warning'" in body
+    assert "describeConfigurationOutcome" not in body
+
+
+def test_vpn_screen_deactivate_toast_gated_on_deactivated_flag() -> None:
+    """AC-2/AC-4/AC-5: runDeactivateProfile success toast only when deactivated === true."""
+    source = _read(VPN_SCREEN_JS)
+    body = _extract_function_body(source, "async function runDeactivateProfile(")
+    assert body is not None
+    assert "const response = await deactivateVpnProfile(" in body
+    assert "response?.deactivated === true" in body
+    success_branch = body.split("response?.deactivated === true", 1)[1].split("} else {", 1)[0]
+    assert "tone: 'success'" in success_branch
+    assert "title: 'Не отключён'" in body
+    assert "tone: 'warning'" in body
+    assert "describeConfigurationOutcome" not in body
 
 
 def test_vpn_screen_mutation_phase_only_discrete_awaits() -> None:
