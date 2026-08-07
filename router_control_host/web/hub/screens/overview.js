@@ -2558,6 +2558,7 @@ export function render(container, ctx) {
       updateRefreshButton();
       renderSummary();
       domainMount?.update();
+      renderVpnSlot();
       return;
     }
     offline = false;
@@ -2565,6 +2566,7 @@ export function render(container, ctx) {
     updateRefreshButton();
     renderSummary();
     domainMount?.update();
+    renderVpnSlot();
     void requestReloadOverview();
   });
   updateRefreshButton();

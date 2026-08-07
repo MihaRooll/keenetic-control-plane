@@ -3192,3 +3192,33 @@ def test_overview_domain_publish_connectivity_syncs_domain_mount() -> None:
     mount_block = slots_body[mount_start : mount_end + 3]
     assert _normalize_whitespace("getDisabled: () => offline") in _normalize_whitespace(mount_block)
     assert "disabled: offline" not in mount_block
+
+
+def test_overview_connectivity_both_arms_call_render_vpn_slot() -> None:
+    """AC-2: subscribeConnectivity offline/online arms call renderVpnSlot() after domainMount update."""
+    source = _read(OVERVIEW_JS)
+    callback = _extract_subscribe_connectivity_callback(source)
+
+    offline_arm_start = callback.find("if (!online)")
+    assert offline_arm_start != -1
+    offline_arm = callback[offline_arm_start:]
+    offline_return = offline_arm.find("return")
+    offline_block = offline_arm[: offline_return + len("return")]
+    assert "domainMount?.update()" in offline_block
+    assert "renderVpnSlot()" in offline_block
+    update_idx = offline_block.find("domainMount?.update()")
+    render_idx = offline_block.find("renderVpnSlot()")
+    return_idx = offline_block.find("return")
+    assert update_idx != -1 and render_idx != -1 and return_idx != -1
+    assert update_idx < render_idx < return_idx
+
+    online_offline_false = callback.split("if (!online)", 1)[1].split("}", 1)[1]
+    reload_idx = online_offline_false.find("void requestReloadOverview()")
+    assert reload_idx != -1
+    before_reload = online_offline_false[:reload_idx]
+    assert "domainMount?.update()" in before_reload
+    assert "renderVpnSlot()" in before_reload
+    online_update_idx = before_reload.find("domainMount?.update()")
+    online_render_idx = before_reload.find("renderVpnSlot()")
+    assert online_update_idx != -1 and online_render_idx != -1
+    assert online_update_idx < online_render_idx
