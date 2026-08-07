@@ -1631,6 +1631,22 @@ def test_entry_pages_mount_layout_once_no_clear_content_wrap() -> None:
     assert "detailRefreshing" in source
 
 
+def test_entry_pages_save_gates_offline() -> None:
+    """Offline blocks draft save and self-check before API calls."""
+    source = _read(ENTRY_SCREEN_JS)
+    can_save_body = _extract_function_body(source, "function canSaveDraft()")
+    save_body = _extract_function_body(source, "async function handleSave()")
+    self_check_body = _extract_function_body(source, "async function handleSelfCheck()")
+    assert can_save_body is not None
+    assert save_body is not None
+    assert self_check_body is not None
+    assert can_save_body.find("offline") < can_save_body.find("draftDirty")
+    assert re.search(r"if \([^)]*\|\|\s*offline\b", save_body)
+    assert save_body.find("offline") < save_body.find("saveEntryPageDraft(")
+    assert re.search(r"if \([^)]*\|\|\s*offline\b", self_check_body)
+    assert self_check_body.find("offline") < self_check_body.find("selfCheckEntryPage(")
+
+
 def test_entry_pages_soft_detail_refresh_skips_cold_skeleton(tmp_path: Path) -> None:
     """После save soft-refresh не ставит detailLoading skeleton при смонтированном редакторе."""
     guest_doc = json.dumps(GUEST_DOCUMENT, ensure_ascii=False)

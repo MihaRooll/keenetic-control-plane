@@ -2099,6 +2099,33 @@ def test_overview_networks_guest_off_teardown_verdict_intent() -> None:
     assert "parseWifiApplyVerdict(response, { intent: 'teardown' })" in off_branch
 
 
+def test_overview_networks_guest_mutation_readiness_gated() -> None:
+    """Guest apply/toggle gated by evaluateGuestWifiMutationReadiness; incomplete session must not reach apply API."""
+    source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
+    guest_import = source.split("from './guest-wifi-model.js';", 1)[0]
+    assert "evaluateGuestWifiMutationReadiness" in guest_import
+
+    guest_apply_body = _extract_function_body(source, "async function runGuestApply(")
+    assert guest_apply_body is not None
+    assert "evaluateGuestWifiMutationReadiness(session, adapterMode)" in guest_apply_body
+    assert "!readiness.allowed" in guest_apply_body
+    assert "HubApiError" in guest_apply_body
+
+    readiness_idx = guest_apply_body.find("evaluateGuestWifiMutationReadiness")
+    teardown_idx = guest_apply_body.find("teardownGuestWifiNetwork")
+    apply_idx = guest_apply_body.find("applyGuestWifiChanges")
+    assert readiness_idx != -1
+    assert readiness_idx < teardown_idx
+    assert apply_idx == -1 or readiness_idx < apply_idx
+
+    guest_render_body = _extract_function_body(source, "function renderGuestSlot(")
+    assert guest_render_body is not None
+    assert "evaluateGuestWifiMutationReadiness" in guest_render_body
+    assert "guestMutationBlocked" in guest_render_body
+    toggle_block = guest_render_body.split("guest-enabled", 1)[1].split("onChange:", 1)[0]
+    assert "guestMutationBlocked" in toggle_block
+
+
 def test_overview_networks_run_mutation_toast_from_verdict() -> None:
     """AC-4: runMutation shows toast only when verdict exists; tone from verdict hubState."""
     source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)

@@ -777,7 +777,7 @@ export function render(container, ctx) {
   }
 
   function canSaveDraft() {
-    if (saving || listLoading || detailLoading || initializing) {
+    if (offline || saving || listLoading || detailLoading || initializing) {
       return false;
     }
     if (!draftDirty()) {
@@ -932,7 +932,7 @@ export function render(container, ctx) {
 
   async function handleSave() {
     const pageId = activePageId();
-    if (!pageId || !canSaveDraft()) {
+    if (!pageId || offline || !canSaveDraft()) {
       return;
     }
     const validation = currentValidation();
@@ -1016,7 +1016,7 @@ export function render(container, ctx) {
 
   async function handleSelfCheck() {
     const pageId = activePageId();
-    if (!pageId || selfChecking) {
+    if (!pageId || selfChecking || offline) {
       return;
     }
 

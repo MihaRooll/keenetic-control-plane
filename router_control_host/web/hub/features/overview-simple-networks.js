@@ -30,6 +30,7 @@ import {
   buildGuestStandingPreferencesUpdate,
   buildGuestWifiPreviewBody,
   createGuestWifiFormDraft,
+  evaluateGuestWifiMutationReadiness,
   fetchGuestWifiObservedState,
   getGuestStaffApOverlapWarning,
   guestWifiWpaFieldHint,
@@ -561,8 +562,19 @@ export function mountOverviewSimpleNetworks(options) {
    */
   async function runGuestApply(enabled, signal) {
     const session = options.getSession();
-    if (!selectedGuestApId) {
-      throw new Error('Гостевая точка не выбрана');
+    const readiness = evaluateGuestWifiMutationReadiness(session, adapterMode);
+    if (!readiness.allowed || !selectedGuestApId) {
+      throw new HubApiError({
+        code: 'client.unknown',
+        httpStatus: null,
+        userMessage: readiness.reasonText ?? 'Изменения гостевой сети сейчас недоступны',
+        userAction: 'Откройте раздел «Гостевая сеть».',
+        serverMessage: null,
+        details: [],
+        requestId: null,
+        correlationId: null,
+        kind: ERROR_KIND.UNKNOWN,
+      });
     }
 
     if (!enabled) {
@@ -1033,13 +1045,15 @@ export function mountOverviewSimpleNetworks(options) {
           createInlineState({ state: HubState.LOADING, title: 'Загружаем гостевую сеть…' }),
         );
       } else if (selectedGuestApId) {
+        const guestReadiness = evaluateGuestWifiMutationReadiness(options.getSession(), adapterMode);
+        const guestMutationBlocked = !guestReadiness.allowed;
         const enabled = guestObserved?.activeLabel === 'Включена';
         guestBody.appendChild(
           createToggle({
             id: `${idPrefix}-guest-enabled`,
             label: 'Гостевая сеть',
             checked: enabled,
-            disabled: guestBusy || loading || resolveDisabled(),
+            disabled: guestBusy || loading || resolveDisabled() || guestMutationBlocked,
             onChange: (checked) => {
               void runMutation('guest-toggle', checked);
             },
@@ -1051,7 +1065,7 @@ export function mountOverviewSimpleNetworks(options) {
             id: `${idPrefix}-guest-ssid`,
             label: 'Имя сети',
             value: guestDraft.ssid,
-            disabled: guestBusy || loading || resolveDisabled(),
+            disabled: guestBusy || loading || resolveDisabled() || guestMutationBlocked,
             onInput: (event) => {
               guestDraft = { ...guestDraft, ssid: readInputEventValue(event) };
               guestFormDirty = true;
@@ -1070,7 +1084,7 @@ export function mountOverviewSimpleNetworks(options) {
               id: `${idPrefix}-guest-remember`,
               label: GUEST_WIFI_REMEMBER_DEFAULT_LABEL,
               checked: guestRememberDefault,
-              disabled: guestBusy || loading || resolveDisabled(),
+              disabled: guestBusy || loading || resolveDisabled() || guestMutationBlocked,
               onChange: (checked) => {
                 guestRememberDefault = checked;
                 lastSignature = null;
@@ -1088,7 +1102,7 @@ export function mountOverviewSimpleNetworks(options) {
               type: 'password',
               value: guestDraft.password,
               autocomplete: 'new-password',
-              disabled: guestBusy || loading || resolveDisabled(),
+              disabled: guestBusy || loading || resolveDisabled() || guestMutationBlocked,
               onInput: (event) => {
                 guestDraft = { ...guestDraft, password: readInputEventValue(event) };
                 guestFormDirty = true;
@@ -1108,7 +1122,7 @@ export function mountOverviewSimpleNetworks(options) {
               options: wpaOptions,
               value: guestDraft.wpaMode,
               hint: guestWifiWpaFieldHint(guestObserved) || undefined,
-              disabled: guestBusy || loading || resolveDisabled(),
+              disabled: guestBusy || loading || resolveDisabled() || guestMutationBlocked,
               onChange: (event) => {
                 if (event.target instanceof HTMLSelectElement) {
                   guestDraft = { ...guestDraft, wpaMode: event.target.value };
