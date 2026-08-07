@@ -801,7 +801,12 @@ export function buildInternetStatusCard(options) {
       networkBlock.appendChild(ssidEl);
     }
 
-    const bandLabel = internetBandLabel(rememberedUplink?.band);
+    // Band comes from remembered uplink prefs — only show when it belongs to
+    // the SSID currently displayed (live gateway match, or saved-network path).
+    const bandLabel =
+      !gatewaySsid || rememberedSsid === gatewaySsid
+        ? internetBandLabel(rememberedUplink?.band)
+        : null;
     if (bandLabel) {
       const bandPill = document.createElement('span');
       bandPill.className = 'hub-internet-card__band-pill';

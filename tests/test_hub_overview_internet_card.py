@@ -224,6 +224,14 @@ def test_internet_card_hero_icon_size_and_css() -> None:
     assert "5rem" not in hero_block.replace("4.5rem", "")
 
 
+def test_internet_band_pill_gated_on_ssid_match() -> None:
+    """Band pill must not attribute remembered band to a mismatched live SSID."""
+    body = _internet_card_body()
+    assert "internetBandLabel(rememberedUplink?.band)" in body
+    assert "rememberedSsid === gatewaySsid" in body
+    assert "!gatewaySsid || rememberedSsid === gatewaySsid" in body
+
+
 def test_internet_skeleton_builder_variant_and_sizes() -> None:
     grid_source = _read(OVERVIEW_CARD_GRID_JS)
     match = re.search(
