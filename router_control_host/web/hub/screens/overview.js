@@ -390,6 +390,7 @@ export function render(container, ctx) {
   let lastVpnActiveProfileId = null;
   let domainDraftName = resolveDomainSimpleDefaultName();
   let domainDraftSuffix = 'netcraze.pro';
+  let domainPublishedSession = false;
   /** @type {import('../features/system-check.js').DescribedFact[]|null} */
   let lastSystemCheckFacts = null;
   /** @type {ReturnType<typeof mountOverviewSimpleNetworks>|null} */
@@ -881,14 +882,17 @@ export function render(container, ctx) {
       const live = isActive && profileId ? vpnLiveStatusById[profileId] : null;
       return {
         is_active: isActive,
+        live_probed: live?.live_probed === true,
+        live_tunnel_verification_status: live?.live_tunnel_verification_status ?? null,
+        probe_error: live?.probe_error ?? null,
         routed_through_tunnel: live?.routed_through_tunnel ?? null,
+        routing_probe_status: live?.routing_probe_status ?? null,
       };
     });
     return {
       routerInternetObserve,
       vpnItems,
-      domainDraftName,
-      eventPresetId: getSession().eventPresetId ?? null,
+      domainPublished: domainPublishedSession,
       internetEnrichmentBusy,
       vpnEnrichmentBusy,
       systemCheckRunning,
@@ -999,12 +1003,23 @@ export function render(container, ctx) {
           domain: domainDraftSuffix,
           mode: KEENDNS_DEFAULT_ACCESS_MODE,
           onConfirmApply: async () => {
-            return applyKeendnsBooking({
+            const response = await applyKeendnsBooking({
               name: domainDraftName,
               domain: domainDraftSuffix,
               mode: KEENDNS_DEFAULT_ACCESS_MODE,
               session: getSession(),
             });
+            const payload = /** @type {Record<string, unknown>} */ (response ?? {});
+            const overall = typeof payload.overall === 'string' ? payload.overall : 'failed';
+            if (overall !== 'failed') {
+              domainPublishedSession = true;
+              if (!disposed) {
+                renderReadinessHeader();
+                renderStatusStrip();
+                domainMount?.update();
+              }
+            }
+            return response;
           },
         });
       },

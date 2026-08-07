@@ -264,9 +264,15 @@ export function mapInternetSourceKindToSegment(kind) {
  * @param {import('./overview-model.js').OverviewModel|null|undefined} model
  * @param {{
  *   routerInternetObserve?: { internet?: boolean|null }|null,
- *   vpnItems?: Array<{ is_active?: boolean, routed_through_tunnel?: boolean|null }>|null,
- *   domainDraftName?: string|null,
- *   eventPresetId?: string|null,
+ *   vpnItems?: Array<{
+ *     is_active?: boolean,
+ *     live_probed?: boolean,
+ *     live_tunnel_verification_status?: string|null,
+ *     probe_error?: string|null,
+ *     routed_through_tunnel?: boolean|null,
+ *     routing_probe_status?: string|null,
+ *   }>|null,
+ *   domainPublished?: boolean,
  *   internetEnrichmentBusy?: boolean,
  *   vpnEnrichmentBusy?: boolean,
  *   systemCheckRunning?: boolean,
@@ -320,10 +326,7 @@ export function computeOverviewReadiness(model, context = {}) {
     }
   }
 
-  const domainName = typeof context.domainDraftName === 'string' ? context.domainDraftName : '';
-  const domainValidation = validateDomainName(domainName);
-  const eventPresetId = context.eventPresetId ?? null;
-  const domainReady = domainValidation.valid === true && eventPresetId != null;
+  const domainReady = context.domainPublished === true;
 
   categories.router = routerReady;
   categories.internet = internetReady;

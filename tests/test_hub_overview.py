@@ -2823,7 +2823,7 @@ const gridMod = await import({card_grid_uri});
 const {{ HubState }} = await import({states_uri});
 
 const loadingRing = gridMod.computeOverviewReadiness(null, {{}});
-const allReady = gridMod.computeOverviewReadiness(
+const allReadyExceptDomain = gridMod.computeOverviewReadiness(
   {{ router: {{ state: HubState.SUCCESS }} }},
   {{
     routerInternetObserve: {{ internet: true }},
@@ -2835,6 +2835,19 @@ const allReady = gridMod.computeOverviewReadiness(
     }}],
     domainDraftName: 'lab-event',
     eventPresetId: 'preset-1',
+  }},
+);
+const allReady = gridMod.computeOverviewReadiness(
+  {{ router: {{ state: HubState.SUCCESS }} }},
+  {{
+    routerInternetObserve: {{ internet: true }},
+    vpnItems: [{{
+      is_active: true,
+      live_probed: true,
+      live_tunnel_verification_status: 'tunnel_healthy',
+      routed_through_tunnel: true,
+    }}],
+    domainPublished: true,
   }},
 );
 const noneReady = gridMod.computeOverviewReadiness(
@@ -2861,6 +2874,7 @@ const pills = gridMod.mapHealthFactsToRouterPills([
 console.log(JSON.stringify({{
   loadingReady: loadingRing.ready,
   loadingLoaded: loadingRing.loaded,
+  allReadyExceptDomainCount: allReadyExceptDomain.ready,
   allReadyCount: allReady.ready,
   noneReadyCount: noneReady.ready,
   pillLabels: pills.map((pill) => pill.label),
@@ -2875,6 +2889,7 @@ console.log(JSON.stringify({{
     payload = _run_node_harness(script, tmp_path, "overview-card-grid-readiness")
     assert payload["loadingReady"] is None
     assert payload["loadingLoaded"] is False
+    assert payload["allReadyExceptDomainCount"] == 3
     assert payload["allReadyCount"] == 4
     assert payload["noneReadyCount"] == 0
     assert payload["pillLabels"] == ["Отвечает", "Доступ сохранён", "Совпадает: неизвестно"]
