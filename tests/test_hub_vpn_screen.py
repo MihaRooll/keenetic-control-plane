@@ -860,3 +860,56 @@ def test_vpn_screen_catalog_remove_button_focus_id() -> None:
     source = _read(VPN_SCREEN_JS)
     assert "hub-vpn-remove-" in source
     assert "onRemove:" in source
+
+
+def test_vpn_screen_build_catalog_signature_includes_offline() -> None:
+    """AC3: buildCatalogSignature includes offline so catalog tiles rebuild on flip."""
+    source = _read(VPN_SCREEN_JS)
+    sig_fn = re.search(
+        r"function buildCatalogSignature\(\) \{([\s\S]*?\n  \})",
+        source,
+    )
+    assert sig_fn is not None
+    body = sig_fn.group(1)
+    assert "offline ? 'offline' : 'online'" in body
+    assert "controlsLocked()" in body
+
+
+def test_vpn_screen_controls_locked_does_not_include_offline() -> None:
+    """AC1: offline stays separate from controlsLocked (footer copy vs busy copy)."""
+    source = _read(VPN_SCREEN_JS)
+    locked_body = _extract_function_body(source, "function controlsLocked(")
+    assert locked_body is not None
+    assert "offline" not in locked_body
+
+
+def test_vpn_screen_catalog_tile_grid_disabled_includes_offline() -> None:
+    """AC1: catalog tile grid disabled uses controlsLocked() || offline."""
+    source = _read(VPN_SCREEN_JS)
+    catalog_body = re.search(
+        r"function renderCatalogCardBody\(body\) \{([\s\S]*?\n  \})",
+        source,
+    )
+    assert catalog_body is not None
+    assert "disabled: controlsLocked() || offline" in catalog_body.group(1)
+
+
+def test_vpn_screen_catalog_runners_gate_offline() -> None:
+    """AC2/AC6: catalog mutation runners early-return on offline before API."""
+    source = _read(VPN_SCREEN_JS)
+    activate = _extract_function_body(source, "async function runActivateProfile(")
+    deactivate = _extract_function_body(source, "async function runDeactivateProfile(")
+    validate = _extract_function_body(source, "async function validateCatalogProfile(")
+    remove = _extract_function_body(source, "async function runRemoveCatalogProfile(")
+    assert activate is not None
+    assert deactivate is not None
+    assert validate is not None
+    assert remove is not None
+    assert re.search(r"if \([^)]*\|\|\s*offline\s*\)", activate)
+    assert re.search(r"if \([^)]*\|\|\s*offline\s*\)", deactivate)
+    assert re.search(r"if \([^)]*\|\|\s*offline\s*\)", validate)
+    assert re.search(r"if \([^)]*\|\|\s*offline\s*\)", remove)
+    assert activate.find("offline") < activate.find("activateVpnProfile(")
+    assert deactivate.find("offline") < deactivate.find("deactivateVpnProfile(")
+    assert validate.find("offline") < validate.find("validateVpnProfile(")
+    assert remove.find("offline") < remove.find("removeVpnProfileFromCatalog(")

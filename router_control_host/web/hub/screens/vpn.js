@@ -769,6 +769,7 @@ export function render(container, ctx) {
       Object.keys(activatingProfileIds).sort().join(','),
       Object.keys(deactivatingProfileIds).sort().join(','),
       controlsLocked() ? 'locked' : 'unlocked',
+      offline ? 'offline' : 'online',
     ].join('|');
   }
 
@@ -2213,7 +2214,7 @@ export function render(container, ctx) {
     body.appendChild(
       createVpnProfileStatusTileGrid({
         items: tileItems,
-        disabled: controlsLocked(),
+        disabled: controlsLocked() || offline,
         busyProfileIds: activatingProfileIds,
         deactivatingProfileIds,
         validatingProfileIds: validatingProfileIds,
@@ -2278,7 +2279,7 @@ export function render(container, ctx) {
   }
 
   async function runActivateProfile(profileId) {
-    if (!profileId || activatingProfileIds[profileId] || mutating) {
+    if (!profileId || activatingProfileIds[profileId] || mutating || offline) {
       return;
     }
     mutating = true;
@@ -2338,7 +2339,7 @@ export function render(container, ctx) {
   }
 
   async function runDeactivateProfile(profileId) {
-    if (!profileId || deactivatingProfileIds[profileId] || mutating) {
+    if (!profileId || deactivatingProfileIds[profileId] || mutating || offline) {
       return;
     }
     mutating = true;
@@ -2456,7 +2457,7 @@ export function render(container, ctx) {
   }
 
   async function runRemoveCatalogProfile(profileId) {
-    if (!profileId || removingProfileIds[profileId]) {
+    if (!profileId || removingProfileIds[profileId] || offline) {
       return;
     }
     removingProfileIds = { ...removingProfileIds, [profileId]: '1' };
@@ -2495,7 +2496,7 @@ export function render(container, ctx) {
   }
 
   async function validateCatalogProfile(profileId) {
-    if (!profileId || validatingProfileIds[profileId]) {
+    if (!profileId || validatingProfileIds[profileId] || offline) {
       return;
     }
     validatingProfileIds = { ...validatingProfileIds, [profileId]: '1' };
