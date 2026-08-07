@@ -1493,6 +1493,19 @@ def apply_wireguard_intent(
             rollback=_rollback_not_attempted(),
         )
 
+    if plan.verification_status == "unsupported":
+        return _assemble_apply_result(
+            overall="failed",
+            wg_id=plan.wg_id,
+            steps=(),
+            verification=None,
+            errors=("planner.unsupported",),
+            logs=("peer_rci_shape unsupported; dispatch skipped",),
+            verification_status=plan.verification_status,
+            verification_notes=plan.notes,
+            rollback=_rollback_not_attempted(),
+        )
+
     if not plan.apply_ops:
         message = ERROR_CODE_NO_APPLY_OPS
         return _assemble_apply_result(

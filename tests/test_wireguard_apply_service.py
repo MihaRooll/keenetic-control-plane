@@ -1116,6 +1116,9 @@ def test_path_style_intent_unsupported_without_dispatch() -> None:
         credential_resolver=_fake_credential_resolver,
     )
     assert result.overall == "failed"
+    assert "planner.unsupported" in result.errors
+    assert "planner.no_apply_ops" not in result.errors
+    assert result.verification_status == "unsupported"
     assert not transport.write_commands
     assert not transport.nested_write_bodies
 
