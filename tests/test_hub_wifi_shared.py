@@ -556,6 +556,22 @@ console.log(JSON.stringify(mod.evaluateWifiMutationReadiness(sessionMod.getSessi
     assert "source_address" not in result["missing"]
 
 
+def test_derive_wifi_preview_enabled_network_toggle_pending_false_returns_false(
+    tmp_path: Path,
+) -> None:
+    """§4: networkTogglePending:false forces enabled:false (overview bug mode)."""
+    script = f"""const mod = await import({json.dumps(WIFI_AP_MODEL_JS.as_uri())});
+const result = mod.deriveWifiPreviewEnabled({{
+  action: 'enable',
+  observed: {{ readable: true, activeLabel: 'Выключена' }},
+  networkTogglePending: false,
+}});
+console.log(JSON.stringify(result));
+"""
+    result = _run_node_harness(script, tmp_path, "derive-preview-toggle-false")
+    assert result is False
+
+
 STAFF_WIFI_SCREEN_JS = REPO_ROOT / "router_control_host" / "web" / "hub" / "screens" / "staff-wifi.js"
 GUEST_WIFI_SCREEN_JS = REPO_ROOT / "router_control_host" / "web" / "hub" / "screens" / "guest-wifi.js"
 WIFI_SCREEN_PARTS_JS = HUB / "features" / "wifi-screen-parts.js"

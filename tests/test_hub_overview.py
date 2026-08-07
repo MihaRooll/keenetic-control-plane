@@ -1975,6 +1975,70 @@ def test_overview_networks_no_unassigned_before_load_when_roles_exist() -> None:
     assert "loading && !loadCompleted" not in guest_mount_guard
 
 
+def _extract_if_branch(body: str, condition_prefix: str) -> str | None:
+    """Extract body of first if-block whose condition starts with condition_prefix."""
+    idx = body.find(condition_prefix)
+    if idx == -1:
+        return None
+    brace = body.find("{", idx)
+    if brace == -1:
+        return None
+    depth = 0
+    j = brace
+    while j < len(body):
+        char = body[j]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return body[brace + 1 : j]
+        j += 1
+    return None
+
+
+def test_overview_networks_staff_enable_network_toggle_pending_true() -> None:
+    """§1: runStaffEnable passes networkTogglePending:true into deriveWifiPreviewEnabled."""
+    source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
+    staff_enable_body = _extract_function_body(source, "async function runStaffEnable(")
+    assert staff_enable_body is not None
+    assert "networkTogglePending: true" in staff_enable_body
+    assert "networkTogglePending: false" not in staff_enable_body
+
+
+def test_overview_networks_guest_on_network_toggle_pending_true() -> None:
+    """§1: guest ON path passes networkTogglePending:true and action:'enable'."""
+    source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
+    guest_apply_body = _extract_function_body(source, "async function runGuestApply(")
+    assert guest_apply_body is not None
+    assert "networkTogglePending: true" in guest_apply_body
+    assert "action: 'enable'" in guest_apply_body
+    assert "networkTogglePending: false" not in guest_apply_body
+
+
+def test_overview_networks_guest_off_early_teardown_branch() -> None:
+    """§2: guest OFF uses teardownGuestWifiNetwork early branch without apply/preview."""
+    source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
+    assert "teardownGuestWifiNetwork" in source
+    guest_apply_body = _extract_function_body(source, "async function runGuestApply(")
+    assert guest_apply_body is not None
+
+    off_branch = _extract_if_branch(guest_apply_body, "if (!enabled")
+    if off_branch is None:
+        off_branch = _extract_if_branch(guest_apply_body, "if (enabled === false")
+    assert off_branch is not None
+
+    assert "teardownGuestWifiNetwork(" in off_branch
+    assert "apId:" in off_branch
+    assert "wpaMode:" in off_branch
+    assert "session" in off_branch
+    assert "signal" in off_branch
+    assert "return" in off_branch
+    assert "applyGuestWifiChanges" not in off_branch
+    assert "buildGuestWifiPreviewBody" not in off_branch
+    assert "deriveWifiPreviewEnabled" not in off_branch
+
+
 def test_overview_guest_overlap_uses_persisted_staff_ap_id() -> None:
     """Overview overlap warning reads standing staff_ap_id, not session.wifiRoles."""
     source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)

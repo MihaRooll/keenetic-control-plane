@@ -30,6 +30,7 @@ import {
   isObservedWpaModeKnown,
   isWifiWpaModeDraftSelected,
   shouldOfferGuestRememberDefault,
+  teardownGuestWifiNetwork,
   updateGuestStandingNetworkPreferences,
   validateGuestWifiForm,
 } from './guest-wifi-model.js';
@@ -452,7 +453,7 @@ export function mountOverviewSimpleNetworks(options) {
       enabled: deriveWifiPreviewEnabled({
         action: 'enable',
         observed: staffObserved,
-        networkTogglePending: false,
+        networkTogglePending: true,
       }),
       credentialRefId,
     });
@@ -537,6 +538,22 @@ export function mountOverviewSimpleNetworks(options) {
       throw new Error('Гостевая точка не выбрана');
     }
 
+    if (!enabled) {
+      await teardownGuestWifiNetwork({
+        apId: selectedGuestApId,
+        wpaMode: guestDraft.wpaMode,
+        session,
+        signal,
+      });
+      guestObserved = await fetchGuestWifiObservedState({
+        apId: selectedGuestApId,
+        session,
+        adapterMode,
+        signal,
+      });
+      return;
+    }
+
     const trimmedPassword = guestDraft.password.trim();
     /** @type {string|null} */
     let credentialRefId = null;
@@ -589,9 +606,9 @@ export function mountOverviewSimpleNetworks(options) {
       ssid: guestDraft.ssid,
       wpaMode: guestDraft.wpaMode,
       enabled: deriveWifiPreviewEnabled({
-        action: enabled ? 'enable' : 'teardown',
+        action: 'enable',
         observed: guestObserved,
-        networkTogglePending: false,
+        networkTogglePending: true,
       }),
       credentialRefId,
     });
