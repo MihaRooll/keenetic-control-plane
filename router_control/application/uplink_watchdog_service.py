@@ -308,7 +308,7 @@ class UplinkWatchdogHandle:
                     apply_transport,
                     remembered,
                 )
-            if reapply_outcome == "applied":
+            if reapply_outcome in ("applied", "skipped"):
                 state.unhealthy_streak = 0
                 state.backoff_seconds = _BACKOFF_BASE_SECONDS
                 state.next_poll_at = now + UPLINK_WATCHDOG_POLL_SECONDS
@@ -364,6 +364,21 @@ class UplinkWatchdogHandle:
                 outcome_snapshot=None,
                 error_message=error_message,
                 exception_type=exception_type,
+            )
+
+        def _audit_skip(*, error_message: str) -> None:
+            self.host.runtime.store.try_append_sealed_apply_audit(
+                action="uplink_watchdog.reapply",
+                outcome="skipped",
+                route="remembered-uplink",
+                verb="watchdog_reapply",
+                intent_redacted=intent_redacted,
+                router_id=router_id,
+                correlation_id=None,
+                result_payload=None,
+                outcome_snapshot=None,
+                error_message=error_message,
+                exception_type=None,
             )
 
         def _run() -> None:
@@ -433,20 +448,22 @@ class UplinkWatchdogHandle:
             gateway = getattr(observation, "gateway_interface", None)
             gateway_s = str(gateway) if gateway is not None else None
             if is_wireguard_like_gateway(gateway_s):
-                _audit_failure(error_message="gateway is WireGuard under lock")
-                outcome_holder[0] = "failed"
+                _audit_skip(error_message="gateway is WireGuard under lock")
+                outcome_holder[0] = "skipped"
                 return
             if is_ethernet_like_gateway(gateway_s):
-                _audit_failure(error_message="gateway is ethernet under lock")
-                outcome_holder[0] = "failed"
+                _audit_skip(error_message="gateway is ethernet under lock")
+                outcome_holder[0] = "skipped"
                 return
             expected_station = fresh.get("station_id")
             if gateway_matches_remembered_station(
                 gateway_s,
                 expected_station_id=str(expected_station) if expected_station else None,
             ):
-                _audit_failure(error_message="gateway matches remembered station under lock")
-                outcome_holder[0] = "failed"
+                _audit_skip(
+                    error_message="gateway matches remembered station under lock"
+                )
+                outcome_holder[0] = "skipped"
                 return
             backup_cb: BackupCallback | None = None
             if self.backup_callback_factory is not None:

@@ -727,3 +727,49 @@ async def test_poll_once_keeps_streak_when_reapply_fails(
     await handle._poll_once()  # noqa: SLF001
     assert apply_calls == [str(router_id)]
     assert handle._states[str(router_id)].unhealthy_streak == 2  # noqa: SLF001
+
+
+@pytest.mark.asyncio
+async def test_poll_once_clears_streak_when_reapply_skipped(
+    tmp_path, monkeypatch
+) -> None:
+    """Healthy under-lock skip must clear unhealthy_streak like a successful heal."""
+    stale = datetime(2026, 8, 5, 10, 0, 0, tzinfo=UTC)
+    poll_now = stale + timedelta(seconds=UPLINK_WATCHDOG_POLL_SECONDS * 3)
+    runtime = create_offline_runtime(
+        db_path=tmp_path / "poll-reapply-skipped.sqlite3",
+        clock=FixedClock(stale),
+    )
+    router_id, _remembered = _seed_remembered_active(runtime, updated_at=stale)
+    host = type("Host", (), {"runtime": runtime})()
+    observation = _observation(gateway_interface=None)
+    apply_calls: list[str] = []
+    handle = _make_handle(host, observation=observation, apply_calls=apply_calls)
+    monkeypatch.setattr(
+        uplink_watchdog_service,
+        "run_internet_status_observe",
+        lambda *, transport: observation,
+    )
+    monkeypatch.setattr(
+        handle,
+        "_reapply_locked",
+        lambda *_args, **_kwargs: "skipped",
+    )
+    monkeypatch.setattr(
+        uplink_watchdog_service,
+        "datetime",
+        MagicMock(
+            now=lambda tz=None: poll_now,
+            fromisoformat=datetime.fromisoformat,
+        ),
+    )
+    from router_control.application.uplink_watchdog_service import _RouterWatchState
+
+    handle._states[str(router_id)] = _RouterWatchState(  # noqa: SLF001
+        unhealthy_streak=1,
+        backoff_seconds=120.0,
+    )
+    await handle._poll_once()  # noqa: SLF001
+    state = handle._states[str(router_id)]  # noqa: SLF001
+    assert state.unhealthy_streak == 0
+    assert state.backoff_seconds == UPLINK_WATCHDOG_POLL_SECONDS

@@ -270,7 +270,7 @@ def test_reapply_aborts_when_gateway_matches_remembered_station_under_lock(
     assert apply_called is False
     action, outcome, summary = _latest_reapply_audit(store)
     assert action == "uplink_watchdog.reapply"
-    assert outcome == "failed"
+    assert outcome == "skipped"
     assert "matches remembered station" in summary
 
 
@@ -294,7 +294,7 @@ def test_reapply_aborts_when_gateway_wireguard_under_lock(
     assert apply_called is False
     action, outcome, summary = _latest_reapply_audit(store)
     assert action == "uplink_watchdog.reapply"
-    assert outcome == "failed"
+    assert outcome == "skipped"
     assert "gateway is WireGuard under lock" in summary
 
 
@@ -318,7 +318,7 @@ def test_reapply_aborts_when_gateway_ethernet_under_lock(
     assert apply_called is False
     action, outcome, summary = _latest_reapply_audit(store)
     assert action == "uplink_watchdog.reapply"
-    assert outcome == "failed"
+    assert outcome == "skipped"
     assert "gateway is ethernet under lock" in summary
 
 
