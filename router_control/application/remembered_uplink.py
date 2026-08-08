@@ -70,6 +70,7 @@ class RememberedUplinkService:
         if stored_ref and not configured:
             row = self.store.upsert_remembered_uplink(
                 credential_ref_id=None,
+                desired_active=False,
                 now=self.clock.now(),
             )
             effective_ref = None

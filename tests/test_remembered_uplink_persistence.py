@@ -214,6 +214,7 @@ def test_get_remembered_self_heal_returns_fresh_updated_at(tmp_path) -> None:
     payload = svc.get_remembered()
     assert payload["credential_ref_id"] is None
     assert payload["credential_configured"] is False
+    assert payload["desired_active"] is False
     assert payload["updated_at"] == new_moment.isoformat().replace("+00:00", "Z")
 
 
