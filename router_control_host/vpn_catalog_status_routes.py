@@ -191,7 +191,7 @@ def _probe_routing_evidence(
         return "failed", None
     gateway_interface = observation.gateway_interface
     if not gateway_interface:
-        return "ok", None
+        return "unknown", None
     return "ok", gateway_interface.strip() == wg_id.strip()
 
 

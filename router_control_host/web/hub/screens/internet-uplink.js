@@ -1192,7 +1192,10 @@ export function render(container, ctx) {
     try {
       const succeeded = await executor();
       if (disposed || gen !== generation) return;
-      if (lastVerdict) {
+      if (
+        lastVerdict
+        && !(disposed || offline || mutateAbort?.signal.aborted)
+      ) {
         ctx.showToast({
           tone: lastVerdict.success
             ? 'success'
@@ -1236,12 +1239,14 @@ export function render(container, ctx) {
                 operationRetry = null;
                 void fetchInternetSourceFlow();
                 renderAll();
-                ctx.showToast({
-                  tone: 'success',
-                  title: 'Автоподключение сохранено',
-                  message:
-                    'Намерение сохранено — Wi‑Fi uplink будет восстанавливаться автоматически.',
-                });
+                if (!(disposed || offline || mutateAbort?.signal.aborted)) {
+                  ctx.showToast({
+                    tone: 'success',
+                    title: 'Автоподключение сохранено',
+                    message:
+                      'Намерение сохранено — Wi‑Fi uplink будет восстанавливаться автоматически.',
+                  });
+                }
               } catch (retryError) {
                 if (disposed || isAborted(retryError)) return;
                 operationError = retryError;
@@ -1275,12 +1280,14 @@ export function render(container, ctx) {
               operationRetry = null;
               void fetchInternetSourceFlow();
               renderAll();
-              ctx.showToast({
-                tone: 'success',
-                title: 'Автоподключение отключено',
-                message:
-                  'Намерение сохранено — Wi‑Fi uplink не будет восстанавливаться автоматически.',
-              });
+              if (!(disposed || offline || mutateAbort?.signal.aborted)) {
+                ctx.showToast({
+                  tone: 'success',
+                  title: 'Автоподключение отключено',
+                  message:
+                    'Намерение сохранено — Wi‑Fi uplink не будет восстанавливаться автоматически.',
+                });
+              }
             } catch (retryError) {
               if (disposed || isAborted(retryError)) return;
               operationError = retryError;

@@ -2017,15 +2017,17 @@ export function render(container, ctx) {
             ssid: draft.ssid,
             credentialRefId: resolvedCredentialRefId,
           });
-          standing = await updateStaffStandingNetworkPreferences(body);
+          standing = await updateStaffStandingNetworkPreferences(body, { signal });
           operationError = null;
           operationRetry = null;
           renderAll();
-          ctx.showToast({
-            tone: 'success',
-            title: 'Обычные настройки сохранены',
-            message: 'Имя и пароль по умолчанию обновлены на хосте.',
-          });
+          if (!(disposed || offline || signal?.aborted)) {
+            ctx.showToast({
+              tone: 'success',
+              title: 'Обычные настройки сохранены',
+              message: 'Имя и пароль по умолчанию обновлены на хосте.',
+            });
+          }
         } catch (retryError) {
           if (disposed || isAborted(retryError)) {
             return;

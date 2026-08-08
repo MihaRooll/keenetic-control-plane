@@ -146,6 +146,13 @@ def map_wifi_live_transport_error(
             message=str(exc) or "Gate A certification required for live mutation",
         )
 
+    if isinstance(exc, LiveIdentityTupleMismatchError):
+        return WifiLiveTransportErrorMapping(
+            status_code=422,
+            code=identity_mismatch_code(prefix),
+            message=_IDENTITY_MISMATCH_MESSAGE,
+        )
+
     return WifiLiveTransportErrorMapping(
         status_code=503,
         code=f"{prefix}.live_transport_failed",

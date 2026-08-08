@@ -258,4 +258,4 @@ def test_catalog_status_routing_evidence_missing_interface(catalog_client) -> No
     assert resp.status_code == 200
     active = next(item for item in resp.json()["items"] if item["profile_id"] == profile_id)
     assert active["routed_through_tunnel"] is None
-    assert active["routing_probe_status"] == "ok"
+    assert active["routing_probe_status"] == "unknown"

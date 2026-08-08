@@ -3503,19 +3503,25 @@ def test_overview_connectivity_offline_clears_stale_evidence() -> None:
     assert observe_idx < render_readiness_idx < render_internet_idx < render_vpn_idx < return_idx
 
 
-def test_overview_vpn_live_status_catch_clears_stale_cache() -> None:
-    """overview-offline-stale-evidence: live-status probe failure clears vpnLiveStatusById fail-closed."""
+def test_overview_vpn_live_status_catch_marks_active_profiles_probe_failed() -> None:
+    """overview-offline-stale-evidence: live-status probe failure marks active profiles check_failed."""
     source = _read(OVERVIEW_JS)
     fn_body = _extract_function_body(source, "async function refreshVpnCatalogAndLiveStatus(")
     assert fn_body is not None
     catch_start = fn_body.find("} catch (liveError) {")
     assert catch_start != -1
-    catch_block = fn_body[catch_start:]
+    catch_end = fn_body.find("} else {", catch_start)
+    assert catch_end != -1
+    catch_block = fn_body[catch_start:catch_end]
     assert "isAborted(liveError)" in catch_block
+    assert "probe_error" in catch_block
+    assert "VPN_TUNNEL_UNVERIFIED_MESSAGE" in catch_block
+    assert "vpnCatalogItems" in catch_block
+    assert "vpnLiveStatusById = failedLive" in catch_block
     assert re.search(
         r"vpnLiveStatusById\s*=\s*\{\};",
         catch_block,
-    ), "live-status catch must clear stale vpnLiveStatusById fail-closed"
+    ) is None, "live-status catch must not clear vpnLiveStatusById to not_checked"
     assert "optional live-status failure must not block catalog settle" in catch_block
 
 

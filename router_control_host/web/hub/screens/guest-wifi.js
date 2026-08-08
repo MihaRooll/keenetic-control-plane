@@ -262,6 +262,8 @@ export function render(container, ctx) {
   let mutateAbort = null;
   /** @type {AbortController|null} */
   let prepareAbort = null;
+  /** @type {AbortController|null} */
+  let rememberGuestAbort = null;
 
   let loadingObserved = false;
   let preparingMutation = false;
@@ -786,10 +788,15 @@ export function render(container, ctx) {
     prepareAbort?.abort();
   }
 
+  function abortRememberGuestDefault() {
+    rememberGuestAbort?.abort();
+  }
+
   function abortAllOperations() {
     abortObserved();
     abortMutate();
     abortPrepare();
+    abortRememberGuestDefault();
   }
 
   function markFormDirty() {
@@ -1918,18 +1925,28 @@ export function render(container, ctx) {
     if (!trimmed) {
       return;
     }
+    rememberGuestAbort?.abort();
+    rememberGuestAbort = new AbortController();
+    const myController = rememberGuestAbort;
     rememberingGuestDefault = true;
     renderAll();
     try {
       standing = await updateGuestStandingNetworkPreferences(
         buildGuestStandingPreferencesUpdate(trimmed),
+        { signal: myController.signal },
       );
+      if (disposed || offline || myController.signal.aborted) {
+        return;
+      }
       ctx.showToast({
         tone: 'success',
         title: 'Обычное имя сохранено',
         message: 'Это название будет подставляться в новых проектах.',
       });
     } catch (error) {
+      if (disposed || offline || myController.signal.aborted || isAborted(error)) {
+        return;
+      }
       const described = describeError(error);
       ctx.showToast({
         tone: 'danger',
@@ -1938,6 +1955,9 @@ export function render(container, ctx) {
       });
     } finally {
       rememberingGuestDefault = false;
+      if (rememberGuestAbort === myController) {
+        rememberGuestAbort = null;
+      }
       if (!disposed) {
         renderAll();
       }

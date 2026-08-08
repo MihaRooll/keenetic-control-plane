@@ -55,6 +55,7 @@ import {
   listVpnProfiles,
   listVpnTunnelInterfaceOptions,
   VPN_POST_SETTLE_RECHECK_HINT,
+  VPN_TUNNEL_UNVERIFIED_MESSAGE,
 } from '../features/vpn-model.js';
 import {
   buildDomainStatusCard,
@@ -1282,7 +1283,25 @@ export function render(container, ctx) {
           if (isAborted(liveError)) {
             throw liveError;
           }
-          vpnLiveStatusById = {};
+          /** @type {typeof vpnLiveStatusById} */
+          const failedLive = {};
+          for (const item of vpnCatalogItems) {
+            const row = /** @type {Record<string, unknown>} */ (item ?? {});
+            const profileId =
+              typeof row.profile_id === 'string' ? row.profile_id : '';
+            if (!profileId || row.is_active !== true) {
+              continue;
+            }
+            failedLive[profileId] = {
+              live_probed: true,
+              live_tunnel_verification_status: null,
+              probe_error: VPN_TUNNEL_UNVERIFIED_MESSAGE,
+              observed_at: null,
+              routed_through_tunnel: null,
+              routing_probe_status: null,
+            };
+          }
+          vpnLiveStatusById = failedLive;
           // List succeeded; optional live-status failure must not block catalog settle.
         }
       } else {

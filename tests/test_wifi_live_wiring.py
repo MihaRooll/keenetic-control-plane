@@ -1148,6 +1148,16 @@ def test_map_wifi_live_transport_error_missing_field_is_422_not_503() -> None:
     assert "source_address" in mapped.message
 
 
+def test_map_wifi_live_transport_error_identity_mismatch_is_422() -> None:
+    mapped = map_wifi_live_transport_error(
+        LiveIdentityTupleMismatchError("live device identity does not match recorded Gate A tuple"),
+        router_credential_ref_id="credref:x",
+        code_prefix="wifi",
+    )
+    assert mapped.status_code == 422
+    assert mapped.code == "wifi.identity_mismatch"
+
+
 def test_live_apply_sealed_dispatch_gate_a_closed_mid_flight_returns_503() -> None:
     """Sealed _dispatch_apply_live raises LiveGateARequiredError when Gate A closes mid-flight."""
     from unittest.mock import MagicMock
