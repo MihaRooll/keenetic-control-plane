@@ -1525,13 +1525,27 @@ const applied = mod.parseWifiApplyVerdict({
 });
 const confirmed = mod.applyWifiReadbackOutcome(applied, true);
 const unconfirmed = mod.applyWifiReadbackOutcome(applied, false);
-console.log(JSON.stringify({ confirmed, unconfirmed }));
+const mismatch = mod.parseWifiApplyVerdict({
+  overall: 'verify_mismatch',
+  on_air_verification_status: 'on_air_unverified',
+  errors: [],
+});
+const mismatchConfirmed = mod.applyWifiReadbackOutcome(mismatch, true);
+console.log(JSON.stringify({
+  confirmed,
+  unconfirmed,
+  mismatchApplied: mod.isWifiConfigurationApplied(mismatch),
+  mismatchConfirmed,
+}));
 """,
     )
     assert result["confirmed"]["success"] is True
     assert result["confirmed"]["title"] == "Сохранено и проверено"
     assert result["unconfirmed"]["success"] is False
     assert result["unconfirmed"]["title"] == "Изменение отправлено, проверить не удалось"
+    assert result["mismatchApplied"] is False
+    assert result["mismatchConfirmed"]["success"] is False
+    assert result["mismatchConfirmed"]["title"] == "Проверка не совпала"
 
 
 def test_staff_wifi_apply_readback_verified_full_roundtrip(tmp_path: Path) -> None:
@@ -2036,15 +2050,15 @@ console.log(JSON.stringify({
   timedOut: poll.timedOut,
   title: verdict.title,
   message: verdict.message,
+  success: verdict.success,
 }));
 """,
     )
     assert result["readbackOk"] is False
     assert result["timedOut"] is True
-    assert result["title"] == "Изменение отправлено, проверить не удалось"
-    assert "Сравнение:" in result["message"]
-    assert "название — ожидали «New-SSID»" in result["message"]
-    assert "Пароль Wi‑Fi с роутера прочитать нельзя" in result["message"]
+    assert result["title"] == "Проверка не совпала"
+    assert result["success"] is False
+    assert "Сравнение:" not in result["message"]
 
 
 def test_staff_wifi_delayed_readback_shows_verifying_then_confirmed(tmp_path: Path) -> None:
@@ -2084,8 +2098,8 @@ def test_staff_wifi_delayed_readback_shows_verifying_then_confirmed(tmp_path: Pa
     assert result["toastTitles"][-1] == "Сохранено и проверено", result
 
 
-def test_staff_wifi_verify_mismatch_polls_then_confirms(tmp_path: Path) -> None:
-    """Live defect A: verify_mismatch + delayed observed → confirmed, not false alarm."""
+def test_staff_wifi_verify_mismatch_does_not_upgrade_on_readback(tmp_path: Path) -> None:
+    """verify_mismatch stays warning even when delayed client readback matches."""
     observed_ap = {
         "ap_id": "WifiMaster0/AccessPoint4",
         "readable": True,
@@ -2116,8 +2130,8 @@ def test_staff_wifi_verify_mismatch_polls_then_confirms(tmp_path: Path) -> None:
     proc = subprocess.run([node, str(runner)], capture_output=True, text=True, encoding="utf-8")
     assert proc.returncode == 0, proc.stderr
     result = json.loads(proc.stdout.strip())
-    assert result["verdictTitle"] == "confirmed", result
-    assert "Проверка не совпала" not in result.get("toastTitles", [])
+    assert result["verdictTitle"] != "confirmed", result
+    assert "Сохранено и проверено" not in result.get("toastTitles", [])
 
 
 def test_staff_wifi_apply_readback_failure_distinct_outcome(tmp_path: Path) -> None:

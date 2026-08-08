@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import re
 from collections.abc import Callable
@@ -21,6 +22,8 @@ from router_control.application.wifi_station_apply_service import (
     apply_wifi_station_intent,
 )
 from router_control.domain.network_intents import UplinkIntent, UplinkMode, WifiBand
+
+_LOGGER = logging.getLogger(__name__)
 
 UPLINK_WATCHDOG_ENABLED = os.environ.get("UPLINK_WATCHDOG_ENABLED", "").strip().lower() in (
     "1",
@@ -165,7 +168,23 @@ class UplinkWatchdogHandle:
             except asyncio.CancelledError:
                 raise
             except Exception:
-                pass
+                _LOGGER.exception("uplink watchdog poll loop failed")
+                try:
+                    self.host.runtime.store.try_append_sealed_apply_audit(
+                        action="uplink_watchdog.poll",
+                        outcome="failed",
+                        route="remembered-uplink",
+                        verb="watchdog_poll",
+                        intent_redacted={},
+                        router_id=None,
+                        correlation_id=None,
+                        result_payload=None,
+                        outcome_snapshot=None,
+                        error_message="uplink watchdog poll loop failed",
+                        exception_type="Exception",
+                    )
+                except Exception:
+                    _LOGGER.exception("uplink watchdog poll failure audit append failed")
             try:
                 await asyncio.wait_for(self._stop.wait(), timeout=UPLINK_WATCHDOG_POLL_SECONDS)
                 break

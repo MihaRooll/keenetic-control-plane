@@ -42,7 +42,7 @@ class ApiFakeKeenDnsTransport:
     def execute_sealed_rci_write(self, request: SealedRciWriteRequest) -> list[dict[str, object]]:
         body = json.loads(request.body.decode("utf-8"))
         self.write_commands.append(redact_sealed_cli_command(str(body[0]["parse"])))
-        return [{"parse": {"status": [{"ident": "Cloud::KeenDNS", "message": "ok"}]}}]
+        return [{"parse": {"status": [{"status": "message", "ident": "Cloud::KeenDNS", "message": "ok"}]}}]
 
 
 @pytest.fixture
@@ -244,7 +244,7 @@ def test_live_apply_ack_mixed_message_then_error_fails() -> None:
 
 def test_live_apply_ack_error_on_second_item_fails() -> None:
     ack = [
-        {"parse": {"status": [{"ident": "Cloud::KeenDNS", "message": "ok"}]}},
+        {"parse": {"status": [{"status": "message", "ident": "Cloud::KeenDNS", "message": "ok"}]}},
         {"parse": {"status": [{"status": "error", "message": "booking failed"}]}},
     ]
     transport = _LiveTransportNdnsPresent(ack)
@@ -256,6 +256,28 @@ def test_live_apply_ack_error_on_second_item_fails() -> None:
     )
     assert result.overall == "failed"
     assert any(step.ok is False for step in result.steps)
+    assert transport.dispatched is True
+
+
+@pytest.mark.parametrize(
+    "ack",
+    [
+        [{"parse": {"status": [{"ident": "Cloud::KeenDNS", "message": "ok"}]}}],
+        [{"parse": {"status": [{"status": "", "ident": "Cloud::KeenDNS", "message": "ok"}]}}],
+        [{"parse": {"status": [{"status": None, "ident": "Cloud::KeenDNS", "message": "ok"}]}}],
+    ],
+)
+def test_live_apply_status_less_ack_fails_closed(ack: list[dict[str, object]]) -> None:
+    transport = _LiveTransportNdnsPresent(ack)
+    result = apply_keendns_intent(
+        intent=_APPLY_INTENT,
+        transport=transport,
+        live_dispatch=True,
+        backup_callback=lambda: None,
+    )
+    assert result.overall == "failed"
+    assert result.steps[0].ok is False
+    assert any("dispatch ack empty or unverified" in entry for entry in result.logs)
     assert transport.dispatched is True
 
 

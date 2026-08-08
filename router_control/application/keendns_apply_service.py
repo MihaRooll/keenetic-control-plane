@@ -301,6 +301,18 @@ def _ack_has_error_status(ack: Any) -> bool:
     return False
 
 
+_ACK_SUCCESS_STATUS_KINDS = frozenset({"message", "warning", "ok", "success"})
+
+
+def _ack_entry_is_affirmative_success(entry: object) -> bool:
+    if not isinstance(entry, dict):
+        return False
+    status = entry.get("status")
+    if not isinstance(status, str) or not status.strip():
+        return False
+    return status in _ACK_SUCCESS_STATUS_KINDS
+
+
 def _ack_has_affirmative_success(ack: Any) -> bool:
     if not isinstance(ack, list) or not ack:
         return False
@@ -313,10 +325,7 @@ def _ack_has_affirmative_success(ack: Any) -> bool:
         status_entries = parse_block.get("status")
         if not isinstance(status_entries, list) or not status_entries:
             continue
-        if any(
-            isinstance(entry, dict) and entry.get("status") != "error"
-            for entry in status_entries
-        ):
+        if any(_ack_entry_is_affirmative_success(entry) for entry in status_entries):
             return True
     return False
 

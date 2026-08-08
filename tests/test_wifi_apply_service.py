@@ -100,6 +100,19 @@ def _baseline_readback() -> dict[str, Any]:
     }
 
 
+def _teardown_on_air_verified_readback() -> dict[str, Any]:
+    return {
+        "interface": {
+            "ssid": "",
+            "encryption": {},
+            "state": "down",
+            "up": False,
+            "link": False,
+            "broadcast": False,
+        }
+    }
+
+
 def _wpa3_applied_readback(ssid: str = "Staff-Private") -> dict[str, Any]:
     return {
         "interface": {
@@ -280,7 +293,9 @@ def test_apply_verify_mismatch() -> None:
 
 
 def test_teardown_baseline_verify() -> None:
-    transport = FakeWifiApplyTransport(readback_sequence=[_baseline_readback()])
+    transport = FakeWifiApplyTransport(
+        show_interface_readback_sequence=[_teardown_on_air_verified_readback()],
+    )
     result = teardown_wifi_ap(ap_id=_TEST_AP, transport=transport)
     assert result.overall == "applied"
     assert len(result.steps) == 5
@@ -288,8 +303,15 @@ def test_teardown_baseline_verify() -> None:
     assert result.verification.ssid_ok is True
     assert result.verification.encryption_ok is True
     assert result.verification.admin_up_ok is False
-    assert result.verification.on_air_ok is None
+    assert result.verification.on_air_ok is False
+    assert result.on_air_verification_status == "on_air_verified"
+
+
+def test_teardown_on_air_unverified_is_verify_mismatch() -> None:
+    transport = FakeWifiApplyTransport(readback_sequence=[_baseline_readback()])
+    result = teardown_wifi_ap(ap_id=_TEST_AP, transport=transport)
     assert result.on_air_verification_status == "on_air_unverified"
+    assert result.overall == "verify_mismatch"
 
 
 def _admin_up_link_down_readback(ssid: str = "Staff-Private") -> dict[str, Any]:
@@ -796,7 +818,9 @@ def test_wifi_apply_validation_preserves_payload_on_all_branches(
             credential_resolver=_failing_resolver,
         )
     elif scenario == "teardown_applied":
-        transport = FakeWifiApplyTransport(readback_sequence=[_baseline_readback()])
+        transport = FakeWifiApplyTransport(
+            show_interface_readback_sequence=[_teardown_on_air_verified_readback()],
+        )
         result = teardown_wifi_ap(ap_id=_TEST_AP, transport=transport)
     elif scenario == "teardown_mismatch":
         transport = FakeWifiApplyTransport(

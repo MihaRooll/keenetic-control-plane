@@ -68,7 +68,7 @@ class _FakeKeenDnsTransport:
 
     def execute_sealed_rci_write(self, request: Any) -> list[dict[str, object]]:
         _ = request
-        return [{"parse": {"status": [{"ident": "Cloud::KeenDNS", "message": "ok"}]}}]
+        return [{"parse": {"status": [{"status": "message", "ident": "Cloud::KeenDNS", "message": "ok"}]}}]
 
 
 @pytest.fixture

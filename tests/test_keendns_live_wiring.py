@@ -79,7 +79,7 @@ class _LiveKeenDnsTransport:
 
     def execute_sealed_rci_write(self, request: object) -> list[dict[str, object]]:
         self.dispatched = True
-        return [{"parse": {"status": [{"ident": "Cloud::KeenDNS", "message": "ok"}]}}]
+        return [{"parse": {"status": [{"status": "message", "ident": "Cloud::KeenDNS", "message": "ok"}]}}]
 
 
 @pytest.fixture

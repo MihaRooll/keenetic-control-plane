@@ -692,10 +692,18 @@ export function isWifiConfigurationApplied(verdict) {
   }
   return (
     Array.isArray(verdict.technicalLines)
-    && verdict.technicalLines.some(
-      (line) =>
-        line.startsWith('overall: applied') || line.startsWith('overall: verify_mismatch'),
-    )
+    && verdict.technicalLines.some((line) => line.startsWith('overall: applied'))
+  );
+}
+
+/**
+ * @param {WifiApplyVerdict|null|undefined} verdict
+ * @returns {boolean}
+ */
+function isWifiVerifyMismatchVerdict(verdict) {
+  return (
+    Array.isArray(verdict?.technicalLines)
+    && verdict.technicalLines.some((line) => line.startsWith('overall: verify_mismatch'))
   );
 }
 
@@ -936,6 +944,9 @@ export function applyWifiReadbackOutcome(
     return verdict;
   }
   if (readbackOk === true) {
+    if (isWifiVerifyMismatchVerdict(verdict)) {
+      return verdict;
+    }
     if (intent === 'teardown') {
       return {
         ...verdict,

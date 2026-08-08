@@ -1236,7 +1236,7 @@ def teardown_wifi_ap(
             overall = "failed"
         elif not config_ok:
             overall = "verify_mismatch"
-        elif on_air_status == _ON_AIR_STILL_BROADCASTING:
+        elif on_air_status in {_ON_AIR_STILL_BROADCASTING, _ON_AIR_UNVERIFIED}:
             overall = "verify_mismatch"
         else:
             overall = "applied"
