@@ -28,8 +28,10 @@ from router_control.persistence.store import PersistenceStore
 
 from tests.test_wifi_apply_service import (
     FakeWifiApplyTransport,
+    _on_air_verified_readback,
     _applied_readback,
     _baseline_readback,
+    _teardown_on_air_verified_readback,
     _wpa2_intent,
 )
 from tests.test_wifi_station_show_rc_scrub import _LEAK_TOKEN as _DEVICE_PSK_LEAK_MARKER
@@ -142,7 +144,7 @@ def test_crash_mid_wireguard_teardown_leaves_unfinished(tmp_path: Path) -> None:
 def test_successful_apply_finishes_trail_not_unfinished(tmp_path: Path) -> None:
     conn = open_database(tmp_path / "success.sqlite3")
     store = PersistenceStore(conn)
-    transport = FakeWifiApplyTransport(readback_sequence=[_applied_readback()])
+    transport = FakeWifiApplyTransport(readback_sequence=[_on_air_verified_readback()])
     result = apply_wifi_intent(
         intent=_wpa2_intent(),
         ap_id=_TEST_AP,
@@ -164,7 +166,7 @@ def test_successful_apply_finishes_trail_not_unfinished(tmp_path: Path) -> None:
 def test_apply_unknown_router_id_completes_with_null_trail_router(tmp_path: Path) -> None:
     conn = open_database(tmp_path / "unknown-router.sqlite3")
     store = PersistenceStore(conn)
-    transport = FakeWifiApplyTransport(readback_sequence=[_applied_readback()])
+    transport = FakeWifiApplyTransport(readback_sequence=[_on_air_verified_readback()])
     result = apply_wifi_intent(
         intent=_wpa2_intent(),
         ap_id=_TEST_AP,
@@ -215,7 +217,7 @@ def test_handler_exception_finishes_trail_not_orphan_running(tmp_path: Path) -> 
                 raise RuntimeError("simulated unexpected handler fault")
 
     store = FaultAfterFirstOpStore(base_store)
-    transport = FakeWifiApplyTransport(readback_sequence=[_applied_readback()])
+    transport = FakeWifiApplyTransport(readback_sequence=[_on_air_verified_readback()])
 
     with pytest.raises(RuntimeError, match="simulated unexpected handler fault"):
         apply_wifi_intent(
@@ -264,7 +266,7 @@ def test_failure_with_rollback_records_rolled_back_status(tmp_path: Path) -> Non
 def test_secret_marker_never_in_sealed_apply_runs_columns(tmp_path: Path) -> None:
     conn = open_database(tmp_path / "secrets.sqlite3")
     store = PersistenceStore(conn)
-    transport = FakeWifiApplyTransport(readback_sequence=[_applied_readback()])
+    transport = FakeWifiApplyTransport(readback_sequence=[_on_air_verified_readback()])
     apply_wifi_intent(
         intent=_wpa2_intent(),
         ap_id=_TEST_AP,
@@ -280,7 +282,9 @@ def test_secret_marker_never_in_sealed_apply_runs_columns(tmp_path: Path) -> Non
 def test_wifi_teardown_trail_finishes_on_success(tmp_path: Path) -> None:
     conn = open_database(tmp_path / "wifi-teardown.sqlite3")
     store = PersistenceStore(conn)
-    transport = FakeWifiApplyTransport(readback_sequence=[{"ssid": "", "encryption": "none"}])
+    transport = FakeWifiApplyTransport(
+        show_interface_readback_sequence=[_teardown_on_air_verified_readback()],
+    )
     result = teardown_wifi_ap(
         ap_id=_TEST_AP,
         transport=transport,
@@ -351,7 +355,7 @@ def test_trail_begin_failure_blocks_device_writes(tmp_path: Path) -> None:
             raise RuntimeError("BEGIN_RAISE")
 
     store = FaultBeginStore(base_store.conn)
-    transport = FakeWifiApplyTransport(readback_sequence=[_applied_readback()])
+    transport = FakeWifiApplyTransport(readback_sequence=[_on_air_verified_readback()])
 
     with pytest.raises(SealedApplyTrailBeginError):
         apply_wifi_intent(
@@ -516,7 +520,7 @@ def test_failed_apply_with_rollback_persists_outcome_and_evidence(tmp_path: Path
 def test_incident_reconstruction_from_trail_and_audit(tmp_path: Path) -> None:
     conn = open_database(tmp_path / "incident.sqlite3")
     store = PersistenceStore(conn)
-    transport = FakeWifiApplyTransport(readback_sequence=[_applied_readback()])
+    transport = FakeWifiApplyTransport(readback_sequence=[_on_air_verified_readback()])
     result = apply_wifi_intent(
         intent=_wpa2_intent(),
         ap_id=_TEST_AP,
@@ -561,7 +565,7 @@ def test_incident_reconstruction_from_trail_and_audit(tmp_path: Path) -> None:
 def test_secret_marker_never_in_trail_evidence_or_audit(tmp_path: Path) -> None:
     conn = open_database(tmp_path / "secrets-evidence.sqlite3")
     store = PersistenceStore(conn)
-    transport = FakeWifiApplyTransport(readback_sequence=[_applied_readback()])
+    transport = FakeWifiApplyTransport(readback_sequence=[_on_air_verified_readback()])
     apply_wifi_intent(
         intent=_wpa2_intent(),
         ap_id=_TEST_AP,
@@ -595,7 +599,7 @@ def test_crash_after_device_ack_leaves_unconfirmed_op_in_trail(tmp_path: Path) -
             raise SystemExit("crash after device ack before trail confirm")
 
     store = FaultConfirmStore(base_store.conn)
-    transport = FakeWifiApplyTransport(readback_sequence=[_applied_readback()])
+    transport = FakeWifiApplyTransport(readback_sequence=[_on_air_verified_readback()])
 
     with pytest.raises(SystemExit):
         apply_wifi_intent(

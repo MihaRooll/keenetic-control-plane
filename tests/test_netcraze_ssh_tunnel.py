@@ -94,6 +94,9 @@ def test_host_is_private_ranges() -> None:
     assert host_is_private("8.8.8.8") is False
     assert host_is_private("[fd00::1]") is True
     assert host_is_private("2606:4700:4700::1111") is False
+    assert host_is_private("169.254.169.254") is False
+    assert host_is_private("169.254.1.1") is True
+    assert host_is_private("fe80::1") is True
 
 
 def test_host_is_private_hostname_resolves_fail_closed() -> None:

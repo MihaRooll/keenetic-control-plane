@@ -89,6 +89,13 @@ def _applied_readback(ssid: str = "Staff-Private") -> dict[str, Any]:
     }
 
 
+def _on_air_verified_readback(ssid: str = "Staff-Private") -> dict[str, Any]:
+    readback = _applied_readback(ssid=ssid)
+    readback["interface"]["link"] = "up"
+    readback["interface"]["broadcast"] = True
+    return readback
+
+
 def _baseline_readback() -> dict[str, Any]:
     return {
         "interface": {
@@ -121,6 +128,8 @@ def _wpa3_applied_readback(ssid: str = "Staff-Private") -> dict[str, Any]:
             "state": "up",
             "up": True,
             "mac": "aa:bb:cc:dd:ee:ff",
+            "link": "up",
+            "broadcast": True,
         }
     }
 
@@ -133,6 +142,8 @@ def _mixed_applied_readback(ssid: str = "Staff-Private") -> dict[str, Any]:
             "state": "up",
             "up": True,
             "mac": "aa:bb:cc:dd:ee:ff",
+            "link": "up",
+            "broadcast": True,
         }
     }
 
@@ -234,7 +245,7 @@ def test_preview_no_plaintext_psk_in_plan() -> None:
 
 
 def test_apply_success_dispatches_ops_and_verifies() -> None:
-    transport = FakeWifiApplyTransport(readback_sequence=[_applied_readback()])
+    transport = FakeWifiApplyTransport(readback_sequence=[_on_air_verified_readback()])
     result = apply_wifi_intent(
         intent=_wpa2_intent(),
         ap_id=_TEST_AP,
@@ -250,8 +261,8 @@ def test_apply_success_dispatches_ops_and_verifies() -> None:
     assert result.verification.ssid_ok is True
     assert result.verification.encryption_ok is True
     assert result.verification.admin_up_ok is True
-    assert result.verification.on_air_ok is None
-    assert result.on_air_verification_status == "on_air_unverified"
+    assert result.verification.on_air_ok is True
+    assert result.on_air_verification_status == "on_air_verified"
     assert "mac" not in json.dumps(result.verification.observed).lower() or (
         "REDACTED" in json.dumps(result.verification.observed)
     )
@@ -361,7 +372,7 @@ def test_apply_admin_up_link_down_verify_mismatch_no_rollback() -> None:
     assert result.rollback.attempted is False
 
 
-def test_apply_missing_link_fields_applied_unverified_not_failed() -> None:
+def test_apply_missing_link_fields_verify_mismatch_unverified_not_failed() -> None:
     transport = FakeWifiApplyTransport(readback_sequence=[_applied_readback()])
     result = apply_wifi_intent(
         intent=_wpa2_intent(),
@@ -369,7 +380,7 @@ def test_apply_missing_link_fields_applied_unverified_not_failed() -> None:
         transport=transport,
         credential_resolver=lambda _ref: _OFFLINE_PSK_PLACEHOLDER,
     )
-    assert result.overall == "applied"
+    assert result.overall == "verify_mismatch"
     assert result.on_air_verification_status == "on_air_unverified"
     assert result.verification is not None
     assert result.verification.on_air_ok is None
@@ -404,12 +415,11 @@ def _broadcast_true_link_false_readback() -> dict[str, Any]:
     }
 
 
-def test_apply_broadcast_true_link_false_not_on_air_verified() -> None:
+def test_apply_broadcast_true_link_false_verify_mismatch() -> None:
     """broadcast=true must not override link=false for on-air success.
 
-    Config verify passes → overall=applied (configuration delivered). On-air unknown
-    due to link/broadcast conflict → on_air_unverified, not verify_mismatch (unlike
-    admin_up+link_down which is a known deceptive on-air state).
+    Config verify passes but on-air remains unverified → verify_mismatch (parity
+    with teardown and missing link/broadcast fields).
     """
     transport = FakeWifiApplyTransport(
         readback_sequence=[_broadcast_true_link_false_readback()]
@@ -427,7 +437,7 @@ def test_apply_broadcast_true_link_false_not_on_air_verified() -> None:
     assert result.verification.ssid_ok is True
     assert result.verification.encryption_ok is True
     assert result.verification.admin_up_ok is True
-    assert result.overall == "applied"
+    assert result.overall == "verify_mismatch"
     assert result.rollback is not None
     assert result.rollback.attempted is False
 
@@ -559,7 +569,9 @@ def test_preview_wifi_apply_surfaces_planner_guest_isolation_code() -> None:
 
 
 def test_wpa3_teardown_dispatches_wpa_psk_clear() -> None:
-    transport = FakeWifiApplyTransport(readback_sequence=[_baseline_readback()])
+    transport = FakeWifiApplyTransport(
+        show_interface_readback_sequence=[_teardown_on_air_verified_readback()],
+    )
     result = teardown_wifi_ap(
         ap_id=_TEST_AP,
         transport=transport,
@@ -615,7 +627,9 @@ def test_wpa3_teardown_aggregates_dispatch_and_readback_errors() -> None:
 
 
 def test_mixed_teardown_dispatches_full_clear_sequence() -> None:
-    transport = FakeWifiApplyTransport(readback_sequence=[_baseline_readback()])
+    transport = FakeWifiApplyTransport(
+        show_interface_readback_sequence=[_teardown_on_air_verified_readback()],
+    )
     result = teardown_wifi_ap(
         ap_id=_TEST_AP,
         transport=transport,
@@ -628,7 +642,7 @@ def test_mixed_teardown_dispatches_full_clear_sequence() -> None:
 
 
 def test_apply_op_order_matches_planner() -> None:
-    transport = FakeWifiApplyTransport(readback_sequence=[_applied_readback()])
+    transport = FakeWifiApplyTransport(readback_sequence=[_on_air_verified_readback()])
     apply_wifi_intent(
         intent=_wpa2_intent(),
         ap_id=_TEST_AP,
@@ -647,7 +661,9 @@ def test_apply_op_order_matches_planner() -> None:
 
 def test_teardown_5ghz_ap_uses_correct_band() -> None:
     ap_id = "WifiMaster1/AccessPoint4"
-    transport = FakeWifiApplyTransport(readback_sequence=[_baseline_readback()])
+    transport = FakeWifiApplyTransport(
+        show_interface_readback_sequence=[_teardown_on_air_verified_readback()],
+    )
     result = teardown_wifi_ap(ap_id=ap_id, transport=transport)
     assert result.overall == "applied"
     assert transport.parse_commands == [f"show interface {ap_id}"]
@@ -733,7 +749,7 @@ def test_wifi_apply_to_dict_invokes_validate_wifi_apply_payload(
         "validate_wifi_apply_payload",
         _tracking_validate,
     )
-    transport = FakeWifiApplyTransport(readback_sequence=[_applied_readback()])
+    transport = FakeWifiApplyTransport(readback_sequence=[_on_air_verified_readback()])
     result = apply_wifi_intent(
         intent=_wpa2_intent(),
         ap_id=_TEST_AP,
@@ -746,7 +762,7 @@ def test_wifi_apply_to_dict_invokes_validate_wifi_apply_payload(
 
 
 def test_validate_wifi_apply_payload_is_identity_passthrough() -> None:
-    transport = FakeWifiApplyTransport(readback_sequence=[_applied_readback()])
+    transport = FakeWifiApplyTransport(readback_sequence=[_on_air_verified_readback()])
     result = apply_wifi_intent(
         intent=_wpa2_intent(),
         ap_id=_TEST_AP,

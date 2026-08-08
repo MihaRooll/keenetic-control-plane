@@ -1125,7 +1125,7 @@ def apply_wifi_intent(
                 observed=observed,
             )
 
-        if on_air_status == _ON_AIR_ADMIN_ONLY:
+        if on_air_status in {_ON_AIR_ADMIN_ONLY, _ON_AIR_UNVERIFIED}:
             return _finish_and_return(
                 WifiApplyResult(
                 overall="verify_mismatch",

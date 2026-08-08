@@ -104,8 +104,17 @@ def strip_host_brackets(hostname: str) -> str:
 
 _HOST_DNS_RESOLVE_TIMEOUT_S = 3.0
 
+# Cloud instance metadata (link-local 169.254.169.0/24) must not qualify as lab-private SSH.
+_CLOUD_METADATA_IPV4_NETWORK = ipaddress.IPv4Network("169.254.169.0/24")
+
+
+def _is_cloud_metadata_ipv4(addr: ipaddress.IPv4Address) -> bool:
+    return addr in _CLOUD_METADATA_IPV4_NETWORK
+
 
 def _address_is_private_like(addr: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    if isinstance(addr, ipaddress.IPv4Address) and _is_cloud_metadata_ipv4(addr):
+        return False
     return bool(addr.is_private or addr.is_link_local or addr.is_loopback)
 
 

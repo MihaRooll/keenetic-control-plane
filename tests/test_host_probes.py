@@ -607,7 +607,7 @@ def test_address_classifier_parametrized(addr: str, allowed: bool) -> None:
 
 def test_ssh_tunnel_host_is_private_unsuitable_for_probes() -> None:
     assert host_is_private("127.0.0.1") is True
-    assert host_is_private("169.254.169.254") is True
+    assert host_is_private("169.254.169.254") is False
     with patch(
         "router_control.adapters.netcraze.ssh_tunnel.socket.getaddrinfo",
         return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 0))],

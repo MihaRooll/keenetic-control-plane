@@ -61,6 +61,8 @@ def _applied_readback() -> dict[str, Any]:
             "encryption": {"wpa2": True, "enabled": True},
             "state": "up",
             "up": True,
+            "link": "up",
+            "broadcast": True,
         }
     }
 
@@ -72,6 +74,19 @@ def _baseline_readback() -> dict[str, Any]:
             "encryption": {},
             "state": "down",
             "up": False,
+        }
+    }
+
+
+def _teardown_on_air_verified_readback() -> dict[str, Any]:
+    return {
+        "interface": {
+            "ssid": "",
+            "encryption": {},
+            "state": "down",
+            "up": False,
+            "link": False,
+            "broadcast": False,
         }
     }
 
@@ -232,7 +247,7 @@ def test_wifi_apply_success(wifi_client) -> None:
     assert resp.status_code == 200
     body = resp.json()
     assert body["overall"] == "applied"
-    assert body["on_air_verification_status"] == "on_air_unverified"
+    assert body["on_air_verification_status"] == "on_air_verified"
     assert len(body["steps"]) == 5
     assert _OFFLINE_PSK_PLACEHOLDER not in json.dumps(body)
 
@@ -276,7 +291,8 @@ def test_wifi_teardown_requires_confirm(wifi_client) -> None:
 
 def test_wifi_teardown_success(wifi_client) -> None:
     transport: ApiFakeWifiTransport = wifi_client.test_transport
-    transport.readback_sequence = [_baseline_readback()]
+    verified = _teardown_on_air_verified_readback()
+    transport.readback_sequence = [verified, verified]
     resp = wifi_client.post(
         "/api/router-control/v1/wifi/teardown",
         json={"ap_id": _TEST_AP, "wpa_mode": "WPA2", "confirm_live_teardown": True},
@@ -380,6 +396,8 @@ def test_wifi_apply_wpa3_success(wifi_client) -> None:
                 "encryption": {"wpa3": True, "enabled": True},
                 "state": "up",
                 "up": True,
+                "link": "up",
+                "broadcast": True,
             }
         }
     ]
@@ -423,6 +441,8 @@ def test_wifi_apply_wpa2_wpa3_mixed_success(wifi_client) -> None:
                 "encryption": {"wpa2": True, "wpa3": True, "enabled": True},
                 "state": "up",
                 "up": True,
+                "link": "up",
+                "broadcast": True,
             }
         }
     ]

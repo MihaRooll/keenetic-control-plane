@@ -19,6 +19,7 @@ from tests.test_wifi_apply_service import (
     _OFFLINE_PSK_PLACEHOLDER,
     _TEST_AP,
     FakeWifiApplyTransport,
+    _on_air_verified_readback,
     _applied_readback,
     _wpa2_intent,
 )
@@ -182,7 +183,7 @@ def test_dispatch_failure_includes_taxonomy_on_step() -> None:
 
 def test_idempotent_skips_already_satisfied_ops() -> None:
     transport = FakeWifiApplyTransport(
-        show_interface_readback_sequence=[_applied_readback(), _applied_readback()],
+        show_interface_readback_sequence=[_on_air_verified_readback(), _on_air_verified_readback()],
     )
     result = apply_wifi_intent(
         intent=_wpa2_intent(),
@@ -208,9 +209,9 @@ def test_idempotent_unreadable_pre_read_full_sequence() -> None:
                 raise RuntimeError("pre-read failed")
             if self.readback_sequence:
                 return self.readback_sequence.pop(0)
-            return _applied_readback()
+            return _on_air_verified_readback()
 
-    transport = FirstParseFailTransport(readback_sequence=[_applied_readback()])
+    transport = FirstParseFailTransport(readback_sequence=[_on_air_verified_readback()])
     result = apply_wifi_intent(
         intent=_wpa2_intent(),
         ap_id=_AP,
@@ -226,7 +227,7 @@ def test_idempotent_unreadable_pre_read_full_sequence() -> None:
 
 def test_idempotent_empty_pre_read_full_sequence() -> None:
     transport = FakeWifiApplyTransport(
-        show_interface_readback_sequence=[{}, _applied_readback()],
+        show_interface_readback_sequence=[{}, _on_air_verified_readback()],
     )
     result = apply_wifi_intent(
         intent=_wpa2_intent(),
@@ -347,7 +348,7 @@ def test_partial_compensation_keeps_failed_not_rolled_back() -> None:
 def test_idempotent_sparse_observed_fallback_full_sequence() -> None:
     sparse = {"interface": {"mac": "aa:bb:cc:dd:ee:ff"}}
     transport = FakeWifiApplyTransport(
-        show_interface_readback_sequence=[sparse, _applied_readback()],
+        show_interface_readback_sequence=[sparse, _on_air_verified_readback()],
     )
     result = apply_wifi_intent(
         intent=_wpa2_intent(),
@@ -370,7 +371,7 @@ def test_compensate_skips_clear_psk_when_pre_readback_omits_psk() -> None:
         }
     }
     transport = FakeWifiApplyTransport(
-        show_interface_readback_sequence=[pre_readback, _applied_readback()],
+        show_interface_readback_sequence=[pre_readback, _on_air_verified_readback()],
         fail_on_command=f"interface {_AP} encryption enable",
     )
     result = apply_wifi_intent(
@@ -402,10 +403,10 @@ def test_pre_apply_read_timeout_continues_with_unknown_baseline(
                 time.sleep(0.2)
             if self.readback_sequence:
                 return self.readback_sequence.pop(0)
-            return _applied_readback()
+            return _on_air_verified_readback()
 
     started = time.monotonic()
-    transport = HangingPreReadTransport(readback_sequence=[_applied_readback()])
+    transport = HangingPreReadTransport(readback_sequence=[_on_air_verified_readback()])
     result = apply_wifi_intent(
         intent=_wpa2_intent(),
         ap_id=_AP,
