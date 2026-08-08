@@ -47,6 +47,16 @@ def _seed_active_assignment(runtime) -> tuple[str, str]:
             }
         ),
     )
+    cred_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="awg_private_key",
+        provider="MemoryVault",
+        provider_locator="loc-vpn-wd-probe",
+    )
+    store.insert_profile_secret_refs(
+        profile_id=profile_id,
+        refs=[(cred_id, "PrivateKey")],
+    )
     store.upsert_tunnel_assignment(
         router_id=router_id,
         profile_id=profile_id,

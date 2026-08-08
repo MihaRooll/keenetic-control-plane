@@ -45,6 +45,7 @@ from router_control.application.router_apply_lock import (
     resolve_router_apply_lock_key,
     run_with_router_apply_lock,
 )
+from router_control.application.vpn_credential_usability import vpn_secret_refs_usable
 from router_control.application.wireguard_apply_planner import clamp_handshake_settle_seconds
 from router_control.application.wireguard_apply_service import (
     WireguardApplyResult,
@@ -82,9 +83,17 @@ from router_control_host.errors import (
 from router_control_host.state import HostState
 from router_control_host.vpn_assignment_helpers import (
     assignment_policy_metadata as _assignment_policy_metadata,
+)
+from router_control_host.vpn_assignment_helpers import (
     coerce_peer_rci_shape as _coerce_peer_rci_shape,
+)
+from router_control_host.vpn_assignment_helpers import (
     merge_teardown_metadata as _merge_teardown_metadata,
+)
+from router_control_host.vpn_assignment_helpers import (
     resolve_assignment_wg_id as _resolve_assignment_wg_id,
+)
+from router_control_host.vpn_assignment_helpers import (
     wireguard_intent_from_metadata_dict as _wireguard_intent_from_metadata_dict,
 )
 from router_control_host.wifi_live_transport import (
@@ -720,6 +729,8 @@ def _wireguard_intent_from_profile_row(
             private_ref = str(ref["credential_ref_id"])
         elif ref["role"] == "PresharedKey":
             psk_ref = str(ref["credential_ref_id"])
+    if enabled and not vpn_secret_refs_usable(host.runtime.store, private_ref, psk_ref):
+        raise ValueError("credential revoked")
     asc_raw = metadata.get("asc9_args")
     asc_args = tuple(asc_raw) if isinstance(asc_raw, list) else None
     resolved_ip_global_auto = (
@@ -2198,6 +2209,25 @@ async def revoke_credential(
             body_out,
             status_code=int(stored.get("http_status", 202)),
             headers=_ok_headers(request),
+        )
+
+    cred_row = host.runtime.store.get_credential_ref(credential_ref_id)
+    if cred_row is None or str(cred_row["router_id"]) != router_id:
+        return error_response(
+            request,
+            status_code=404,
+            code="resource.not_found",
+            message="credential not found",
+        )
+    if host.runtime.store.credential_ref_has_active_tunnel_assignment(credential_ref_id):
+        return error_response(
+            request,
+            status_code=409,
+            code="credential.active_tunnel",
+            message=(
+                "Этот ключ используется активным VPN-туннелем. "
+                "Сначала отключите VPN, затем отзовите ключ."
+            ),
         )
 
     # Claim before vault revoke — same critical-section rule as rotate.

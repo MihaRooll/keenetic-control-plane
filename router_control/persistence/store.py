@@ -3225,6 +3225,17 @@ class PersistenceStore:
         ).fetchone()
         return int(row["cnt"]) if row is not None else 0
 
+    def credential_ref_has_active_tunnel_assignment(self, credential_ref_id: str) -> bool:
+        row = self._conn.execute(
+            "SELECT 1 FROM vpn_profile_secret_refs psr "
+            "JOIN tunnel_assignments ta ON ta.profile_id = psr.profile_id "
+            "WHERE psr.credential_ref_id = ? "
+            "AND ta.desired_active = 1 AND ta.retired_at IS NULL "
+            "LIMIT 1",
+            (credential_ref_id,),
+        ).fetchone()
+        return row is not None
+
     def credential_ref_has_non_vpn_live_links(self, credential_ref_id: str) -> bool:
         standing = self._conn.execute(
             "SELECT 1 FROM standing_network_preferences "

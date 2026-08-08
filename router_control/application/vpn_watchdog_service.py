@@ -16,6 +16,7 @@ from router_control.application.vpn_assignment_helpers import (
     coerce_peer_rci_shape,
     resolve_assignment_wg_id,
 )
+from router_control.application.vpn_credential_usability import vpn_secret_refs_usable
 from router_control.application.wireguard_apply_planner import (
     WG_HANDSHAKE_SETTLE_SECONDS_MIN,
     clamp_handshake_settle_seconds,
@@ -231,6 +232,8 @@ class VpnWatchdogHandle:
                 private_ref = str(ref["credential_ref_id"])
             elif role == "PresharedKey":
                 psk_ref = str(ref["credential_ref_id"])
+        if not vpn_secret_refs_usable(store, private_ref, psk_ref):
+            return None
         asc_raw = metadata.get("asc9_args")
         asc_args = tuple(asc_raw) if isinstance(asc_raw, list) else None
         wg_id = resolve_assignment_wg_id(assignment, profile_metadata=metadata)

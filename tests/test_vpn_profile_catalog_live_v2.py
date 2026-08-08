@@ -30,8 +30,11 @@ from router_control.application.wireguard_apply_service import (
 from router_control.domain.network_intents import WireguardIntent
 from router_control_host.app import create_app
 from router_control_host.auth import mint_hub_admin_cookie
-from router_control_host.wifi_live_transport import LiveIdentityTupleMismatchError, WifiLiveSession
-from router_control_host.wifi_live_transport import WifiLiveConnectionParams
+from router_control_host.wifi_live_transport import (
+    LiveIdentityTupleMismatchError,
+    WifiLiveConnectionParams,
+    WifiLiveSession,
+)
 
 SAMPLE_PROFILE = """
 [Interface]
@@ -456,6 +459,7 @@ def test_activate_intent_preserves_tcp_mss_from_metadata_when_body_omits_field(
     )
 
     store = PersistenceStore(open_database(tmp_path / "activate-tcp-mss-omit.sqlite3"))
+    router_id = _seed_catalog_router(store)
     profile_id = store.import_profile(
         display_name="TCP MSS activate omit",
         vpn_kind="AmneziaWG",
@@ -471,6 +475,7 @@ def test_activate_intent_preserves_tcp_mss_from_metadata_when_body_omits_field(
             }
         ),
     )
+    _link_usable_private_key(store, profile_id=profile_id, router_id=router_id)
 
     class _Host:
         runtime = type("Runtime", (), {"store": store})()
@@ -501,6 +506,7 @@ def test_activate_explicit_tcp_mss_false_overrides_metadata(tmp_path: Path) -> N
     from router_control_host.routes import _wireguard_intent_from_profile_row
 
     store = PersistenceStore(open_database(tmp_path / "activate-tcp-mss-override.sqlite3"))
+    router_id = _seed_catalog_router(store)
     profile_id = store.import_profile(
         display_name="TCP MSS activate override",
         vpn_kind="AmneziaWG",
@@ -516,6 +522,7 @@ def test_activate_explicit_tcp_mss_false_overrides_metadata(tmp_path: Path) -> N
             }
         ),
     )
+    _link_usable_private_key(store, profile_id=profile_id, router_id=router_id)
 
     class _Host:
         runtime = type("Runtime", (), {"store": store})()
@@ -580,6 +587,7 @@ def test_activate_without_priority_omits_ip_global_op(tmp_path: Path) -> None:
     )
 
     store = PersistenceStore(open_database(tmp_path / "activate-no-priority.sqlite3"))
+    router_id = _seed_catalog_router(store)
     profile_id = store.import_profile(
         display_name="No priority",
         vpn_kind="AmneziaWG",
@@ -595,6 +603,7 @@ def test_activate_without_priority_omits_ip_global_op(tmp_path: Path) -> None:
             }
         ),
     )
+    _link_usable_private_key(store, profile_id=profile_id, router_id=router_id)
 
     class _Host:
         runtime = type("Runtime", (), {"store": store})()
@@ -732,8 +741,28 @@ def _seed_catalog_router(store: Any) -> str:
     )
 
 
-def _seed_catalog_profile(store: Any, *, display_name: str, wg_id: str = "Wireguard5") -> str:
-    return store.import_profile(
+def _link_usable_private_key(store: Any, *, profile_id: str, router_id: str) -> str:
+    cred_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="awg_private_key",
+        provider="MemoryVault",
+        provider_locator=f"loc-{profile_id}",
+    )
+    store.insert_profile_secret_refs(
+        profile_id=profile_id,
+        refs=[(cred_id, "PrivateKey")],
+    )
+    return cred_id
+
+
+def _seed_catalog_profile(
+    store: Any,
+    *,
+    display_name: str,
+    wg_id: str = "Wireguard5",
+    router_id: str | None = None,
+) -> str:
+    profile_id = store.import_profile(
         display_name=display_name,
         vpn_kind="AmneziaWG",
         content_digest=f"digest-{display_name}",
@@ -747,15 +776,19 @@ def _seed_catalog_profile(store: Any, *, display_name: str, wg_id: str = "Wiregu
             }
         ),
     )
+    rid = router_id if router_id is not None else _seed_catalog_router(store)
+    _link_usable_private_key(store, profile_id=profile_id, router_id=rid)
+    return profile_id
 
 
 def test_activate_prior_teardown_failed_fail_closed(
     authed_client, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Switching profiles must not report activate success when prior teardown fails."""
+    from types import SimpleNamespace
+
     import router_control_host.routes as routes_mod
     import router_control_host.wireguard_apply_routes as wg_routes_mod
-    from types import SimpleNamespace
 
     store = authed_client.app.state.host.runtime.store
     router_id = _seed_catalog_router(store)
@@ -812,6 +845,7 @@ def test_teardown_prior_profile_assignment_live_dispatch_failed_raises(
     from types import SimpleNamespace
     from unittest.mock import MagicMock
 
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
     from router_control.application.wireguard_apply_service import WireguardApplyServiceError
     from router_control.persistence.connection import open_database
     from router_control.persistence.store import PersistenceStore
@@ -819,7 +853,6 @@ def test_teardown_prior_profile_assignment_live_dispatch_failed_raises(
         VpnProfileActivateBody,
         _teardown_prior_profile_assignment,
     )
-    import router_control_host.wireguard_apply_routes as wg_routes_mod
 
     store = PersistenceStore(open_database(tmp_path / "prior-teardown-live.sqlite3"))
     router_id = _seed_catalog_router(store)
@@ -874,10 +907,10 @@ def test_activate_prior_teardown_success_clears_assignment_when_new_apply_fails(
     authed_client, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """After successful prior teardown, stale assignment is cleared even if new apply fails."""
-    import router_control_host.routes as routes_mod
-    import router_control_host.wireguard_apply_routes as wg_routes_mod
     from types import SimpleNamespace
 
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
     from router_control.application.wireguard_apply_service import WireguardApplyServiceError
 
     store = authed_client.app.state.host.runtime.store
@@ -926,14 +959,14 @@ def test_teardown_prior_profile_assignment_clears_assignment_on_success(
     from types import SimpleNamespace
     from unittest.mock import MagicMock
 
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
     from router_control.persistence.connection import open_database
     from router_control.persistence.store import PersistenceStore
     from router_control_host.routes import (
         VpnProfileActivateBody,
         _teardown_prior_profile_assignment,
     )
-    import router_control_host.routes as routes_mod
-    import router_control_host.wireguard_apply_routes as wg_routes_mod
 
     store = PersistenceStore(open_database(tmp_path / "prior-teardown-clear.sqlite3"))
     router_id = _seed_catalog_router(store)
@@ -989,6 +1022,8 @@ def test_teardown_prior_profile_assignment_fail_closed_when_assignment_clear_fai
     from types import SimpleNamespace
     from unittest.mock import MagicMock
 
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
     from router_control.application.wireguard_apply_service import WireguardApplyServiceError
     from router_control.persistence.connection import open_database
     from router_control.persistence.store import PersistenceStore
@@ -996,8 +1031,6 @@ def test_teardown_prior_profile_assignment_fail_closed_when_assignment_clear_fai
         VpnProfileActivateBody,
         _teardown_prior_profile_assignment,
     )
-    import router_control_host.routes as routes_mod
-    import router_control_host.wireguard_apply_routes as wg_routes_mod
 
     store = PersistenceStore(open_database(tmp_path / "prior-teardown-clear-fail.sqlite3"))
     router_id = _seed_catalog_router(store)
@@ -1287,14 +1320,14 @@ def test_teardown_prior_prefers_observed_vendor_locator_over_metadata(
     from types import SimpleNamespace
     from unittest.mock import MagicMock
 
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
     from router_control.persistence.connection import open_database
     from router_control.persistence.store import PersistenceStore
     from router_control_host.routes import (
         VpnProfileActivateBody,
         _teardown_prior_profile_assignment,
     )
-    import router_control_host.routes as routes_mod
-    import router_control_host.wireguard_apply_routes as wg_routes_mod
 
     store = PersistenceStore(open_database(tmp_path / "prior-locator-priority.sqlite3"))
     router_id = _seed_catalog_router(store)
@@ -1348,14 +1381,14 @@ def test_teardown_same_profile_different_wg_still_teardowns(
     from types import SimpleNamespace
     from unittest.mock import MagicMock
 
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
     from router_control.persistence.connection import open_database
     from router_control.persistence.store import PersistenceStore
     from router_control_host.routes import (
         VpnProfileActivateBody,
         _teardown_prior_profile_assignment,
     )
-    import router_control_host.routes as routes_mod
-    import router_control_host.wireguard_apply_routes as wg_routes_mod
 
     store = PersistenceStore(open_database(tmp_path / "same-profile-wg-change.sqlite3"))
     router_id = _seed_catalog_router(store)
@@ -1408,14 +1441,14 @@ def test_teardown_same_profile_same_wg_skips_teardown(
     """Same profile_id and same tunnel must not teardown before re-activate."""
     from unittest.mock import MagicMock
 
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
     from router_control.persistence.connection import open_database
     from router_control.persistence.store import PersistenceStore
     from router_control_host.routes import (
         VpnProfileActivateBody,
         _teardown_prior_profile_assignment,
     )
-    import router_control_host.routes as routes_mod
-    import router_control_host.wireguard_apply_routes as wg_routes_mod
 
     store = PersistenceStore(open_database(tmp_path / "same-profile-wg-skip.sqlite3"))
     router_id = _seed_catalog_router(store)
@@ -1499,14 +1532,14 @@ def test_teardown_orphan_assignment_teardowns_with_locator(
     from types import SimpleNamespace
     from unittest.mock import MagicMock
 
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
     from router_control.persistence.connection import open_database
     from router_control.persistence.store import PersistenceStore
     from router_control_host.routes import (
         VpnProfileActivateBody,
         _teardown_prior_profile_assignment,
     )
-    import router_control_host.routes as routes_mod
-    import router_control_host.wireguard_apply_routes as wg_routes_mod
 
     store = PersistenceStore(open_database(tmp_path / "orphan-assignment.sqlite3"))
     router_id = _seed_catalog_router(store)
@@ -1560,6 +1593,7 @@ def test_teardown_orphan_assignment_fail_closed_without_locator(
     """Orphan assignment without observed_vendor_locator must fail-closed."""
     from unittest.mock import MagicMock
 
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
     from router_control.application.wireguard_apply_service import WireguardApplyServiceError
     from router_control.persistence.connection import open_database
     from router_control.persistence.store import PersistenceStore
@@ -1567,7 +1601,6 @@ def test_teardown_orphan_assignment_fail_closed_without_locator(
         VpnProfileActivateBody,
         _teardown_prior_profile_assignment,
     )
-    import router_control_host.wireguard_apply_routes as wg_routes_mod
 
     store = PersistenceStore(open_database(tmp_path / "orphan-no-locator.sqlite3"))
     router_id = _seed_catalog_router(store)
@@ -1608,14 +1641,14 @@ def test_teardown_prior_resolves_wg_id_from_policy_metadata(
     from types import SimpleNamespace
     from unittest.mock import MagicMock
 
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
     from router_control.persistence.connection import open_database
     from router_control.persistence.store import PersistenceStore
     from router_control_host.routes import (
         VpnProfileActivateBody,
         _teardown_prior_profile_assignment,
     )
-    import router_control_host.routes as routes_mod
-    import router_control_host.wireguard_apply_routes as wg_routes_mod
 
     store = PersistenceStore(open_database(tmp_path / "prior-policy-wg.sqlite3"))
     router_id = _seed_catalog_router(store)
@@ -1669,14 +1702,14 @@ def test_teardown_same_profile_unresolvable_prior_heals_without_teardown(
     """Same profile with unresolvable prior wg_id clears stuck assignment instead of hard-fail."""
     from unittest.mock import MagicMock
 
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
     from router_control.persistence.connection import open_database
     from router_control.persistence.store import PersistenceStore
     from router_control_host.routes import (
         VpnProfileActivateBody,
         _teardown_prior_profile_assignment,
     )
-    import router_control_host.routes as routes_mod
-    import router_control_host.wireguard_apply_routes as wg_routes_mod
 
     store = PersistenceStore(open_database(tmp_path / "same-profile-heal.sqlite3"))
     router_id = _seed_catalog_router(store)
@@ -1741,14 +1774,14 @@ def test_teardown_orphan_intent_enriched_from_policy_metadata(
     from types import SimpleNamespace
     from unittest.mock import MagicMock
 
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
     from router_control.persistence.connection import open_database
     from router_control.persistence.store import PersistenceStore
     from router_control_host.routes import (
         VpnProfileActivateBody,
         _teardown_prior_profile_assignment,
     )
-    import router_control_host.routes as routes_mod
-    import router_control_host.wireguard_apply_routes as wg_routes_mod
 
     store = PersistenceStore(open_database(tmp_path / "orphan-policy-intent.sqlite3"))
     router_id = _seed_catalog_router(store)
@@ -1807,9 +1840,9 @@ def test_teardown_orphan_intent_enriched_from_policy_metadata(
 
     assert len(captured_intents) == 1
     intent = captured_intents[0]
-    assert getattr(intent, "wg_id") == "Wireguard5"
-    assert getattr(intent, "ip_global_auto") is True
-    assert getattr(intent, "ip_global_priority") == 700
+    assert intent.wg_id == "Wireguard5"
+    assert intent.ip_global_auto is True
+    assert intent.ip_global_priority == 700
     assert store.get_active_tunnel_assignment(router_id) is None
 
 
