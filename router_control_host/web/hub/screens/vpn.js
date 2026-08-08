@@ -657,14 +657,16 @@ export function render(container, ctx) {
       }
       catalogLiveStatusById = failedLive;
     } finally {
-      if (catalogLiveStatusAbort === liveController) {
+      const ownsLiveCheck = catalogLiveStatusAbort === liveController;
+      if (ownsLiveCheck) {
         catalogLiveStatusAbort = null;
       }
-      if (disposed || gen !== catalogGeneration) {
-        return;
+      if (ownsLiveCheck || gen === catalogGeneration) {
+        catalogLiveChecking = false;
+        if (!disposed) {
+          renderCatalogSlot();
+        }
       }
-      catalogLiveChecking = false;
-      renderCatalogSlot();
     }
   }
 
@@ -1032,6 +1034,7 @@ export function render(container, ctx) {
     catalogLoading = false;
     catalogRefreshing = false;
     catalogLoadGeneration = null;
+    catalogLiveChecking = false;
     connecting = false;
     observing = false;
     mutating = false;
@@ -1123,6 +1126,8 @@ export function render(container, ctx) {
       || importingCatalog
       || riskModalOpen
       || importModalOpen
+      || Object.keys(validatingProfileIds).length > 0
+      || Object.keys(removingProfileIds).length > 0
     );
   }
 
@@ -2706,7 +2711,9 @@ export function render(container, ctx) {
       const next = { ...validatingProfileIds };
       delete next[profileId];
       validatingProfileIds = next;
-      longOpKind = 'idle';
+      if (longOpKind === 'validate' && Object.keys(next).length === 0) {
+        longOpKind = 'idle';
+      }
       if (!disposed) {
         pendingFocus = { kind: 'element-id', id: `hub-vpn-validate-${profileId}` };
         renderCatalogSlot();

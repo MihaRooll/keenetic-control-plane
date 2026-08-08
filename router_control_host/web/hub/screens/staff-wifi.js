@@ -2012,16 +2012,18 @@ export function render(container, ctx) {
         if (disposed || mutating || offline) {
           return;
         }
+        const retryController = new AbortController();
+        const retrySignal = retryController.signal;
         try {
           const body = buildStaffStandingPreferencesUpdate({
             ssid: draft.ssid,
             credentialRefId: resolvedCredentialRefId,
           });
-          standing = await updateStaffStandingNetworkPreferences(body, { signal });
+          standing = await updateStaffStandingNetworkPreferences(body, { signal: retrySignal });
           operationError = null;
           operationRetry = null;
           renderAll();
-          if (!(disposed || offline || signal?.aborted)) {
+          if (!(disposed || offline || retrySignal.aborted)) {
             ctx.showToast({
               tone: 'success',
               title: 'Обычные настройки сохранены',

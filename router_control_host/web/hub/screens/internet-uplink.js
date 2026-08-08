@@ -1227,19 +1227,21 @@ export function render(container, ctx) {
               if (disposed || mutating || offline) return;
               const retrySession = getSession();
               if (!retrySession.routerId || !credentialRefId) return;
+              const retryController = new AbortController();
+              const retrySignal = retryController.signal;
               try {
                 rememberedUplink = await persistRememberedUplinkAfterApply({
                   routerId: retrySession.routerId,
                   ssid: draft.ssid,
                   band: draft.band,
                   credentialRefId,
-                  signal: mutateAbort?.signal,
+                  signal: retrySignal,
                 });
                 operationError = null;
                 operationRetry = null;
                 void fetchInternetSourceFlow();
                 renderAll();
-                if (!(disposed || offline || mutateAbort?.signal.aborted)) {
+                if (!(disposed || offline || retrySignal.aborted)) {
                   ctx.showToast({
                     tone: 'success',
                     title: 'Автоподключение сохранено',
@@ -1274,15 +1276,17 @@ export function render(container, ctx) {
           operationError = error;
           operationRetry = async () => {
             if (disposed || mutating || offline) return;
+            const retryController = new AbortController();
+            const retrySignal = retryController.signal;
             try {
               rememberedUplink = await deactivateRememberedUplink({
-                signal: mutateAbort?.signal,
+                signal: retrySignal,
               });
               operationError = null;
               operationRetry = null;
               void fetchInternetSourceFlow();
               renderAll();
-              if (!(disposed || offline || mutateAbort?.signal.aborted)) {
+              if (!(disposed || offline || retrySignal.aborted)) {
                 ctx.showToast({
                   tone: 'success',
                   title: 'Автоподключение отключено',
