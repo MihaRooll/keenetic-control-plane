@@ -853,7 +853,28 @@
         "apply-shipped-offline",
         "standing-approved",
         "do-not-reask"
-      ]
+      ],
+      "lastReviewed": "2026-08-08"
+    },
+    {
+      "path": "docs/OPERATOR_DOMAIN_OVERVIEW_GOAL.md",
+      "title": "Domain Overview card — compact publish goal + KeenDNS command map",
+      "status": "active",
+      "owners": [
+        "team"
+      ],
+      "tags": [
+        "local-hub",
+        "operator-spec",
+        "keendns",
+        "crazedns",
+        "overview",
+        "r-8",
+        "living-goal",
+        "standing-approved",
+        "do-not-reask"
+      ],
+      "lastReviewed": "2026-08-08"
     },
     {
       "path": "docs/OPERATOR_NETWORK_FAMILY_APPLY_SCAFFOLD.md",

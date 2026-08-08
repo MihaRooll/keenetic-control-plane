@@ -140,6 +140,8 @@
 |---|---|
 | `КОД ГОТОВ` — apply path offline (`POST /keendns/apply`, UI «Опубликовать», allowlist, planner DNS-label SSOT); live cloud registration **не** подтверждена | нет |
 
+**Living goal (2026-08-08):** Overview card must stay **compact** — name + suffix + publish only; cut list and router CLI map in [`OPERATOR_DOMAIN_OVERVIEW_GOAL.md`](OPERATOR_DOMAIN_OVERVIEW_GOAL.md).
+
 ---
 
 ### R-9. Никаких лишних сложных настроек на главном экране

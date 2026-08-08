@@ -8,7 +8,7 @@
 | Scope | Greenfield KeenDNS/CrazeDNS discovery — documentation-sourced candidate write-shape only; **no** live cloud booking |
 | Status | DOCUMENTATION-SOURCED candidate — **NOT** device-certified; does **not** set `write_shapes_registered=true`; does **not** imply WriteCertified |
 | Gates | A open ReadOnlyCertified (unchanged); B `completed_failed`; C/D **closed**; **not WriteCertified**; `write_shapes_registered` remains **false** |
-| Next | External/cloud write on **expendable lab** = **standing authorized 2026-08-08** — `POST /keendns/apply` shipped offline; live RO on expendable lab next. Non-expendable cloud write still needs a separate packet. WriteCertified / `write_shapes_registered` remain false until certified. |
+| Next | External/cloud write on **expendable lab** = **standing authorized 2026-08-08** — `POST /keendns/apply` shipped offline; live RO on expendable lab next. Non-expendable cloud write still needs a separate packet. WriteCertified / `write_shapes_registered` remain false until certified. **Overview Domain card goal (compact name+publish):** [`OPERATOR_DOMAIN_OVERVIEW_GOAL.md`](OPERATOR_DOMAIN_OVERVIEW_GOAL.md) — living operator ask + command surface; do not re-grow clutter. |
 
 ---
 
