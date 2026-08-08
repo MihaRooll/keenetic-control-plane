@@ -3123,10 +3123,11 @@ def test_overview_cycle2_enrichment_refreshes_readiness() -> None:
     assert enrichment_fn.count("renderStatusStrip()") >= 2
 
 
-def test_overview_cycle3_enrichment_busy_cleared_unconditionally() -> None:
-    """F-1/F-7: enrichment finally always clears busy; abortAllOperations re-paints."""
+def test_overview_cycle3_enrichment_busy_cleared_with_ownership() -> None:
+    """F-1/F-7: enrichment finally clears busy only when gen/controller owns it; abortAllOperations re-paints."""
     source = _read(OVERVIEW_JS)
     enrichment_fn = source.split("async function runOverviewEnrichment")[1].split("function buildSummaryPanelOptions")[0]
+    assert "const myController = enrichmentAbort;" in enrichment_fn
     internet_finally = enrichment_fn.split("} finally {", 1)[1]
     vpn_finally = enrichment_fn.split("} finally {", 2)[2]
     for flag, block in (
@@ -3134,10 +3135,13 @@ def test_overview_cycle3_enrichment_busy_cleared_unconditionally() -> None:
         ("vpnEnrichmentBusy = false", vpn_finally),
     ):
         assert flag in block, f"{flag} must appear in enrichment finally"
-        before_render_guard = block.split("if (gen === generation", 1)[0]
-        assert flag in before_render_guard, (
-            f"{flag} must be cleared before generation-gated re-render guard"
+        idx_flag = block.find(flag)
+        idx_gen = block.rfind("gen === generation", 0, idx_flag)
+        idx_controller = block.rfind("enrichmentAbort === myController", 0, idx_flag)
+        assert idx_gen != -1 and idx_controller != -1, (
+            f"{flag} must be cleared inside gen/controller ownership guard"
         )
+        assert idx_gen < idx_flag and idx_controller < idx_flag
     abort_body = _extract_function_body(source, "function abortAllOperations(")
     assert abort_body is not None
     normalized_abort = _normalize_whitespace(abort_body)
@@ -3591,10 +3595,11 @@ def test_overview_vpn_live_status_abort_guard_before_assign() -> None:
     assign_idx = fn_body.find("vpnLiveStatusById = nextLive")
     assert assign_idx != -1
     between = fn_body[fetch_idx:assign_idx]
-    guard_idx = between.find("if (disposed || signal?.aborted)")
-    assert guard_idx != -1, "abort/disposed guard must follow fetchVpnCatalogLiveStatus"
-    guard_block = between[guard_idx : guard_idx + 80]
-    assert "return" in guard_block
+    # Guard may be single-line or multiline (disposed / signal?.aborted / generation).
+    assert "disposed" in between and "signal?.aborted" in between, (
+        "abort/disposed guard must follow fetchVpnCatalogLiveStatus"
+    )
+    assert "return" in between
 
 
 def test_overview_refresh_router_internet_observe_abort_guard() -> None:

@@ -258,7 +258,9 @@ export function render(container, ctx) {
   /** @type {AbortController|null} */
   let mutateAbort = null;
   /** @type {AbortController|null} */
-  let catalogAuxAbort = null;
+  let observeAbort = null;
+  /** @type {AbortController|null} */
+  let catalogValidateAbort = null;
   /** @type {AbortController|null} */
   let parseAbort = null;
   /** @type {AbortController|null} */
@@ -1026,11 +1028,13 @@ export function render(container, ctx) {
     catalogEnrichAbort?.abort();
     catalogLiveStatusAbort?.abort();
     mutateAbort?.abort();
-    catalogAuxAbort?.abort();
+    observeAbort?.abort();
+    catalogValidateAbort?.abort();
     parseAbort?.abort();
     importAbort?.abort();
     mutateAbort = null;
-    catalogAuxAbort = null;
+    observeAbort = null;
+    catalogValidateAbort = null;
     catalogLoading = false;
     catalogRefreshing = false;
     catalogLoadGeneration = null;
@@ -1697,9 +1701,9 @@ export function render(container, ctx) {
     pendingFocus = { kind: 'element-id', id: 'hub-vpn-recheck-btn' };
     renderStatusSlot();
     renderFooter();
-    catalogAuxAbort?.abort();
-    catalogAuxAbort = new AbortController();
-    const myController = catalogAuxAbort;
+    observeAbort?.abort();
+    observeAbort = new AbortController();
+    const myController = observeAbort;
     const gen = ++observeGeneration;
     observeLoadGeneration = gen;
     try {
@@ -1726,11 +1730,13 @@ export function render(container, ctx) {
     } finally {
       if (observeLoadGeneration === gen) {
         observing = false;
-        longOpKind = 'idle';
+        if (longOpKind === 'observe') {
+          longOpKind = 'idle';
+        }
         observeLoadGeneration = null;
       }
-      if (catalogAuxAbort === myController) {
-        catalogAuxAbort = null;
+      if (observeAbort === myController) {
+        observeAbort = null;
       }
       if (!disposed && gen === observeGeneration) {
         pendingFocus = { kind: 'element-id', id: 'hub-vpn-recheck-btn' };
@@ -2618,9 +2624,9 @@ export function render(container, ctx) {
     }
     removingProfileIds = { ...removingProfileIds, [profileId]: '1' };
     renderCatalogSlot();
-    catalogAuxAbort?.abort();
-    catalogAuxAbort = new AbortController();
-    const mutationSignal = catalogAuxAbort.signal;
+    catalogValidateAbort?.abort();
+    catalogValidateAbort = new AbortController();
+    const mutationSignal = catalogValidateAbort.signal;
     try {
       await removeVpnProfileFromCatalog({ profileId, signal: mutationSignal });
       if (disposed || offline || mutationSignal.aborted) {
@@ -2664,9 +2670,9 @@ export function render(container, ctx) {
     longOpKind = 'validate';
     renderCatalogSlot();
     renderFooter();
-    catalogAuxAbort?.abort();
-    catalogAuxAbort = new AbortController();
-    const mutationSignal = catalogAuxAbort.signal;
+    catalogValidateAbort?.abort();
+    catalogValidateAbort = new AbortController();
+    const mutationSignal = catalogValidateAbort.signal;
     try {
       const response = await validateVpnProfile({
         profileId,

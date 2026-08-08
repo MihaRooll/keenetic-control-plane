@@ -1859,6 +1859,7 @@ export function render(container, ctx) {
     }
     abortEnrichment();
     enrichmentAbort = new AbortController();
+    const myController = enrichmentAbort;
     const signal = enrichmentAbort.signal;
     mountOverviewActionSlots();
     internetEnrichmentBusy = true;
@@ -1883,7 +1884,9 @@ export function render(container, ctx) {
       }
       routerInternetObserve = { read_status: 'failed' };
     } finally {
-      internetEnrichmentBusy = false;
+      if (gen === generation && enrichmentAbort === myController) {
+        internetEnrichmentBusy = false;
+      }
       if (gen === generation && !disposed) {
         renderInternetCardSlot();
         renderReadinessHeader();
@@ -1911,7 +1914,9 @@ export function render(container, ctx) {
         return;
       }
     } finally {
-      vpnEnrichmentBusy = false;
+      if (gen === generation && enrichmentAbort === myController) {
+        vpnEnrichmentBusy = false;
+      }
       if (gen === generation && !disposed) {
         lastVpnSignature = null;
         renderVpnSlot();

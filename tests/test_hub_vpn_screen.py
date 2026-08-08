@@ -1174,7 +1174,7 @@ def test_vpn_invalidate_all_operations_clears_catalog_busy_maps() -> None:
 
 
 def test_vpn_catalog_mutations_pass_mutate_abort_signal() -> None:
-    """vpn-entry-overview-offline-settle: activate/deactivate use mutateAbort; aux ops use catalogAuxAbort."""
+    """vpn-entry-overview-offline-settle: activate/deactivate use mutateAbort; validate/remove use catalogValidateAbort."""
     source = _read(VPN_SCREEN_JS)
     for fn_sig in (
         "async function runActivateProfile(",
@@ -1191,19 +1191,45 @@ def test_vpn_catalog_mutations_pass_mutate_abort_signal() -> None:
     ):
         body = _extract_function_body(source, fn_sig)
         assert body is not None
-        assert "catalogAuxAbort = new AbortController()" in body
+        assert "catalogValidateAbort = new AbortController()" in body
         assert "signal: mutationSignal" in body
         assert "mutateAbort?.abort()" not in body
+        assert "observeAbort?.abort()" not in body
 
 
-def test_vpn_observe_uses_catalog_aux_abort_not_profile_mutate() -> None:
-    """overview-vpn-mutate-abort-races: observe must not abort in-flight activate/deactivate."""
+def test_vpn_observe_uses_observe_abort_not_profile_mutate() -> None:
+    """vpn-observe-ownership-and-aux-abort: observe must not abort in-flight activate/deactivate or validate."""
     source = _read(VPN_SCREEN_JS)
     body = _extract_function_body(source, "async function runObserveRecheck(")
     assert body is not None
-    assert "catalogAuxAbort = new AbortController()" in body
+    assert "observeAbort = new AbortController()" in body
     assert "mutateAbort?.abort()" not in body
-    assert "catalogAuxAbort === myController" in body
+    assert "catalogValidateAbort?.abort()" not in body
+    assert "observeAbort === myController" in body
+
+
+def test_vpn_observe_finally_clears_long_op_kind_only_when_owner() -> None:
+    """vpn-observe-ownership-and-aux-abort: observe finally clears longOpKind only when observe owns it."""
+    source = _read(VPN_SCREEN_JS)
+    body = _extract_function_body(source, "async function runObserveRecheck(")
+    assert body is not None
+    finally_block = body.split("} finally {", 1)[1]
+    assert "if (observeLoadGeneration === gen)" in finally_block
+    owner_block = finally_block.split("if (observeLoadGeneration === gen)", 1)[1]
+    assert "observing = false" in owner_block
+    assert "if (longOpKind === 'observe')" in owner_block
+    assert "longOpKind = 'idle'" in owner_block
+
+
+def test_vpn_invalidate_aborts_observe_and_validate_aux() -> None:
+    """vpn-observe-ownership-and-aux-abort: invalidate aborts both observeAbort and catalogValidateAbort."""
+    source = _read(VPN_SCREEN_JS)
+    invalidate_body = _extract_function_body(source, "function invalidateAllOperations(")
+    assert invalidate_body is not None
+    assert "observeAbort?.abort()" in invalidate_body
+    assert "catalogValidateAbort?.abort()" in invalidate_body
+    assert "observeAbort = null" in invalidate_body
+    assert "catalogValidateAbort = null" in invalidate_body
 
 
 def test_vpn_activate_finally_clears_mutating_only_when_owner() -> None:
