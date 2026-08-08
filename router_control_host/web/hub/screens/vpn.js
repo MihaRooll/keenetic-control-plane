@@ -107,12 +107,13 @@ const VPN_MUTATION_INTENT_STALE_MESSAGE =
 
 /**
  * @param {boolean|null} watchdogEnabled
+ * @param {boolean|null} hasActiveAssignment
  * @returns {string[]}
  */
-function buildVpnProtectionOptions(watchdogEnabled) {
+function buildVpnProtectionOptions(watchdogEnabled, hasActiveAssignment) {
   return [
     VPN_KILL_SWITCH_UNSUPPORTED_NOTE,
-    describeVpnAutoReconnectNote({ watchdogEnabled }),
+    describeVpnAutoReconnectNote({ watchdogEnabled, hasActiveAssignment }),
     VPN_BACKUP_CHANNEL_UNSUPPORTED_NOTE,
   ];
 }
@@ -782,7 +783,24 @@ export function render(container, ctx) {
   }
 
   function buildSideSignature() {
-    return `watchdog:${watchdogEnabled === null ? 'unknown' : String(watchdogEnabled)}`;
+    const hasActiveAssignment = deriveHasActiveAssignment();
+    return [
+      `watchdog:${watchdogEnabled === null ? 'unknown' : String(watchdogEnabled)}`,
+      `active-assignment:${hasActiveAssignment === null ? 'unknown' : String(hasActiveAssignment)}`,
+    ].join('|');
+  }
+
+  /**
+   * @returns {boolean|null}
+   */
+  function deriveHasActiveAssignment() {
+    if (!catalogLoaded) {
+      return null;
+    }
+    return catalogItems.some((item) => {
+      const row = /** @type {Record<string, unknown>} */ (item ?? {});
+      return row.is_active === true;
+    });
   }
 
   function buildCatalogSignature() {
@@ -2248,7 +2266,10 @@ export function render(container, ctx) {
     const body = card.querySelector('.hub-card__body') ?? card;
     const list = document.createElement('ul');
     list.className = 'hub-vpn__unsupported-list';
-    for (const note of buildVpnProtectionOptions(watchdogEnabled)) {
+    for (const note of buildVpnProtectionOptions(
+      watchdogEnabled,
+      deriveHasActiveAssignment(),
+    )) {
       const li = document.createElement('li');
       li.textContent = note;
       list.appendChild(li);

@@ -875,14 +875,76 @@ def test_vpn_describe_auto_reconnect_note_watchdog(
     expected_fragment: str,
 ) -> None:
     enabled_expr = "null" if watchdog_enabled == "null" else json.dumps(watchdog_enabled)
+    assignment_expr = "true" if watchdog_enabled is True else "undefined"
     result = _run_export(
         tmp_path,
         label=f"auto-reconnect-{watchdog_enabled}",
         script_body=f"""
-console.log(JSON.stringify(mod.describeVpnAutoReconnectNote({{ watchdogEnabled: {enabled_expr} }})));
+console.log(JSON.stringify(mod.describeVpnAutoReconnectNote({{
+  watchdogEnabled: {enabled_expr},
+  hasActiveAssignment: {assignment_expr},
+}})));
 """,
     )
     assert expected_fragment in result
+    assert "проверено" not in result.lower()
+
+
+def test_vpn_describe_auto_reconnect_note_enabled_unknown_assignment(
+    tmp_path: Path,
+) -> None:
+    """Enabled watchdog with unloaded catalog must not claim reconnect or no assignment."""
+    result = _run_export(
+        tmp_path,
+        label="vpn-auto-reconnect-unknown-assignment",
+        script_body="""
+console.log(JSON.stringify(mod.describeVpnAutoReconnectNote({
+  watchdogEnabled: true,
+  hasActiveAssignment: null,
+})));
+""",
+    )
+    assert "ещё не загружено" in result
+    assert "неизвестно" in result
+    assert "активного назначения профиля нет" not in result
+    assert "повтор при сбое без ручного подтверждения" not in result
+
+
+def test_vpn_describe_auto_reconnect_note_enabled_without_active_assignment(
+    tmp_path: Path,
+) -> None:
+    """Enabled watchdog without active profile assignment must not claim auto-reconnect."""
+    result = _run_export(
+        tmp_path,
+        label="vpn-auto-reconnect-no-assignment",
+        script_body="""
+console.log(JSON.stringify(mod.describeVpnAutoReconnectNote({
+  watchdogEnabled: true,
+  hasActiveAssignment: false,
+})));
+""",
+    )
+    assert "активного назначения профиля нет" in result
+    assert "пока профиль не подключён или не назначен" in result.lower()
+    assert "повтор при сбое без ручного подтверждения" not in result
+
+
+def test_vpn_describe_auto_reconnect_note_enabled_with_active_assignment(
+    tmp_path: Path,
+) -> None:
+    """Enabled watchdog with active assignment keeps reconnect-enabled copy."""
+    result = _run_export(
+        tmp_path,
+        label="vpn-auto-reconnect-active-assignment",
+        script_body="""
+console.log(JSON.stringify(mod.describeVpnAutoReconnectNote({
+  watchdogEnabled: true,
+  hasActiveAssignment: true,
+})));
+""",
+    )
+    assert "повтор при сбое без ручного подтверждения" in result
+    assert "работа на роутере не подтверждена" in result
 
 
 @pytest.mark.parametrize(
