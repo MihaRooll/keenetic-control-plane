@@ -440,6 +440,14 @@ class UplinkWatchdogHandle:
                 _audit_failure(error_message="gateway is ethernet under lock")
                 outcome_holder[0] = "failed"
                 return
+            expected_station = fresh.get("station_id")
+            if gateway_matches_remembered_station(
+                gateway_s,
+                expected_station_id=str(expected_station) if expected_station else None,
+            ):
+                _audit_failure(error_message="gateway matches remembered station under lock")
+                outcome_holder[0] = "failed"
+                return
             backup_cb: BackupCallback | None = None
             if self.backup_callback_factory is not None:
                 backup_cb = self.backup_callback_factory(router_id)

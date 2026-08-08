@@ -228,7 +228,7 @@ def test_watchdog_reapply_records_audit_without_password(tmp_path, monkeypatch) 
     monkeypatch.setattr(
         uplink_watchdog_service,
         "run_internet_status_observe",
-        lambda *, transport: _observation(gateway_interface="WifiMaster1/WifiStation0"),
+        lambda *, transport: _observation(gateway_interface=None),
     )
     intent = UplinkIntent(
         mode=UplinkMode.WIFI_WAN,

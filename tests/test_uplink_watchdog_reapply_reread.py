@@ -88,7 +88,7 @@ def _wire_observe_factory(
     handle: UplinkWatchdogHandle,
     monkeypatch: pytest.MonkeyPatch,
     *,
-    gateway_interface: str | None = "WifiMaster1/WifiStation0",
+    gateway_interface: str | None = None,
 ) -> None:
     handle.observe_transport_factory = lambda _rid: _ObserveTransport()
     monkeypatch.setattr(
@@ -244,6 +244,34 @@ def test_reapply_applies_with_fresh_remembered_intent(
     assert audit is not None
     assert audit[0] == "uplink_watchdog.reapply"
     assert audit[1] == "applied"
+
+
+def test_reapply_aborts_when_gateway_matches_remembered_station_under_lock(
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Under-lock re-observe must skip apply when gateway matches remembered station."""
+    handle, router_id, intent, remembered, _remembered_svc, store = _setup_watchdog(tmp_path)
+    apply_called = False
+
+    def _fake_apply(**_kwargs: Any) -> Any:
+        nonlocal apply_called
+        apply_called = True
+        raise AssertionError("apply must not run when gateway matches remembered station")
+
+    handle.backup_callback_factory = lambda _rid: lambda: None
+    _wire_observe_factory(
+        handle,
+        monkeypatch,
+        gateway_interface=str(remembered["station_id"]),
+    )
+    monkeypatch.setattr(uplink_watchdog_service, "apply_wifi_station_intent", _fake_apply)
+    handle._reapply_locked(router_id, intent, _Transport(), remembered)  # noqa: SLF001
+    assert apply_called is False
+    action, outcome, summary = _latest_reapply_audit(store)
+    assert action == "uplink_watchdog.reapply"
+    assert outcome == "failed"
+    assert "matches remembered station" in summary
 
 
 def test_reapply_aborts_when_gateway_wireguard_under_lock(
