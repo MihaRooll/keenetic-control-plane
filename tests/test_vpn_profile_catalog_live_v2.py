@@ -1203,3 +1203,319 @@ def test_vpn_deactivate_wg_id_mismatch_fail_closed(
     assert active is not None
     assert str(active["profile_id"]) == profile_id
 
+
+def test_wireguard_intent_from_profile_row_raises_without_wg_id(tmp_path: Path) -> None:
+    from router_control.persistence.connection import open_database
+    from router_control.persistence.store import PersistenceStore
+    from router_control_host.routes import _wireguard_intent_from_profile_row
+
+    store = PersistenceStore(open_database(tmp_path / "intent-no-wg.sqlite3"))
+    profile_id = store.import_profile(
+        display_name="No wg_id metadata",
+        vpn_kind="AmneziaWG",
+        content_digest="sha256:no-wg",
+        metadata_json=json.dumps(
+            {
+                "peer_public_key": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
+                "peer_endpoint": "example.com:51820",
+                "peer_allow_ips": "0.0.0.0/0",
+            }
+        ),
+    )
+
+    class _Host:
+        runtime = type("Runtime", (), {"store": store})()
+
+    row = store.get_profile(profile_id)
+    assert row is not None
+    with pytest.raises(ValueError, match="wg_id required"):
+        _wireguard_intent_from_profile_row(_Host(), row, enabled=True)
+
+
+def test_activate_without_wg_id_and_metadata_returns_422(
+    authed_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Activate must not invent Wireguard5 when body.wg_id and metadata.wg_id are absent."""
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
+
+    store = authed_client.app.state.host.runtime.store
+    router_id = _seed_catalog_router(store)
+    profile_id = store.import_profile(
+        display_name="No metadata wg",
+        vpn_kind="AmneziaWG",
+        content_digest="digest-no-meta-wg",
+        metadata_json=json.dumps(
+            {
+                "peer_public_key": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
+                "peer_endpoint": "example.com:51820",
+                "peer_allow_ips": "0.0.0.0/0",
+            }
+        ),
+    )
+    apply_called = False
+
+    def _track_apply(*_args: object, **_kwargs: object) -> object:
+        nonlocal apply_called
+        apply_called = True
+        raise AssertionError("apply must not run without resolvable wg_id")
+
+    monkeypatch.setattr(wg_routes_mod, "_validate_live_connection_fields", lambda *_a, **_k: None)
+    monkeypatch.setattr(
+        "router_control_host.routes.apply_wireguard_intent",
+        _track_apply,
+    )
+
+    resp = authed_client.post(
+        f"/api/router-control/v1/vpn-profiles/{profile_id}/activate",
+        json={
+            "confirm_live_apply": True,
+            "router_id": router_id,
+        },
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "profile.activate_failed"
+    assert apply_called is False
+
+
+def test_teardown_prior_prefers_observed_vendor_locator_over_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Prior teardown intent wg_id must use observed_vendor_locator over profile metadata."""
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from router_control.persistence.connection import open_database
+    from router_control.persistence.store import PersistenceStore
+    from router_control_host.routes import (
+        VpnProfileActivateBody,
+        _teardown_prior_profile_assignment,
+    )
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
+
+    store = PersistenceStore(open_database(tmp_path / "prior-locator-priority.sqlite3"))
+    router_id = _seed_catalog_router(store)
+    prior_profile_id = _seed_catalog_profile(store, display_name="prior-locator", wg_id="Wireguard5")
+    next_profile_id = _seed_catalog_profile(store, display_name="next-locator", wg_id="Wireguard6")
+    store.upsert_tunnel_assignment(
+        router_id=router_id,
+        profile_id=prior_profile_id,
+        desired_active=True,
+        observed_vendor_locator="Wireguard6",
+    )
+
+    captured_wg_ids: list[str] = []
+
+    def _track_teardown(**kwargs: object) -> object:
+        intent = kwargs.get("intent")
+        captured_wg_ids.append(str(getattr(intent, "wg_id", kwargs.get("wg_id"))))
+        return SimpleNamespace(overall="applied")
+
+    host = MagicMock()
+    host.runtime.store = store
+    host.runtime.clock.now.return_value = datetime.now(UTC)
+    body = VpnProfileActivateBody(
+        confirm_live_apply=True,
+        router_id=router_id,
+    )
+
+    monkeypatch.setattr(wg_routes_mod, "_should_use_live_path", lambda *_a, **_k: False)
+    monkeypatch.setattr(routes_mod, "teardown_wireguard", _track_teardown)
+
+    _teardown_prior_profile_assignment(
+        host=host,
+        request=MagicMock(),
+        body=body,
+        wg_routes=wg_routes_mod,
+        router_id=router_id,
+        profile_id=next_profile_id,
+        logical_role="primary",
+        live_params=None,
+        trail_params=None,
+    )
+
+    assert captured_wg_ids == ["Wireguard6"]
+
+
+def test_activate_upsert_runs_inside_apply_lock(
+    authed_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Successful activate must persist tunnel assignment inside run_with_router_apply_lock."""
+    from types import SimpleNamespace
+
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
+
+    store = authed_client.app.state.host.runtime.store
+    router_id = _seed_catalog_router(store)
+    profile_id = _seed_catalog_profile(store, display_name="upsert-in-lock")
+    lock_depth: list[int] = []
+    upsert_during_lock: list[bool] = []
+
+    def _tracking_lock(_key: str, fn: object) -> object:
+        lock_depth.append(1)
+        try:
+            return fn()  # type: ignore[operator]
+        finally:
+            lock_depth.pop()
+
+    def _ok_apply(*_args: object, **_kwargs: object) -> object:
+        return SimpleNamespace(
+            overall="applied",
+            tunnel_verification_status="tunnel_healthy",
+            to_dict=lambda: {"overall": "applied"},
+        )
+
+    monkeypatch.setattr(routes_mod, "run_with_router_apply_lock", _tracking_lock)
+    monkeypatch.setattr(wg_routes_mod, "_validate_live_connection_fields", lambda *_a, **_k: None)
+    monkeypatch.setattr(routes_mod, "apply_wireguard_intent", _ok_apply)
+
+    original_upsert = store.upsert_tunnel_assignment
+
+    def _spy_upsert(*args: object, **kwargs: object) -> str:
+        upsert_during_lock.append(len(lock_depth) > 0)
+        return original_upsert(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(store, "upsert_tunnel_assignment", _spy_upsert)
+
+    resp = authed_client.post(
+        f"/api/router-control/v1/vpn-profiles/{profile_id}/activate",
+        json={
+            "confirm_live_apply": True,
+            "router_id": router_id,
+            "wg_id": "Wireguard5",
+        },
+    )
+    assert resp.status_code == 200
+    assert upsert_during_lock == [True]
+    active = store.get_active_tunnel_assignment(router_id)
+    assert active is not None
+    assert str(active["profile_id"]) == profile_id
+
+
+def test_deactivate_clear_runs_inside_apply_lock(
+    authed_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Successful deactivate must clear tunnel assignment inside run_with_router_apply_lock."""
+    from types import SimpleNamespace
+
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
+
+    store = authed_client.app.state.host.runtime.store
+    router_id = _seed_catalog_router(store)
+    profile_id = _seed_catalog_profile(store, display_name="deactivate-in-lock")
+    store.upsert_tunnel_assignment(
+        router_id=router_id,
+        profile_id=profile_id,
+        desired_active=True,
+        observed_vendor_locator="Wireguard5",
+    )
+    lock_depth: list[int] = []
+    clear_during_lock: list[bool] = []
+
+    def _tracking_lock(_key: str, fn: object) -> object:
+        lock_depth.append(1)
+        try:
+            return fn()  # type: ignore[operator]
+        finally:
+            lock_depth.pop()
+
+    monkeypatch.setattr(routes_mod, "run_with_router_apply_lock", _tracking_lock)
+    monkeypatch.setattr(wg_routes_mod, "_should_use_live_path", lambda *_a, **_k: False)
+    monkeypatch.setattr(wg_routes_mod, "_validate_live_connection_fields", lambda *_a, **_k: None)
+    monkeypatch.setattr(
+        routes_mod,
+        "teardown_wireguard",
+        lambda **_k: SimpleNamespace(
+            overall="applied",
+            to_dict=lambda: {"overall": "applied"},
+        ),
+    )
+
+    original_clear = store.deactivate_tunnel_assignments
+
+    def _spy_clear(*args: object, **kwargs: object) -> int:
+        clear_during_lock.append(len(lock_depth) > 0)
+        return original_clear(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(store, "deactivate_tunnel_assignments", _spy_clear)
+
+    resp = authed_client.post(
+        "/api/router-control/v1/vpn-profiles/deactivate",
+        json={
+            "confirm_live_apply": True,
+            "router_id": router_id,
+            "wg_id": "Wireguard5",
+        },
+    )
+    assert resp.status_code == 200
+    assert clear_during_lock == [True]
+    assert store.get_active_tunnel_assignment(router_id) is None
+
+
+def test_deactivate_aborts_when_assignment_replaced_under_lock(
+    authed_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Concurrent activate on same wg_id under lock must not teardown the new profile."""
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
+
+    store = authed_client.app.state.host.runtime.store
+    router_id = _seed_catalog_router(store)
+    stale_profile_id = _seed_catalog_profile(store, display_name="stale-deactivate")
+    fresh_profile_id = _seed_catalog_profile(store, display_name="fresh-under-lock")
+    store.upsert_tunnel_assignment(
+        router_id=router_id,
+        profile_id=stale_profile_id,
+        desired_active=True,
+        observed_vendor_locator="Wireguard5",
+    )
+
+    teardown_calls: list[str] = []
+    clear_calls: list[bool] = []
+
+    def _tracking_lock(_key: str, fn: object) -> object:
+        store.upsert_tunnel_assignment(
+            router_id=router_id,
+            profile_id=fresh_profile_id,
+            desired_active=True,
+            observed_vendor_locator="Wireguard5",
+        )
+        return fn()  # type: ignore[operator]
+
+    def _track_teardown(**kwargs: object) -> object:
+        from types import SimpleNamespace
+
+        teardown_calls.append(str(kwargs.get("wg_id")))
+        return SimpleNamespace(
+            overall="applied",
+            to_dict=lambda: {"overall": "applied"},
+        )
+
+    def _track_clear(*_args: object, **_kwargs: object) -> int:
+        clear_calls.append(True)
+        return 1
+
+    monkeypatch.setattr(routes_mod, "run_with_router_apply_lock", _tracking_lock)
+    monkeypatch.setattr(wg_routes_mod, "_should_use_live_path", lambda *_a, **_k: False)
+    monkeypatch.setattr(wg_routes_mod, "_validate_live_connection_fields", lambda *_a, **_k: None)
+    monkeypatch.setattr(routes_mod, "teardown_wireguard", _track_teardown)
+    monkeypatch.setattr(store, "deactivate_tunnel_assignments", _track_clear)
+
+    resp = authed_client.post(
+        "/api/router-control/v1/vpn-profiles/deactivate",
+        json={
+            "confirm_live_apply": True,
+            "router_id": router_id,
+            "wg_id": "Wireguard5",
+        },
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "profile.deactivate_wg_mismatch"
+    assert teardown_calls == []
+    assert clear_calls == []
+    active = store.get_active_tunnel_assignment(router_id)
+    assert active is not None
+    assert str(active["profile_id"]) == fresh_profile_id
+

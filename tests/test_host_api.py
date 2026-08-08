@@ -153,6 +153,27 @@ def test_vpn_profiles_list_active_assignment_shape(client, app_env) -> None:
     assert by_id[inactive_id]["assigned_wg_id"] is None
 
 
+def test_vpn_profiles_list_exposes_metadata_wg_id_for_inactive(client, app_env) -> None:
+    store = app_env.state.host.runtime.store
+    inactive_with_meta = store.import_profile(
+        display_name="Inactive With Meta Wg",
+        vpn_kind="AmneziaWG",
+        content_digest="sha256:inactive-meta-wg",
+        metadata_json='{"wg_id":"Wireguard7"}',
+    )
+    inactive_without_meta = store.import_profile(
+        display_name="Inactive Without Meta Wg",
+        vpn_kind="AmneziaWG",
+        content_digest="sha256:inactive-no-meta-wg",
+        metadata_json="{}",
+    )
+    r = client.get("/api/router-control/v1/vpn-profiles")
+    by_id = {item["profile_id"]: item for item in r.json()["items"]}
+    assert by_id[inactive_with_meta]["wg_id"] == "Wireguard7"
+    assert by_id[inactive_with_meta]["assigned_wg_id"] is None
+    assert by_id[inactive_without_meta]["wg_id"] is None
+
+
 def test_vpn_profiles_list_prefers_assignment_wg_over_metadata(client, app_env) -> None:
     store = app_env.state.host.runtime.store
     site = app_env.state.host.ensure_default_site()

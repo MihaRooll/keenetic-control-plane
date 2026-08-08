@@ -492,9 +492,29 @@ def test_vpn_screen_deactivate_resolves_wg_id_from_profile() -> None:
     source = _read(VPN_SCREEN_JS)
     body = _extract_function_body(source, "async function runDeactivateProfile(")
     assert body is not None
-    assert "resolveVpnProfileWgId(catalogItems, profileId" in body
-    deactivate_call = body.split("deactivateVpnProfile(", 1)[1].split(")", 1)[0]
+    assert "const wgId = resolveVpnProfileWgId(catalogItems, profileId, selectedWgId)" in body
+    deactivate_section = body.split(
+        "const wgId = resolveVpnProfileWgId(catalogItems, profileId, selectedWgId)", 1
+    )[1]
+    deactivate_call = deactivate_section.split("deactivateVpnProfile(", 1)[1].split("});", 1)[0]
+    assert "wgId" in deactivate_call
+    assert "wgId: selectedWgId" not in deactivate_call
     assert "selectedWgId" not in deactivate_call
+
+
+def test_vpn_screen_activate_resolves_wg_id_from_profile() -> None:
+    """Catalog activate must use resolveVpnProfileWgId like deactivate, not selectedWgId alone."""
+    source = _read(VPN_SCREEN_JS)
+    body = _extract_function_body(source, "async function runActivateProfile(")
+    assert body is not None
+    assert "const wgId = resolveVpnProfileWgId(catalogItems, profileId, selectedWgId)" in body
+    activate_section = body.split(
+        "const wgId = resolveVpnProfileWgId(catalogItems, profileId, selectedWgId)", 1
+    )[1]
+    activate_call = activate_section.split("activateVpnProfile(", 1)[1].split("});", 1)[0]
+    assert "wgId" in activate_call
+    assert "wgId: selectedWgId" not in activate_call
+    assert "selectedWgId" not in activate_call
 
 
 def test_vpn_screen_deactivate_toast_gated_on_deactivated_flag() -> None:

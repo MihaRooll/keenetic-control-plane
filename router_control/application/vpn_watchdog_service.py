@@ -271,6 +271,29 @@ class VpnWatchdogHandle:
             )
 
         def _run() -> None:
+            expected_profile_id = assignment.get("profile_id")
+            logical_role = str(assignment.get("logical_role") or "primary")
+            fresh_assignment = self.host.runtime.store.get_active_tunnel_assignment(
+                router_id, logical_role=logical_role
+            )
+            if fresh_assignment is None:
+                _audit_failure(error_message="active tunnel assignment missing under lock")
+                outcome_holder[0] = "failed"
+                return
+            if str(fresh_assignment["profile_id"]) != str(expected_profile_id):
+                _audit_failure(error_message="tunnel assignment profile changed under lock")
+                outcome_holder[0] = "failed"
+                return
+            apply_intent = self._intent_from_assignment(
+                fresh_assignment, self.host.runtime.store
+            )
+            if apply_intent is None:
+                _audit_failure(
+                    error_message="cannot rebuild WireGuard intent from fresh assignment"
+                )
+                outcome_holder[0] = "failed"
+                return
+            intent_redacted["wg_id"] = apply_intent.wg_id
             backup_cb: BackupCallback | None = None
             if self.backup_callback_factory is not None:
                 backup_cb = self.backup_callback_factory(router_id)
@@ -280,7 +303,7 @@ class VpnWatchdogHandle:
                 return
             try:
                 result = apply_wireguard_intent(
-                    intent=intent,
+                    intent=apply_intent,
                     transport=transport,
                     credential_resolver=credential_resolver,
                     backup_callback=backup_cb,

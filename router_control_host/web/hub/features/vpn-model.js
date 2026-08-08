@@ -858,10 +858,12 @@ export function listVpnTunnelInterfaceOptions() {
 }
 
 /**
- * Resolve WireGuard interface for a catalog profile (assigned_wg_id wins over UI default).
+ * Resolve WireGuard interface for a catalog profile.
+ * Priority: assigned_wg_id → profile metadata wg_id → fallbackWgId (UI tunnel selection).
+ * Does not invent a default interface before those sources are exhausted.
  * @param {ReadonlyArray<Record<string, unknown>>} catalogItems
  * @param {string} profileId
- * @param {string} [fallbackWgId]
+ * @param {string} [fallbackWgId] UI-selected tunnel when profile has no assignment/metadata wg_id
  * @returns {string}
  */
 export function resolveVpnProfileWgId(catalogItems, profileId, fallbackWgId = 'Wireguard5') {
@@ -875,8 +877,13 @@ export function resolveVpnProfileWgId(catalogItems, profileId, fallbackWgId = 'W
   if (assigned) {
     return assigned;
   }
-  const options = listVpnTunnelInterfaceOptions();
-  return options[0]?.wgId ?? fallbackWgId;
+  const metadataWg = typeof payload.wg_id === 'string' ? payload.wg_id.trim() : '';
+  if (metadataWg) {
+    return metadataWg;
+  }
+  const fallback =
+    typeof fallbackWgId === 'string' ? fallbackWgId.trim() : '';
+  return fallback || 'Wireguard5';
 }
 
 /**

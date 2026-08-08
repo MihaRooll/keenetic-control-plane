@@ -1262,3 +1262,46 @@ def test_vpn_tile_grid_remove_disabled_when_active() -> None:
     assert "tileActive" in source or "item.is_active === true" in source
     assert "VPN_CATALOG_REMOVE_BUTTON_LABEL" in source
     assert "variant: 'danger'" in source
+
+
+@pytest.mark.parametrize(
+    ("catalog_items", "profile_id", "fallback", "expected"),
+    [
+        (
+            [{"profile_id": "p1", "assigned_wg_id": "Wireguard6"}],
+            "p1",
+            "Wireguard5",
+            "Wireguard6",
+        ),
+        (
+            [{"profile_id": "p1", "wg_id": "Wireguard7"}],
+            "p1",
+            "Wireguard5",
+            "Wireguard7",
+        ),
+        (
+            [{"profile_id": "p1"}],
+            "p1",
+            "Wireguard8",
+            "Wireguard8",
+        ),
+    ],
+)
+def test_resolve_vpn_profile_wg_id_priority(
+    tmp_path: Path,
+    catalog_items: list[dict[str, str]],
+    profile_id: str,
+    fallback: str,
+    expected: str,
+) -> None:
+    """resolveVpnProfileWgId: assigned_wg_id → metadata wg_id → fallback."""
+    items_json = json.dumps(catalog_items, ensure_ascii=False)
+    result = _run_export(
+        tmp_path,
+        label=f"resolve-wg-{profile_id}-{expected}",
+        script_body=f"""
+const items = {items_json};
+console.log(JSON.stringify(mod.resolveVpnProfileWgId(items, {json.dumps(profile_id)}, {json.dumps(fallback)})));
+""",
+    )
+    assert result == expected

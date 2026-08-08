@@ -53,7 +53,15 @@ def _setup_watchdog(tmp_path: Any) -> tuple[VpnWatchdogHandle, str, WireguardInt
             }
         ),
     )
-    assignment = {"profile_id": profile_id}
+    store.upsert_tunnel_assignment(
+        router_id=router_id,
+        profile_id=profile_id,
+        desired_active=True,
+        observed_vendor_locator="Wireguard5",
+        policy_metadata_json='{"wg_id":"Wireguard5"}',
+    )
+    assignment = store.get_active_tunnel_assignment(router_id)
+    assert assignment is not None
     host = type("Host", (), {"runtime": runtime})()
     handle = VpnWatchdogHandle(host=host)
     intent = WireguardIntent(
@@ -394,3 +402,30 @@ def test_backup_callback_factory_fake_returns_noop(
     assert callback is not None
     callback()
     assert backup_called is False
+
+
+def test_reapply_aborts_when_assignment_cleared_before_lock(
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Watchdog reapply must not apply when active assignment disappeared under lock."""
+    handle, router_id, intent, assignment, store = _setup_watchdog(tmp_path)
+    store.deactivate_tunnel_assignments(router_id)
+    apply_called = False
+
+    def _fake_apply(**_kwargs: Any) -> Any:
+        nonlocal apply_called
+        apply_called = True
+        raise AssertionError("apply must not run when assignment is missing")
+
+    handle.backup_callback_factory = lambda _rid: lambda: None
+    monkeypatch.setattr(vpn_watchdog_service, "apply_wireguard_intent", _fake_apply)
+    handle._reapply_locked(router_id, intent, _Transport(), assignment)  # noqa: SLF001
+    assert apply_called is False
+    audit = store.conn.execute(
+        "SELECT action, outcome, summary_redacted FROM audit_events ORDER BY occurred_at DESC LIMIT 1"
+    ).fetchone()
+    assert audit is not None
+    assert audit[0] == "vpn_watchdog.reapply"
+    assert audit[1] == "failed"
+    assert "missing under lock" in (audit[2] or "")

@@ -2386,10 +2386,11 @@ export function render(container, ctx) {
     mutateAbort = new AbortController();
     const mutationSignal = mutateAbort.signal;
     try {
+      const wgId = resolveVpnProfileWgId(catalogItems, profileId, selectedWgId);
       const response = await activateVpnProfile({
         profileId,
         session: getSession(),
-        wgId: selectedWgId,
+        wgId,
         signal: mutationSignal,
       });
       if (disposed || offline || mutationSignal.aborted) {

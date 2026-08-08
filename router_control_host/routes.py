@@ -91,6 +91,10 @@ IdempotencyKeyHeader = Annotated[str, Header(alias="Idempotency-Key")]
 IfMatchHeader = Annotated[str, Header(alias="If-Match")]
 
 
+class VpnProfileDeactivateWgMismatchError(WireguardApplyServiceError):
+    """Deactivate wg_id does not match active tunnel assignment under apply lock."""
+
+
 class _StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -699,7 +703,12 @@ def _wireguard_intent_from_profile_row(
     peer_keepalive_interval: int | None = None,
 ) -> WireguardIntent:
     metadata = json.loads(row["metadata_json"] or "{}")
-    target_wg = wg_id or str(metadata.get("wg_id") or "Wireguard5")
+    explicit_wg = str(wg_id).strip() if wg_id else ""
+    meta_wg_raw = metadata.get("wg_id")
+    meta_wg = str(meta_wg_raw).strip() if meta_wg_raw else ""
+    target_wg = explicit_wg or meta_wg
+    if not target_wg:
+        raise ValueError("wg_id required: explicit wg_id or metadata.wg_id must be set")
     refs = host.runtime.store.list_profile_secret_refs(str(row["profile_id"]))
     private_ref: str | None = None
     psk_ref: str | None = None
@@ -779,6 +788,39 @@ def _profile_apply_success(result: WireguardApplyResult) -> bool:
     return result.overall == "applied"
 
 
+def _validate_deactivate_assignment_under_lock(
+    *,
+    fresh_assignment: dict[str, Any] | None,
+    outside_assignment: dict[str, Any] | None,
+    request_wg_id: str,
+) -> None:
+    """Fail-closed before teardown if assignment changed under apply lock."""
+    if fresh_assignment is None:
+        return
+    observed = fresh_assignment.get("observed_vendor_locator")
+    if observed:
+        observed_wg = str(observed).strip()
+        request_wg = request_wg_id.strip()
+        if observed_wg and observed_wg != request_wg:
+            raise VpnProfileDeactivateWgMismatchError(
+                "wg_id does not match active tunnel assignment "
+                f"(observed={observed_wg}, requested={request_wg})"
+            )
+    if outside_assignment is not None:
+        outside_profile_id = str(outside_assignment["profile_id"])
+        fresh_profile_id = str(fresh_assignment["profile_id"])
+        if fresh_profile_id != outside_profile_id:
+            raise VpnProfileDeactivateWgMismatchError(
+                "active tunnel assignment profile changed under apply lock "
+                f"(expected={outside_profile_id}, observed={fresh_profile_id})"
+            )
+    else:
+        raise VpnProfileDeactivateWgMismatchError(
+            "stale deactivate: concurrent activation created tunnel assignment "
+            "after snapshot"
+        )
+
+
 def _teardown_prior_profile_assignment(
     *,
     host: HostState,
@@ -799,7 +841,23 @@ def _teardown_prior_profile_assignment(
     prior_row = host.runtime.store.get_profile(str(prior["profile_id"]))
     if prior_row is None:
         return
-    prior_intent = _wireguard_intent_from_profile_row(host, prior_row, enabled=False)
+    prior_locator = prior.get("observed_vendor_locator")
+    prior_wg_id: str | None = None
+    if prior_locator and str(prior_locator).strip():
+        prior_wg_id = str(prior_locator).strip()
+    else:
+        prior_metadata = json.loads(prior_row["metadata_json"] or "{}")
+        meta_wg = prior_metadata.get("wg_id")
+        if meta_wg and str(meta_wg).strip():
+            prior_wg_id = str(meta_wg).strip()
+    if prior_wg_id is None:
+        raise WireguardApplyServiceError(
+            "prior VPN profile has no resolvable wg_id "
+            "(observed_vendor_locator and metadata.wg_id both absent)"
+        )
+    prior_intent = _wireguard_intent_from_profile_row(
+        host, prior_row, wg_id=prior_wg_id, enabled=False
+    )
     if wg_routes._should_use_live_path(
         cast(wg_routes.WireguardLiveConnectionFields, body), host
     ):
@@ -2102,6 +2160,8 @@ def list_profiles(request: Request) -> JSONResponse:
                 meta_wg = metadata.get("wg_id")
                 if meta_wg is not None:
                     assigned_wg_id = str(meta_wg)
+        meta_wg_raw = metadata.get("wg_id")
+        profile_wg_id = str(meta_wg_raw) if meta_wg_raw is not None else None
         item: dict[str, Any] = {
             "profile_id": row["profile_id"],
             "display_name": row["display_name"],
@@ -2111,6 +2171,7 @@ def list_profiles(request: Request) -> JSONResponse:
             "created_at": row["created_at"],
             "is_active": is_active,
             "assigned_wg_id": assigned_wg_id,
+            "wg_id": profile_wg_id,
         }
         if tunnel_verification_status is not None:
             item["tunnel_verification_status"] = tunnel_verification_status
@@ -2588,7 +2649,7 @@ def activate_vpn_profile(
             cast(wg_routes.WireguardLiveConnectionFields, body), host
         ):
             assert live_params is not None
-            return wg_routes._dispatch_apply_live(
+            apply_result = wg_routes._dispatch_apply_live(
                 host=host,
                 intent=intent,
                 params=live_params,
@@ -2598,19 +2659,50 @@ def activate_vpn_profile(
                 sealed_apply_params=trail_params,
                 router_id=router_id,
             )
-        transport = wg_routes._resolve_transport(host, request)
-        if isinstance(transport, JSONResponse):
-            raise WireguardApplyServiceError("transport resolution failed")
-        return apply_wireguard_intent(
-            intent=intent,
-            transport=transport,
-            credential_resolver=wg_routes._credential_resolver(host),
-            handshake_settle_seconds=clamp_handshake_settle_seconds(
-                body.handshake_settle_seconds
-            ),
-            store=host.runtime.store,
-            sealed_apply_params=trail_params,
-        )
+        else:
+            transport = wg_routes._resolve_transport(host, request)
+            if isinstance(transport, JSONResponse):
+                raise WireguardApplyServiceError("transport resolution failed")
+            apply_result = apply_wireguard_intent(
+                intent=intent,
+                transport=transport,
+                credential_resolver=wg_routes._credential_resolver(host),
+                handshake_settle_seconds=clamp_handshake_settle_seconds(
+                    body.handshake_settle_seconds
+                ),
+                store=host.runtime.store,
+                sealed_apply_params=trail_params,
+            )
+        if router_id and _profile_apply_success(apply_result):
+            try:
+                host.runtime.store.upsert_tunnel_assignment(
+                    router_id=router_id,
+                    profile_id=profile_id,
+                    logical_role=body.logical_role,
+                    desired_active=True,
+                    observed_vendor_locator=intent.wg_id,
+                    policy_metadata_json=json.dumps(
+                        {
+                            "wg_id": intent.wg_id,
+                            "tunnel_verification_status": apply_result.tunnel_verification_status,
+                        },
+                        sort_keys=True,
+                    ),
+                    now=host.runtime.clock.now(),
+                )
+                if intent.ip_global_priority is not None or intent.ip_global_auto:
+                    metadata_patch: dict[str, Any] = {"ip_global_auto": intent.ip_global_auto}
+                    if intent.ip_global_priority is not None:
+                        metadata_patch["ip_global_priority"] = intent.ip_global_priority
+                    host.runtime.store.merge_profile_metadata(
+                        profile_id=profile_id,
+                        patch=metadata_patch,
+                    )
+            except Exception as exc:
+                raise WireguardApplyServiceError(
+                    "tunnel assignment upsert failed after successful activate apply"
+                ) from exc
+        return apply_result
 
     if wg_routes._should_use_live_path(
         cast(wg_routes.WireguardLiveConnectionFields, body), host
@@ -2750,30 +2842,6 @@ def activate_vpn_profile(
         )
 
     assert result is not None
-    if router_id and _profile_apply_success(result):
-        host.runtime.store.upsert_tunnel_assignment(
-            router_id=router_id,
-            profile_id=profile_id,
-            logical_role=body.logical_role,
-            desired_active=True,
-            observed_vendor_locator=intent.wg_id,
-            policy_metadata_json=json.dumps(
-                {
-                    "wg_id": intent.wg_id,
-                    "tunnel_verification_status": result.tunnel_verification_status,
-                },
-                sort_keys=True,
-            ),
-            now=host.runtime.clock.now(),
-        )
-        if intent.ip_global_priority is not None or intent.ip_global_auto:
-            metadata_patch: dict[str, Any] = {"ip_global_auto": intent.ip_global_auto}
-            if intent.ip_global_priority is not None:
-                metadata_patch["ip_global_priority"] = intent.ip_global_priority
-            host.runtime.store.merge_profile_metadata(
-                profile_id=profile_id,
-                patch=metadata_patch,
-            )
     payload = result.to_dict()
     payload["profile_id"] = profile_id
     payload["activated"] = _profile_apply_success(result)
@@ -2869,28 +2937,66 @@ def deactivate_vpn_profile(
     result: WireguardApplyResult | None = None
 
     def _dispatch_deactivate() -> WireguardApplyResult:
+        if router_id:
+            fresh_assignment = host.runtime.store.get_active_tunnel_assignment(
+                router_id, logical_role=body.logical_role
+            )
+            _validate_deactivate_assignment_under_lock(
+                fresh_assignment=fresh_assignment,
+                outside_assignment=assignment,
+                request_wg_id=body.wg_id,
+            )
         if wg_routes._should_use_live_path(
             cast(wg_routes.WireguardLiveConnectionFields, body), host
         ):
             assert live_params is not None
-            return wg_routes._dispatch_teardown_live(
+            teardown_result = wg_routes._dispatch_teardown_live(
                 host=host,
                 intent=intent,
                 params=live_params,
                 sealed_apply_params=trail_params,
                 router_id=router_id,
             )
-        transport = wg_routes._resolve_transport(host, request)
-        if isinstance(transport, JSONResponse):
-            raise WireguardApplyServiceError("transport resolution failed")
-        return teardown_wireguard(
-            wg_id=body.wg_id,
-            transport=transport,
-            credential_resolver=wg_routes._credential_resolver(host),
-            intent=intent,
-            store=host.runtime.store,
-            sealed_apply_params=trail_params,
-        )
+        else:
+            transport = wg_routes._resolve_transport(host, request)
+            if isinstance(transport, JSONResponse):
+                raise WireguardApplyServiceError("transport resolution failed")
+            teardown_result = teardown_wireguard(
+                wg_id=body.wg_id,
+                transport=transport,
+                credential_resolver=wg_routes._credential_resolver(host),
+                intent=intent,
+                store=host.runtime.store,
+                sealed_apply_params=trail_params,
+            )
+        if router_id and _profile_apply_success(teardown_result) and assignment is not None:
+            still_active = host.runtime.store.get_active_tunnel_assignment(
+                router_id, logical_role=body.logical_role
+            )
+            if still_active is not None:
+                if str(still_active["profile_id"]) != str(assignment["profile_id"]):
+                    raise VpnProfileDeactivateWgMismatchError(
+                        "active tunnel assignment changed during deactivate teardown"
+                    )
+                observed = still_active.get("observed_vendor_locator")
+                if observed:
+                    observed_wg = str(observed).strip()
+                    request_wg = body.wg_id.strip()
+                    if observed_wg and observed_wg != request_wg:
+                        raise VpnProfileDeactivateWgMismatchError(
+                            "wg_id does not match active tunnel assignment "
+                            f"(observed={observed_wg}, requested={request_wg})"
+                        )
+                cleared = host.runtime.store.deactivate_tunnel_assignments(
+                    router_id,
+                    logical_role=body.logical_role,
+                    now=host.runtime.clock.now(),
+                )
+                if cleared == 0:
+                    raise WireguardApplyServiceError(
+                        "deactivate succeeded but clearing tunnel assignment failed"
+                    )
+        return teardown_result
 
     if wg_routes._should_use_live_path(
         cast(wg_routes.WireguardLiveConnectionFields, body), host
@@ -2925,6 +3031,23 @@ def deactivate_vpn_profile(
             return sealed_apply_trail_begin_error_response(request, exc)
         except LiveGateARequiredError as exc:
             return wg_routes._gate_a_required_error(request, str(exc))
+        except VpnProfileDeactivateWgMismatchError as exc:
+            wg_routes._record_wireguard_sealed_audit(
+                host,
+                request,
+                verb="deactivate",
+                intent_redacted=intent_redacted,
+                outcome="failed",
+                error_message=str(exc),
+                router_id=router_id,
+                route="vpn-profiles",
+            )
+            return error_response(
+                request,
+                status_code=422,
+                code="profile.deactivate_wg_mismatch",
+                message=str(exc),
+            )
         except WireguardApplyServiceError as exc:
             wg_routes._record_wireguard_sealed_audit(
                 host,
@@ -2992,6 +3115,23 @@ def deactivate_vpn_profile(
                 route="vpn-profiles",
             )
             return sealed_apply_trail_begin_error_response(request, exc)
+        except VpnProfileDeactivateWgMismatchError as exc:
+            wg_routes._record_wireguard_sealed_audit(
+                host,
+                request,
+                verb="deactivate",
+                intent_redacted=intent_redacted,
+                outcome="failed",
+                error_message=str(exc),
+                router_id=router_id,
+                route="vpn-profiles",
+            )
+            return error_response(
+                request,
+                status_code=422,
+                code="profile.deactivate_wg_mismatch",
+                message=str(exc),
+            )
         except WireguardApplyServiceError as exc:
             wg_routes._record_wireguard_sealed_audit(
                 host,
@@ -3032,24 +3172,6 @@ def deactivate_vpn_profile(
         )
 
     assert result is not None
-    if router_id and _profile_apply_success(result):
-        if assignment is not None:
-            observed = assignment.get("observed_vendor_locator")
-            if observed:
-                observed_wg = str(observed).strip()
-                if observed_wg and observed_wg != body.wg_id.strip():
-                    return error_response(
-                        request,
-                        status_code=422,
-                        code="profile.deactivate_wg_mismatch",
-                        message=(
-                            "wg_id does not match active tunnel assignment "
-                            f"(observed={observed_wg}, requested={body.wg_id.strip()})"
-                        ),
-                    )
-        host.runtime.store.deactivate_tunnel_assignments(
-            router_id, logical_role=body.logical_role, now=host.runtime.clock.now()
-        )
     payload = result.to_dict()
     payload["deactivated"] = _profile_apply_success(result)
     return JSONResponse(payload, status_code=200, headers=_ok_headers(request))
