@@ -51,21 +51,22 @@ const ICON_DEFS = {
     ],
   },
   "staff-wifi": {
+    // House over wifi — roof peak on x=12 (centered in 24×24).
     paths: [
-      { d: "M5 12.5a7 7 0 0 1 14 0" },
-      { d: "M8.5 16a3.5 3.5 0 0 1 7 0" },
-      { d: "M12 19.5h.01" },
-      { d: "M3 8.5 12 2l9 6.5" },
+      { d: "M5 13a7 7 0 0 1 14 0" },
+      { d: "M8.5 16.5a3.5 3.5 0 0 1 7 0" },
+      { d: "M12 20h.01" },
+      { d: "M3.5 9 12 2.5 20.5 9" },
     ],
   },
   "guest-wifi": {
+    // City (dual peak) over wifi — same optical center as staff-wifi.
+    // Previous glyph was a top-right corner mark and read as crooked.
     paths: [
-      { d: "M4 13a8 8 0 0 1 16 0" },
-      { d: "M8 17a4 4 0 0 1 8 0" },
-      { d: "M12 21h.01" },
-      { d: "M16 6 18 4l2 2" },
-      { d: "M18 4v4" },
-      { d: "M18 4h-4" },
+      { d: "M5 13a7 7 0 0 1 14 0" },
+      { d: "M8.5 16.5a3.5 3.5 0 0 1 7 0" },
+      { d: "M12 20h.01" },
+      { d: "M3.5 9.5 8 3.5 12 8 16 3.5 20.5 9.5" },
     ],
   },
   vpn: {
