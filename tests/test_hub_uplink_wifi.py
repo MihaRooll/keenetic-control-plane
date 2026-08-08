@@ -1083,3 +1083,26 @@ def test_internet_uplink_screen_loads_watchdog_status() -> None:
     assert "disposed = true" in dispose_body
     assert "watchdogAbort?.abort()" in dispose_body
     assert source.count("watchdogAbort?.abort()") >= 2
+
+
+def test_uplink_wifi_apply_teardown_timeout_keendns_parity() -> None:
+    """apply/teardown client fetch timeoutMs >= 60000 (KeenDNS/wifi apply parity)."""
+    source = UPLINK_MODEL_JS.read_text(encoding="utf-8")
+    assert "UPLINK_WIFI_APPLY_TEARDOWN_TIMEOUT_MS" in source
+    match = re.search(r"UPLINK_WIFI_APPLY_TEARDOWN_TIMEOUT_MS\s*=\s*(\d+)", source)
+    assert match is not None
+    assert int(match.group(1)) >= 60000
+    apply_block = re.search(
+        r"export async function applyUplinkWifiConnection\([\s\S]*?\n\}",
+        source,
+    )
+    teardown_block = re.search(
+        r"export async function teardownUplinkWifiConnection\([\s\S]*?\n\}",
+        source,
+    )
+    assert apply_block is not None
+    assert teardown_block is not None
+    assert "UPLINK_WIFI_APPLY_TEARDOWN_TIMEOUT_MS" in apply_block.group(0)
+    assert "UPLINK_WIFI_APPLY_TEARDOWN_TIMEOUT_MS" in teardown_block.group(0)
+    assert "wifi/station/apply" in apply_block.group(0)
+    assert "wifi/station/teardown" in teardown_block.group(0)

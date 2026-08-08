@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -699,3 +700,26 @@ def test_wifi_network_header_signature_stabilized_during_mutation(
     assert "stabilizeObservedLabels: preparingMutation || mutating" in header_sig_body
     parts_source = WIFI_SCREEN_PARTS_JS.read_text(encoding="utf-8")
     assert "stabilizeObservedLabels" in parts_source
+
+
+def test_wifi_apply_teardown_timeout_keendns_parity() -> None:
+    """apply/teardown client fetch timeoutMs >= 60000 (KeenDNS parity)."""
+    source = WIFI_AP_MODEL_JS.read_text(encoding="utf-8")
+    assert "WIFI_APPLY_TEARDOWN_TIMEOUT_MS" in source
+    match = re.search(r"WIFI_APPLY_TEARDOWN_TIMEOUT_MS\s*=\s*(\d+)", source)
+    assert match is not None
+    assert int(match.group(1)) >= 60000
+    apply_block = re.search(
+        r"export async function applyWifiChanges\([\s\S]*?\n\}",
+        source,
+    )
+    teardown_block = re.search(
+        r"export async function teardownWifiNetwork\([\s\S]*?\n\}",
+        source,
+    )
+    assert apply_block is not None
+    assert teardown_block is not None
+    assert "WIFI_APPLY_TEARDOWN_TIMEOUT_MS" in apply_block.group(0)
+    assert "WIFI_APPLY_TEARDOWN_TIMEOUT_MS" in teardown_block.group(0)
+    assert "wifi/apply" in apply_block.group(0)
+    assert "wifi/teardown" in teardown_block.group(0)

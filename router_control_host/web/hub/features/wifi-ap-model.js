@@ -81,6 +81,9 @@ export const WIFI_READBACK_POLL_INTERVAL_MS = 2000;
  */
 export const WIFI_READBACK_POLL_TIMEOUT_MS = 25000;
 
+/** Client fetch timeout for wifi/apply and wifi/teardown (ms). Matches KeenDNS apply parity (60s); live backup+apply exceeds default 15s. */
+export const WIFI_APPLY_TEARDOWN_TIMEOUT_MS = 60000;
+
 /** Клиентское сообщение при ошибке регистрации пароля (без echo сервера). */
 export const WIFI_CREDENTIAL_REGISTRATION_FAILED_MESSAGE =
   'Не удалось сохранить новый пароль для сети.';
@@ -1675,7 +1678,7 @@ export async function applyWifiChanges({ previewBody, session, signal, idempoten
     throw new Error('Для применения изменений не хватает параметров живого подключения');
   }
   const body = buildWifiApplyBody({ previewBody, liveParams: live.params, idempotent });
-  return apiPost('wifi/apply', body, { signal });
+  return apiPost('wifi/apply', body, { signal, timeoutMs: WIFI_APPLY_TEARDOWN_TIMEOUT_MS });
 }
 
 /**
@@ -1688,7 +1691,7 @@ export async function teardownWifiNetwork({ apId, wpaMode, session, signal }) {
     throw new Error('Для отключения сети не хватает параметров живого подключения');
   }
   const body = buildWifiTeardownBody({ apId, wpaMode, liveParams: live.params });
-  return apiPost('wifi/teardown', body, { signal });
+  return apiPost('wifi/teardown', body, { signal, timeoutMs: WIFI_APPLY_TEARDOWN_TIMEOUT_MS });
 }
 
 /**

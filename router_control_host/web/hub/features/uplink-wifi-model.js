@@ -39,6 +39,9 @@ export const UPLINK_WIFI_STATION_MODE = 'WifiWan';
 export const UPLINK_WIFI_DEFAULT_PRIORITY = 100;
 export const UPLINK_WIFI_DEFAULT_SETTLE_SECONDS = 25;
 
+/** Client fetch timeout for wifi/station/apply and wifi/station/teardown (ms). Matches KeenDNS/wifi apply parity (60s). */
+export const UPLINK_WIFI_APPLY_TEARDOWN_TIMEOUT_MS = 60000;
+
 export const UPLINK_WIFI_DISTINCTION_NOTE =
   'Здесь роутер сам подключается к чужой Wi‑Fi сети, чтобы получить интернет. Это не то же самое, что «Рабочая сеть» и «Гостевой Wi‑Fi» — те разделы настраивают сети, которые роутер раздаёт другим устройствам.';
 
@@ -644,7 +647,7 @@ export async function previewUplinkWifiConnection({ previewBody, signal }) {
  */
 export async function applyUplinkWifiConnection({ previewBody, session, signal }) {
   const body = buildStationApplyBody({ previewBody, session });
-  return apiPost('wifi/station/apply', body, { signal });
+  return apiPost('wifi/station/apply', body, { signal, timeoutMs: UPLINK_WIFI_APPLY_TEARDOWN_TIMEOUT_MS });
 }
 
 /**
@@ -653,7 +656,7 @@ export async function applyUplinkWifiConnection({ previewBody, session, signal }
  */
 export async function teardownUplinkWifiConnection({ ssid, band, credentialRefId, session, signal }) {
   const body = buildStationTeardownBody({ ssid, band, credentialRefId, session });
-  return apiPost('wifi/station/teardown', body, { signal });
+  return apiPost('wifi/station/teardown', body, { signal, timeoutMs: UPLINK_WIFI_APPLY_TEARDOWN_TIMEOUT_MS });
 }
 
 /**
