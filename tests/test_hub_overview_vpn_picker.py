@@ -307,3 +307,11 @@ def test_vpn_picker_skeleton_height_matches_live_picker(vpn_owned_css: str) -> N
     skeleton_css = css[sk_start:sk_end]
     assert "height: 9.25rem" in skeleton_css
     assert "max-height: 9.25rem" in vpn_owned_css
+
+
+def test_overview_imports_shared_resolve_vpn_profile_wg_id(overview_source: str) -> None:
+    """Overview VPN mutations must use vpn-model resolveVpnProfileWgId parity."""
+    assert "resolveVpnProfileWgId" in overview_source
+    assert "from '../features/vpn-model.js'" in overview_source
+    assert "resolveOverviewVpnProfileWgId(profileId)" in overview_source
+    assert "resolveVpnProfileWgId(vpnCatalogItems, profileId, fallbackWgId)" in overview_source

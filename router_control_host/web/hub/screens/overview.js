@@ -54,6 +54,7 @@ import {
   fetchVpnCatalogLiveStatus,
   listVpnProfiles,
   listVpnTunnelInterfaceOptions,
+  resolveVpnProfileWgId,
   VPN_POST_SETTLE_RECHECK_HINT,
   VPN_TUNNEL_UNVERIFIED_MESSAGE,
 } from '../features/vpn-model.js';
@@ -1212,19 +1213,10 @@ export function render(container, ctx) {
    * @param {string} profileId
    * @returns {string}
    */
-  function resolveVpnProfileWgId(profileId) {
-    const item = vpnCatalogItems.find((row) => {
-      const payload = /** @type {Record<string, unknown>} */ (row ?? {});
-      return payload.profile_id === profileId;
-    });
-    const payload = /** @type {Record<string, unknown>} */ (item ?? {});
-    const assigned =
-      typeof payload.assigned_wg_id === 'string' ? payload.assigned_wg_id.trim() : '';
-    if (assigned) {
-      return assigned;
-    }
+  function resolveOverviewVpnProfileWgId(profileId) {
     const options = listVpnTunnelInterfaceOptions();
-    return options[0]?.wgId ?? 'Wireguard5';
+    const fallbackWgId = options[0]?.wgId ?? 'Wireguard5';
+    return resolveVpnProfileWgId(vpnCatalogItems, profileId, fallbackWgId);
   }
 
   /**
@@ -1349,7 +1341,7 @@ export function render(container, ctx) {
     mutateAbort = new AbortController();
     const mutationSignal = mutateAbort.signal;
     try {
-      const wgId = resolveVpnProfileWgId(profileId);
+      const wgId = resolveOverviewVpnProfileWgId(profileId);
       const response = await activateVpnProfile({
         profileId,
         session: getSession(),
@@ -1443,7 +1435,7 @@ export function render(container, ctx) {
     mutateAbort = new AbortController();
     const mutationSignal = mutateAbort.signal;
     try {
-      const wgId = resolveVpnProfileWgId(profileId);
+      const wgId = resolveOverviewVpnProfileWgId(profileId);
       const response = await deactivateVpnProfile({
         wgId,
         session: getSession(),

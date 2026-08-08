@@ -832,32 +832,45 @@ def _teardown_prior_profile_assignment(
     logical_role: str,
     live_params: Any,
     trail_params: Any,
+    target_wg_id: str | None,
 ) -> None:
     prior = host.runtime.store.get_active_tunnel_assignment(
         router_id, logical_role=logical_role
     )
-    if prior is None or str(prior["profile_id"]) == profile_id:
+    if prior is None:
         return
-    prior_row = host.runtime.store.get_profile(str(prior["profile_id"]))
-    if prior_row is None:
-        return
+    prior_profile_id = str(prior["profile_id"])
+    same_profile = prior_profile_id == profile_id
     prior_locator = prior.get("observed_vendor_locator")
     prior_wg_id: str | None = None
     if prior_locator and str(prior_locator).strip():
         prior_wg_id = str(prior_locator).strip()
-    else:
+    prior_row = host.runtime.store.get_profile(prior_profile_id)
+    if prior_wg_id is None and prior_row is not None:
         prior_metadata = json.loads(prior_row["metadata_json"] or "{}")
         meta_wg = prior_metadata.get("wg_id")
         if meta_wg and str(meta_wg).strip():
             prior_wg_id = str(meta_wg).strip()
+    if same_profile:
+        target = str(target_wg_id).strip() if target_wg_id else ""
+        if target and prior_wg_id and target == prior_wg_id:
+            return
     if prior_wg_id is None:
+        if prior_row is None:
+            raise WireguardApplyServiceError(
+                "orphan tunnel assignment has no resolvable wg_id "
+                "(observed_vendor_locator absent)"
+            )
         raise WireguardApplyServiceError(
             "prior VPN profile has no resolvable wg_id "
             "(observed_vendor_locator and metadata.wg_id both absent)"
         )
-    prior_intent = _wireguard_intent_from_profile_row(
-        host, prior_row, wg_id=prior_wg_id, enabled=False
-    )
+    if prior_row is not None:
+        prior_intent = _wireguard_intent_from_profile_row(
+            host, prior_row, wg_id=prior_wg_id, enabled=False
+        )
+    else:
+        prior_intent = WireguardIntent(wg_id=prior_wg_id, enabled=False)
     if wg_routes._should_use_live_path(
         cast(wg_routes.WireguardLiveConnectionFields, body), host
     ):
@@ -2644,6 +2657,7 @@ def activate_vpn_profile(
                 logical_role=body.logical_role,
                 live_params=live_params,
                 trail_params=trail_params,
+                target_wg_id=intent.wg_id,
             )
         if wg_routes._should_use_live_path(
             cast(wg_routes.WireguardLiveConnectionFields, body), host
@@ -2690,14 +2704,15 @@ def activate_vpn_profile(
                     ),
                     now=host.runtime.clock.now(),
                 )
+                metadata_patch: dict[str, Any] = {"wg_id": intent.wg_id}
                 if intent.ip_global_priority is not None or intent.ip_global_auto:
-                    metadata_patch: dict[str, Any] = {"ip_global_auto": intent.ip_global_auto}
+                    metadata_patch["ip_global_auto"] = intent.ip_global_auto
                     if intent.ip_global_priority is not None:
                         metadata_patch["ip_global_priority"] = intent.ip_global_priority
-                    host.runtime.store.merge_profile_metadata(
-                        profile_id=profile_id,
-                        patch=metadata_patch,
-                    )
+                host.runtime.store.merge_profile_metadata(
+                    profile_id=profile_id,
+                    patch=metadata_patch,
+                )
             except Exception as exc:
                 raise WireguardApplyServiceError(
                     "tunnel assignment upsert failed after successful activate apply"
