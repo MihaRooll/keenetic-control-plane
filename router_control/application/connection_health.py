@@ -16,6 +16,7 @@ from router_control.adapters.netcraze.ssh_tunnel import (
     normalize_sha256_fingerprint,
     validate_source_address,
 )
+from router_control.adapters.netcraze.transport import normalize_management_host as _normalize_host
 from router_control.persistence.store import PersistenceStore
 from router_control.ports.vault import CredentialVaultPort
 
@@ -67,19 +68,6 @@ class NotConfiguredConnectionHealthProbe:
         credential_ref_id: str | None,
     ) -> dict[str, Any]:
         raise RuntimeError("probe not configured")
-
-
-def _normalize_host(host: str) -> str:
-    candidate = host.strip()
-    if candidate.lower().startswith("http://"):
-        candidate = candidate[7:]
-    elif candidate.lower().startswith("https://"):
-        candidate = candidate[8:]
-    if "/" in candidate:
-        candidate = candidate.split("/", 1)[0]
-    if candidate.count(":") == 1 and not candidate.startswith("["):
-        candidate = candidate.split(":", 1)[0]
-    return candidate.strip()
 
 
 def _resolve_target(

@@ -1438,6 +1438,29 @@ def _host_contains_userinfo(host: str) -> bool:
     return "@" in host
 
 
+def normalize_management_host(host: str) -> str:
+    """Strip scheme, userinfo, and port for management-host identity matching."""
+    candidate = host.strip()
+    if not candidate:
+        return ""
+
+    authority = candidate.split("/", 1)[0]
+    if "://" in candidate:
+        parsed = urlparse(candidate)
+        hostname = parsed.hostname
+    else:
+        parsed = urlparse(f"//{authority}")
+        hostname = parsed.hostname
+
+    if hostname:
+        return hostname.strip()
+
+    fallback = authority
+    if fallback.count(":") == 1 and not fallback.startswith("["):
+        fallback = fallback.split(":", 1)[0]
+    return fallback.strip()
+
+
 def parse_transport_target(host: str) -> TransportTarget:
 
     if _host_contains_userinfo(host):

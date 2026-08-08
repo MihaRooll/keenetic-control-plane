@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from router_control.adapters.netcraze.errors import SshHostKeyMissing
+from router_control.adapters.netcraze.transport import normalize_management_host
 from router_control.application.ssh_host_key_pin import (
     LearnCandidateResult,
     PendingLearnRegistry,
@@ -84,6 +85,7 @@ def _seed_router(store: PersistenceStore) -> str:
         model="M1",
         identity_fingerprint="digest:fp:1",
         host="192.168.1.1",
+        source_address="192.168.2.10",
         now=datetime(2026, 7, 31, tzinfo=UTC),
     )
 
@@ -753,6 +755,21 @@ def test_resolve_identity_router_id_prefers_genuine_enrolled_over_draft_pins(
     genuine_id = _seed_live_shape_store(store)
     resolved = resolve_identity_router_id_for_host(store, "192.168.2.1")
     assert resolved == genuine_id
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("192.168.2.1", "192.168.2.1"),
+        ("192.168.2.1:443", "192.168.2.1"),
+        ("[fd00::1]:22", "fd00::1"),
+        ("user:pass@192.168.2.1:8080", "192.168.2.1"),
+        ("https://user:pass@192.168.2.1:8443/path", "192.168.2.1"),
+        ("", ""),
+    ],
+)
+def test_normalize_management_host(raw: str, expected: str) -> None:
+    assert normalize_management_host(raw) == expected
 
 
 def test_main_observed_state_shape_refused_without_stored_pin(

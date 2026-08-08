@@ -13,7 +13,10 @@ from router_control.adapters.netcraze.ssh_tunnel import (
     source_address_class,
     validate_source_address,
 )
-from router_control.adapters.netcraze.transport import is_loopback_management_host
+from router_control.adapters.netcraze.transport import (
+    is_loopback_management_host,
+    normalize_management_host as _normalize_host,
+)
 from router_control.adapters.netcraze.tuple_evidence import tuple_evidence_fields_or_none
 from router_control.persistence.store import PersistenceStore
 from router_control.ports.vault import CredentialVaultPort
@@ -96,19 +99,6 @@ class _MutableCandidate:
     router_id: str | None = None
     route_if_index: int | None = None
     route_label: str | None = None
-
-
-def _normalize_host(host: str) -> str:
-    candidate = host.strip()
-    if candidate.lower().startswith("http://"):
-        candidate = candidate[7:]
-    elif candidate.lower().startswith("https://"):
-        candidate = candidate[8:]
-    if "/" in candidate:
-        candidate = candidate.split("/", 1)[0]
-    if candidate.count(":") == 1 and not candidate.startswith("["):
-        candidate = candidate.split(":", 1)[0]
-    return candidate.strip()
 
 
 def _host_exclusion_reason(host: str) -> str | None:

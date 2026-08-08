@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import socket
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -36,13 +37,32 @@ def probe():
         ("127.0.0.1", True),
         ("8.8.8.8", False),
         ("1.1.1.1", False),
-        ("example.com", False),
-        ("router.local", True),
         ("https://192.168.1.1", True),
     ],
 )
 def test_host_is_private(probe, host: str, expected: bool) -> None:
     assert probe._host_is_private(host) is expected
+
+
+def test_host_is_private_public_hostname_resolves_fail_closed(probe) -> None:
+    with patch(
+        "router_control.adapters.netcraze.ssh_tunnel.socket.getaddrinfo",
+        return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 0))],
+    ):
+        assert probe._host_is_private("example.com") is False
+
+
+def test_host_is_private_router_local_requires_private_resolve(probe) -> None:
+    with patch(
+        "router_control.adapters.netcraze.ssh_tunnel.socket.getaddrinfo",
+        return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.168.1.50", 0))],
+    ):
+        assert probe._host_is_private("router.local") is True
+    with patch(
+        "router_control.adapters.netcraze.ssh_tunnel.socket.getaddrinfo",
+        return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 0))],
+    ):
+        assert probe._host_is_private("router.local") is False
 
 
 def test_refuses_non_private_host_without_flag(probe) -> None:

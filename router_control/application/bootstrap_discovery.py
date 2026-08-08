@@ -33,6 +33,7 @@ from router_control.adapters.netcraze.sanitize import (
     sanitize_value,
 )
 from router_control.adapters.netcraze.transport import NetcrazeTransport, parse_transport_target
+from router_control.adapters.netcraze.ssh_tunnel import host_is_private
 from router_control.application.wifi_observation_helpers import (
     resolve_device_connected,
     resolve_link_up,
@@ -167,20 +168,6 @@ class BootstrapDiscoveryReport:
         if self.ssh_component_determination is not None:
             payload["ssh_component_determination"] = self.ssh_component_determination
         return sanitize_mapping(payload)
-
-
-def _host_is_private(host: str) -> bool:
-    try:
-        candidate = parse_transport_target(host).hostname
-    except ValueError:
-        candidate = host
-    if candidate.endswith(".local"):
-        return True
-    try:
-        addr = ipaddress.ip_address(candidate)
-    except ValueError:
-        return False
-    return bool(addr.is_private or addr.is_link_local or addr.is_loopback)
 
 
 def _firmware_sort_key(raw: str) -> tuple[Any, ...]:
@@ -652,7 +639,7 @@ def _validate_bootstrap_policy(
         target = parse_transport_target(host)
     except ValueError as exc:
         raise BootstrapDiscoveryError(str(exc)) from exc
-    if not _host_is_private(target.hostname):
+    if not host_is_private(target.hostname):
         raise BootstrapDiscoveryError("bootstrap discovery requires private management host")
     if target.scheme == "http" and not allow_insecure_http:
         raise BootstrapDiscoveryError("plain HTTP requires allow_insecure_http")

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import socket
 from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
@@ -93,6 +94,38 @@ def test_host_is_private_ranges() -> None:
     assert host_is_private("8.8.8.8") is False
     assert host_is_private("[fd00::1]") is True
     assert host_is_private("2606:4700:4700::1111") is False
+
+
+def test_host_is_private_hostname_resolves_fail_closed() -> None:
+    with patch(
+        "router_control.adapters.netcraze.ssh_tunnel.socket.getaddrinfo",
+        return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 0))],
+    ):
+        assert host_is_private("metadata.local") is False
+    with patch(
+        "router_control.adapters.netcraze.ssh_tunnel.socket.getaddrinfo",
+        side_effect=OSError("temporary failure"),
+    ):
+        assert host_is_private("metadata.local") is False
+
+
+def test_host_is_private_hostname_private_resolve_true() -> None:
+    with patch(
+        "router_control.adapters.netcraze.ssh_tunnel.socket.getaddrinfo",
+        return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.168.1.50", 0))],
+    ):
+        assert host_is_private("router.local") is True
+
+
+def test_host_is_private_hostname_mixed_resolve_false() -> None:
+    with patch(
+        "router_control.adapters.netcraze.ssh_tunnel.socket.getaddrinfo",
+        return_value=[
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.168.1.50", 0)),
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 0)),
+        ],
+    ):
+        assert host_is_private("router.local") is False
 
 
 def test_password_hidden_in_config_repr() -> None:

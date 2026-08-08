@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import ipaddress
+import socket
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -607,7 +608,11 @@ def test_address_classifier_parametrized(addr: str, allowed: bool) -> None:
 def test_ssh_tunnel_host_is_private_unsuitable_for_probes() -> None:
     assert host_is_private("127.0.0.1") is True
     assert host_is_private("169.254.169.254") is True
-    assert host_is_private("metadata.local") is True
+    with patch(
+        "router_control.adapters.netcraze.ssh_tunnel.socket.getaddrinfo",
+        return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 0))],
+    ):
+        assert host_is_private("metadata.local") is False
     assert is_allowed_event_preset_target(ipaddress.ip_address("127.0.0.1")) is False
     assert is_allowed_event_preset_target(ipaddress.ip_address("169.254.169.254")) is False
 

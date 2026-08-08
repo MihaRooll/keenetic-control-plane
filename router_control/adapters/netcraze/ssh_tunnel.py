@@ -102,15 +102,72 @@ def strip_host_brackets(hostname: str) -> str:
     return candidate
 
 
+_HOST_DNS_RESOLVE_TIMEOUT_S = 3.0
+
+
+def _address_is_private_like(addr: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    return bool(addr.is_private or addr.is_link_local or addr.is_loopback)
+
+
+def _getaddrinfo_bounded(
+    hostname: str,
+    *,
+    timeout: float = _HOST_DNS_RESOLVE_TIMEOUT_S,
+) -> list[tuple[int, int, int, str, tuple[str, int]]] | None:
+    """Resolve hostname with bounded wait; None on timeout or resolver failure."""
+    result: list[list[tuple[int, int, int, str, tuple[str, int]]]] = []
+    error: list[OSError] = []
+
+    def _resolve() -> None:
+        try:
+            raw = socket.getaddrinfo(
+                hostname,
+                0,
+                type=socket.SOCK_STREAM,
+                proto=socket.IPPROTO_TCP,
+            )
+            result.append(raw)
+        except OSError as exc:
+            error.append(exc)
+
+    thread = threading.Thread(target=_resolve, daemon=True, name="ssh-tunnel-dns")
+    thread.start()
+    thread.join(timeout=timeout)
+    if thread.is_alive():
+        return None
+    if error:
+        return None
+    return result[0] if result else None
+
+
 def host_is_private(hostname: str) -> bool:
     candidate = strip_host_brackets(hostname.strip())
-    if candidate.endswith(".local"):
-        return True
+    if not candidate:
+        return False
     try:
         addr = ipaddress.ip_address(candidate)
     except ValueError:
+        pass
+    else:
+        return _address_is_private_like(addr)
+
+    infos = _getaddrinfo_bounded(candidate)
+    if not infos:
         return False
-    return bool(addr.is_private or addr.is_link_local or addr.is_loopback)
+
+    seen = False
+    for info in infos:
+        sockaddr = info[4]
+        if not sockaddr:
+            continue
+        seen = True
+        try:
+            addr = ipaddress.ip_address(str(sockaddr[0]))
+        except ValueError:
+            return False
+        if not _address_is_private_like(addr):
+            return False
+    return seen
 
 
 def validate_source_address(

@@ -11,6 +11,7 @@ from router_control.adapters.netcraze.ssh_tunnel import (
     learn_ssh_host_key,
     normalize_sha256_fingerprint,
 )
+from router_control.adapters.netcraze.transport import normalize_management_host as _normalize_management_host
 from router_control.persistence.errors import ConflictError, NotFoundError, PreconditionFailed
 from router_control.persistence.store import EndpointSshHostKeyPin, PersistenceStore
 
@@ -231,19 +232,6 @@ def confirm_pin(
 _STORED_PIN_REQUIRED_MESSAGE = (
     "stored confirmed SSH host key pin is required for live connection"
 )
-
-
-def _normalize_management_host(host: str) -> str:
-    candidate = host.strip()
-    if candidate.lower().startswith("http://"):
-        candidate = candidate[7:]
-    elif candidate.lower().startswith("https://"):
-        candidate = candidate[8:]
-    if "/" in candidate:
-        candidate = candidate.split("/", 1)[0]
-    if candidate.count(":") == 1 and not candidate.startswith("["):
-        candidate = candidate.split(":", 1)[0]
-    return candidate.strip()
 
 
 def resolve_identity_router_id_for_host(
