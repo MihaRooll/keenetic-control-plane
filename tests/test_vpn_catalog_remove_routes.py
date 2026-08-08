@@ -199,6 +199,34 @@ def test_exclusive_secret_ref_revoked(remove_client) -> None:
         vault.use(cred_id)
 
 
+def test_exclusive_revoke_vault_error_aborts_remove(remove_client, monkeypatch) -> None:
+    profile_id, cred_id = _seed_profile_with_secret(
+        remove_client,
+        display_name="revoke-failure-abort",
+    )
+    store = remove_client.store
+    vault: MemoryVault = remove_client.vault
+
+    def _fail_revoke(ref_id: str) -> None:
+        raise VaultError("simulated revoke failure")
+
+    monkeypatch.setattr(vault, "revoke", _fail_revoke)
+
+    resp = _remove(remove_client, profile_id)
+    assert resp.status_code // 100 != 2
+    assert resp.json()["error"]["code"] == "vpn_catalog.secret_revoke_failed"
+
+    row = store.get_profile(profile_id)
+    assert row is not None
+    assert row["superseded_at"] is None
+    assert store.list_profiles()
+    assert store.list_profile_secret_refs(profile_id)
+    cred = store.get_credential_ref(cred_id)
+    assert cred is not None
+    assert cred["revoked_at"] is None
+    assert vault.use(cred_id) == _SYNTHETIC_SECRET
+
+
 def test_shared_secret_ref_not_revoked(remove_client) -> None:
     profile_id_a, cred_id = _seed_profile_with_secret(
         remove_client,

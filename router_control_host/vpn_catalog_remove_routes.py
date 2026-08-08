@@ -8,6 +8,7 @@ from typing import TypeVar
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
+from router_control.adapters.secrets.memory import VaultError
 from router_control.application.router_apply_lock import run_with_router_apply_lock
 from router_control.persistence.errors import NotFoundError
 from router_control.persistence.store import (
@@ -78,15 +79,24 @@ def remove_vpn_profile_from_catalog(
         )
     host = _state(request)
     store = host.runtime.store
+    now = host.runtime.clock.now()
 
-    def _retire() -> list[str]:
-        return store.retire_vpn_profile_from_catalog(
-            profile_id,
-            now=host.runtime.clock.now(),
-        )
+    def _remove_under_lock() -> int:
+        ref_ids = store.prepare_vpn_profile_catalog_remove(profile_id, now=now)
+        secrets_released = 0
+        for ref_id in ref_ids:
+            if store.count_credential_ref_profile_links(ref_id) != 1:
+                continue
+            if store.credential_ref_has_non_vpn_live_links(ref_id):
+                continue
+            host.runtime.vault.revoke(ref_id)
+            store.mark_credential_revoked(ref_id, now=now)
+            secrets_released += 1
+        store.commit_vpn_profile_catalog_remove(profile_id, now=now)
+        return secrets_released
 
     try:
-        ref_ids = _run_with_sorted_apply_locks(store, _retire)
+        secrets_released = _run_with_sorted_apply_locks(store, _remove_under_lock)
     except NotFoundError:
         return error_response(
             request,
@@ -115,16 +125,13 @@ def remove_vpn_profile_from_catalog(
             code="vpn_catalog.active_profile",
             message=_ACTIVE_REFUSE_MESSAGE,
         )
-
-    secrets_released = 0
-    for ref_id in ref_ids:
-        if store.count_credential_ref_profile_links(ref_id) > 0:
-            continue
-        if store.credential_ref_has_non_vpn_live_links(ref_id):
-            continue
-        host.runtime.vault.revoke(ref_id)
-        store.mark_credential_revoked(ref_id, now=host.runtime.clock.now())
-        secrets_released += 1
+    except VaultError as exc:
+        return error_response(
+            request,
+            status_code=502,
+            code="vpn_catalog.secret_revoke_failed",
+            message=str(exc),
+        )
 
     return JSONResponse(
         {

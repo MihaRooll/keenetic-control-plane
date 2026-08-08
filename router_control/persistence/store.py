@@ -3257,23 +3257,43 @@ class PersistenceStore:
         ).fetchone()
         return router is not None
 
-    def retire_vpn_profile_from_catalog(
+    def _validate_vpn_profile_catalog_remove_gates(
+        self,
+        profile_id: str,
+        *,
+        now: datetime | None = None,
+    ) -> None:
+        row = self.get_profile_including_superseded(profile_id)
+        if row is None:
+            raise NotFoundError(f"profile {profile_id} not found")
+        if row["superseded_at"] is not None:
+            raise AlreadyRetiredError(f"profile {profile_id} already retired")
+        if self._profile_vpn_activate_apply_in_progress(profile_id, now=now):
+            raise ActivateInProgressError(profile_id)
+        if self._profile_has_active_tunnel_assignment(profile_id):
+            raise ActiveProfileError(f"profile {profile_id} is active")
+
+    def prepare_vpn_profile_catalog_remove(
         self,
         profile_id: str,
         *,
         now: datetime | None = None,
     ) -> list[str]:
-        """Soft-retire profile; return unlinked credential_ref_ids for exclusive revoke."""
+        """Validate remove gates and return linked credential_ref_ids without mutating."""
         with transaction(self._conn, immediate=True):
-            row = self.get_profile_including_superseded(profile_id)
-            if row is None:
-                raise NotFoundError(f"profile {profile_id} not found")
-            if row["superseded_at"] is not None:
-                raise AlreadyRetiredError(f"profile {profile_id} already retired")
-            if self._profile_vpn_activate_apply_in_progress(profile_id, now=now):
-                raise ActivateInProgressError(profile_id)
-            if self._profile_has_active_tunnel_assignment(profile_id):
-                raise ActiveProfileError(f"profile {profile_id} is active")
+            self._validate_vpn_profile_catalog_remove_gates(profile_id, now=now)
+            refs = self.list_profile_secret_refs(profile_id)
+            return [str(ref["credential_ref_id"]) for ref in refs]
+
+    def commit_vpn_profile_catalog_remove(
+        self,
+        profile_id: str,
+        *,
+        now: datetime | None = None,
+    ) -> None:
+        """Supersede profile and unlink secret refs after exclusive revokes succeeded."""
+        with transaction(self._conn, immediate=True):
+            self._validate_vpn_profile_catalog_remove_gates(profile_id, now=now)
             ts = _utc_now_iso(now)
             cur = self._conn.execute(
                 "UPDATE vpn_profile_artifacts SET superseded_at = ? "
@@ -3282,10 +3302,18 @@ class PersistenceStore:
             )
             if cur.rowcount == 0:
                 raise AlreadyRetiredError(f"profile {profile_id} already retired")
-            refs = self.list_profile_secret_refs(profile_id)
-            ref_ids = [str(ref["credential_ref_id"]) for ref in refs]
             self.delete_profile_secret_refs(profile_id)
-            return ref_ids
+
+    def retire_vpn_profile_from_catalog(
+        self,
+        profile_id: str,
+        *,
+        now: datetime | None = None,
+    ) -> list[str]:
+        """Soft-retire profile; return unlinked credential_ref_ids (legacy atomic helper)."""
+        ref_ids = self.prepare_vpn_profile_catalog_remove(profile_id, now=now)
+        self.commit_vpn_profile_catalog_remove(profile_id, now=now)
+        return ref_ids
 
     def upsert_tunnel_assignment(
         self,
