@@ -539,13 +539,13 @@ Creates new immutable revision in SQLite only ([`PERSISTENCE_CONTRACT.md`](PERSI
 
 **Headers:** `Idempotency-Key` **required** (§4.3).
 
-**Response 202:** `OperationAccepted` (§9.1) with `operation_kind: rotate_credential` — rotate job runs vault update and optional router verify per gates.
+**Response 202:** `OperationAccepted` (§9.1) with `operation_kind: rotate_credential` — rotate job runs vault update and optional router verify per gates. **`OperationAccepted.status` mirrors the durable `job.status` at response time** — vault-only rotate completes in-request with terminal `Succeeded` under HTTP **202** (same honesty pattern as live enroll when work finishes before response).
 
 **`POST .../credentials/{credential_ref_id}/revoke` request:** empty body or optional `{ "reason": "…" }` (redacted operator reason).
 
 **Headers:** `Idempotency-Key` **required** (§4.3).
 
-**Response 202:** `OperationAccepted` (§9.1) with `operation_kind: revoke_credential` — marks ref revoked and blocks new jobs referencing it; in-flight jobs fail closed or complete verify per [`SECURITY_OPS.md`](SECURITY_OPS.md) §4.
+**Response 202:** `OperationAccepted` (§9.1) with `operation_kind: revoke_credential` — marks ref revoked and blocks new jobs referencing it; in-flight jobs fail closed or complete verify per [`SECURITY_OPS.md`](SECURITY_OPS.md) §4. **`OperationAccepted.status` mirrors the durable `job.status` at response time** — vault-only revoke completes in-request with terminal `Succeeded` under HTTP **202**.
 
 ### 7.6 Change plan
 
@@ -997,11 +997,13 @@ Dispatch after Confirm still re-validates identity, observation TTL, certificati
 
 Headers: `Location: …/operations/{operation_id}`, optional `Retry-After: 1`.
 
-Poll `GET /jobs/{job_id}` until terminal status.
+**`OperationAccepted.status` mirrors the durable `job.status` at response time** — prefer the stored idempotency body on replay; when building a peek fallback for a terminal job, use the terminal status (e.g. `Succeeded`), not a hardcoded `Queued`. Vault-only credential **rotate/revoke** and live **enroll** when work completes in-request **may** return HTTP **202** with terminal `Succeeded` in both the body and `GET /jobs/{job_id}`.
+
+Poll `GET /jobs/{job_id}` until terminal status when the accepted body is non-terminal (`Queued`, `Leased`, `Running`).
 
 ### 9.2 Synchronous mutations
 
-Desired revision PUT, plan create/confirm, credential PUT, profile import/validate return **200/201** with resource body when work completes in the request thread (SQLite-only or parser-only). Each **must** commit the §6 creation bundle (`operation`, `idempotency_record`, initial `job`) per §4.3; the initial `job` **may** be immediately terminal (`Succeeded`/`Failed`) in the same transaction — sync completion is an HTTP semantic, not permission to skip durable `jobs`. Router-touching work (enroll, preflight, rotate verify leg, plan apply) returns **202** with non-terminal initial `job` and `OperationAccepted` (§9.1).
+Desired revision PUT, plan create/confirm, credential PUT, profile import/validate return **200/201** with resource body when work completes in the request thread (SQLite-only or parser-only). Each **must** commit the §6 creation bundle (`operation`, `idempotency_record`, initial `job`) per §4.3; the initial `job` **may** be immediately terminal (`Succeeded`/`Failed`) in the same transaction — sync completion is an HTTP semantic, not permission to skip durable `jobs`. Router-touching work with async legs (preflight observe dispatch, rotate verify leg when gates require live router I/O, plan apply) returns **202** with non-terminal initial `job` and `OperationAccepted` (§9.1). **Exception:** vault-only credential rotate/revoke and live enroll when identity work completes in-request **may** return **202** with terminal `Succeeded` — §9.1 status honesty applies; §9.2 “non-terminal under 202” refers to router-touching async dispatch, not vault-complete rotate/revoke.
 
 ### 9.3 Cancel — `POST /jobs/{job_id}/cancel`
 

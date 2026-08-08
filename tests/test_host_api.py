@@ -634,6 +634,202 @@ def test_put_credential_rejects_unknown_kind_structurally(client) -> None:
     assert store.get_router(router_id)["credential_ref_id"] == mgmt_cred_id
 
 
+def test_rotate_success_status_matches_job_and_idempotency_replay(client) -> None:
+    r = client.post(
+        "/api/router-control/v1/routers",
+        json={
+            "display_name": "Rotate Status Router",
+            "vendor": "V",
+            "model": "M",
+            "endpoint": {"kind": "management_https", "host": "10.0.0.15", "port": 443},
+            "management_password": "initial-secret",
+        },
+        headers={"Idempotency-Key": "enroll-rotate-status"},
+    )
+    assert r.status_code == 202
+    router_id = r.json()["router_id"]
+    cred_id = client.app.state.host.runtime.store.get_router(router_id)["credential_ref_id"]
+
+    rotate = client.post(
+        f"/api/router-control/v1/routers/{router_id}/credentials/{cred_id}/rotate",
+        json={"secret": "rotated-secret"},
+        headers={"Idempotency-Key": "rotate-status-honesty"},
+    )
+    assert rotate.status_code == 202
+    body = rotate.json()
+    assert body["status"] == "Succeeded"
+    job_id = body["job_id"]
+
+    job = client.get(f"/api/router-control/v1/jobs/{job_id}")
+    assert job.status_code == 200
+    assert job.json()["status"] == "Succeeded"
+    assert job.json()["status"] == body["status"]
+
+    replay = client.post(
+        f"/api/router-control/v1/routers/{router_id}/credentials/{cred_id}/rotate",
+        json={"secret": "rotated-secret"},
+        headers={"Idempotency-Key": "rotate-status-honesty"},
+    )
+    assert replay.status_code == 202
+    assert replay.json()["status"] == "Succeeded"
+    assert replay.json()["job_id"] == job_id
+
+
+def test_revoke_success_status_matches_job_and_idempotency_replay(client) -> None:
+    r = client.post(
+        "/api/router-control/v1/routers",
+        json={
+            "display_name": "Revoke Status Router",
+            "vendor": "V",
+            "model": "M",
+            "endpoint": {"kind": "management_https", "host": "10.0.0.16", "port": 443},
+            "management_password": "initial-secret",
+        },
+        headers={"Idempotency-Key": "enroll-revoke-status"},
+    )
+    assert r.status_code == 202
+    router_id = r.json()["router_id"]
+
+    put = client.put(
+        f"/api/router-control/v1/routers/{router_id}/credentials",
+        json={"kind": "WifiApPsk", "secret": "revoke-status-psk"},
+        headers={"Idempotency-Key": "put-revoke-status"},
+    )
+    assert put.status_code == 201
+    cred_id = put.json()["credential_ref_id"]
+
+    revoke = client.post(
+        f"/api/router-control/v1/routers/{router_id}/credentials/{cred_id}/revoke",
+        headers={"Idempotency-Key": "revoke-status-honesty"},
+    )
+    assert revoke.status_code == 202
+    body = revoke.json()
+    assert body["status"] == "Succeeded"
+    job_id = body["job_id"]
+
+    job = client.get(f"/api/router-control/v1/jobs/{job_id}")
+    assert job.status_code == 200
+    assert job.json()["status"] == "Succeeded"
+    assert job.json()["status"] == body["status"]
+
+    replay = client.post(
+        f"/api/router-control/v1/routers/{router_id}/credentials/{cred_id}/revoke",
+        headers={"Idempotency-Key": "revoke-status-honesty"},
+    )
+    assert replay.status_code == 202
+    assert replay.json()["status"] == "Succeeded"
+    assert replay.json()["job_id"] == job_id
+
+
+def test_rotate_idempotency_mid_state_replay_returns_full_accepted(
+    client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Incomplete stored body after claim must replay as full §9.1 OperationAccepted."""
+    store = client.app.state.host.runtime.store
+    monkeypatch.setattr(store, "update_idempotency_response", lambda *args, **kwargs: None)
+
+    r = client.post(
+        "/api/router-control/v1/routers",
+        json={
+            "display_name": "Rotate Mid State Router",
+            "vendor": "V",
+            "model": "M",
+            "endpoint": {"kind": "management_https", "host": "10.0.0.17", "port": 443},
+            "management_password": "initial-secret",
+        },
+        headers={"Idempotency-Key": "enroll-rotate-mid-state"},
+    )
+    assert r.status_code == 202
+    router_id = r.json()["router_id"]
+    cred_id = store.get_router(router_id)["credential_ref_id"]
+
+    first = client.post(
+        f"/api/router-control/v1/routers/{router_id}/credentials/{cred_id}/rotate",
+        json={"secret": "rotated-mid-state"},
+        headers={"Idempotency-Key": "rotate-mid-state-key"},
+    )
+    assert first.status_code == 202
+    first_body = first.json()
+    assert first_body["status"] == "Succeeded"
+    assert first_body["operation_id"]
+    assert first_body["job_id"]
+    assert first_body["links"]["job"].endswith(first_body["job_id"])
+
+    replay = client.post(
+        f"/api/router-control/v1/routers/{router_id}/credentials/{cred_id}/rotate",
+        json={"secret": "rotated-mid-state"},
+        headers={"Idempotency-Key": "rotate-mid-state-key"},
+    )
+    assert replay.status_code == 202
+    replay_body = replay.json()
+    assert replay_body["status"] == "Succeeded"
+    assert replay_body["operation_id"] == first_body["operation_id"]
+    assert replay_body["job_id"] == first_body["job_id"]
+    assert replay_body["links"]["operation"].endswith(first_body["operation_id"])
+    assert replay_body["links"]["job"].endswith(first_body["job_id"])
+
+    job = client.get(f"/api/router-control/v1/jobs/{replay_body['job_id']}")
+    assert job.status_code == 200
+    assert job.json()["status"] == replay_body["status"]
+
+
+def test_revoke_idempotency_mid_state_replay_returns_full_accepted(
+    client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Incomplete stored body after claim must replay as full §9.1 OperationAccepted."""
+    store = client.app.state.host.runtime.store
+    monkeypatch.setattr(store, "update_idempotency_response", lambda *args, **kwargs: None)
+
+    r = client.post(
+        "/api/router-control/v1/routers",
+        json={
+            "display_name": "Revoke Mid State Router",
+            "vendor": "V",
+            "model": "M",
+            "endpoint": {"kind": "management_https", "host": "10.0.0.18", "port": 443},
+            "management_password": "initial-secret",
+        },
+        headers={"Idempotency-Key": "enroll-revoke-mid-state"},
+    )
+    assert r.status_code == 202
+    router_id = r.json()["router_id"]
+
+    put = client.put(
+        f"/api/router-control/v1/routers/{router_id}/credentials",
+        json={"kind": "WifiApPsk", "secret": "revoke-mid-state-psk"},
+        headers={"Idempotency-Key": "put-revoke-mid-state"},
+    )
+    assert put.status_code == 201
+    cred_id = put.json()["credential_ref_id"]
+
+    first = client.post(
+        f"/api/router-control/v1/routers/{router_id}/credentials/{cred_id}/revoke",
+        headers={"Idempotency-Key": "revoke-mid-state-key"},
+    )
+    assert first.status_code == 202
+    first_body = first.json()
+    assert first_body["status"] == "Succeeded"
+    assert first_body["operation_id"]
+    assert first_body["job_id"]
+    assert first_body["links"]["job"].endswith(first_body["job_id"])
+
+    replay = client.post(
+        f"/api/router-control/v1/routers/{router_id}/credentials/{cred_id}/revoke",
+        headers={"Idempotency-Key": "revoke-mid-state-key"},
+    )
+    assert replay.status_code == 202
+    replay_body = replay.json()
+    assert replay_body["status"] == "Succeeded"
+    assert replay_body["operation_id"] == first_body["operation_id"]
+    assert replay_body["job_id"] == first_body["job_id"]
+    assert replay_body["links"]["operation"].endswith(first_body["operation_id"])
+    assert replay_body["links"]["job"].endswith(first_body["job_id"])
+
+    job = client.get(f"/api/router-control/v1/jobs/{replay_body['job_id']}")
+    assert job.status_code == 200
+    assert job.json()["status"] == replay_body["status"]
+
+
 def test_rotate_vault_error_leaves_no_orphan_queued_job(client) -> None:
     r = client.post(
         "/api/router-control/v1/routers",
@@ -689,6 +885,60 @@ def test_revoke_vault_error_leaves_no_orphan_queued_job(client) -> None:
         "WHERE o.operation_kind = 'revoke_credential' AND j.status = 'Queued'"
     ).fetchone()["c"]
     assert queued_revoke == 0
+
+
+def test_rotate_vault_fail_after_claim_idempotency_replay_returns_error(
+    client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Vault fail after claim must persist error body; replay must not invent Succeeded."""
+    vault = client.app.state.host.runtime.vault
+    store = client.app.state.host.runtime.store
+
+    r = client.post(
+        "/api/router-control/v1/routers",
+        json={
+            "display_name": "Rotate Vault Fail Replay",
+            "vendor": "V",
+            "model": "M",
+            "endpoint": {"kind": "management_https", "host": "10.0.0.19", "port": 443},
+            "management_password": "initial-secret",
+        },
+        headers={"Idempotency-Key": "enroll-rotate-vault-fail-replay"},
+    )
+    assert r.status_code == 202
+    router_id = r.json()["router_id"]
+    cred_id = store.get_router(router_id)["credential_ref_id"]
+
+    def fail_rotate(_cred_id: str, *, secret: str) -> None:
+        raise VaultError("vault rotate failed")
+
+    monkeypatch.setattr(vault, "rotate", fail_rotate)
+
+    first = client.post(
+        f"/api/router-control/v1/routers/{router_id}/credentials/{cred_id}/rotate",
+        json={"secret": "new-secret"},
+        headers={"Idempotency-Key": "rotate-vault-fail-replay"},
+    )
+    assert first.status_code == 400
+    assert first.json()["error"]["code"] == "request.validation_failed"
+
+    replay = client.post(
+        f"/api/router-control/v1/routers/{router_id}/credentials/{cred_id}/rotate",
+        json={"secret": "new-secret"},
+        headers={"Idempotency-Key": "rotate-vault-fail-replay"},
+    )
+    assert replay.status_code == 400
+    assert replay.json()["error"]["code"] == "request.validation_failed"
+    assert "status" not in replay.json()
+
+    failed_jobs = store._conn.execute(
+        "SELECT j.job_id, j.status FROM jobs j "
+        "JOIN operations o ON j.operation_id = o.operation_id "
+        "WHERE o.operation_kind = 'rotate_credential' AND o.router_id = ? "
+        "AND j.status = 'Failed'",
+        (router_id,),
+    ).fetchall()
+    assert len(failed_jobs) == 1
 
 
 def test_enroll_and_idempotency(client) -> None:

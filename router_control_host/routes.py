@@ -2029,6 +2029,74 @@ async def put_credential(
     )
 
 
+def _sync_credential_operation_accepted(
+    operation_id: str,
+    job_id: str,
+) -> dict[str, Any]:
+    return {
+        "operation_id": operation_id,
+        "job_id": job_id,
+        "status": "Succeeded",
+        "links": {
+            "operation": f"{API_PREFIX}/operations/{operation_id}",
+            "job": f"{API_PREFIX}/jobs/{job_id}",
+        },
+    }
+
+
+def _sync_credential_idempotency_stored_error(stored: dict[str, Any]) -> bool:
+    http_status = stored.get("http_status")
+    if http_status is not None and int(http_status) != 202:
+        return True
+    body = stored.get("body")
+    return isinstance(body, dict) and "error" in body
+
+
+def _sync_credential_idempotency_body(
+    stored: dict[str, Any],
+    *,
+    operation_id: str,
+    job_id: str,
+) -> dict[str, Any]:
+    body = stored.get("body")
+    if _sync_credential_idempotency_stored_error(stored):
+        if isinstance(body, dict):
+            return body
+        return stored
+
+    accepted = _sync_credential_operation_accepted(operation_id, job_id)
+    if not isinstance(body, dict):
+        return accepted
+    if body.get("operation_id") and body.get("job_id"):
+        merged = dict(body)
+        if "links" not in merged:
+            merged["links"] = accepted["links"]
+        return merged
+    seed_status = body.get("status") or "Succeeded"
+    return {**accepted, **body, "status": seed_status}
+
+
+def _sync_credential_idempotency_replay_response(
+    request: Request,
+    existing: Any,
+) -> JSONResponse:
+    stored = json.loads(existing.response_ref or "{}")
+    body_out = _sync_credential_idempotency_body(
+        stored,
+        operation_id=existing.operation_id,
+        job_id=existing.job_id,
+    )
+    if _sync_credential_idempotency_stored_error(stored):
+        http_status = int(stored.get("http_status", 400))
+    else:
+        http_status = int(stored.get("http_status", 202))
+    return JSONResponse(
+        body_out,
+        status_code=http_status,
+        headers=_ok_headers(request),
+    )
+
+
 @router.post("/routers/{router_id}/credentials/{credential_ref_id}/rotate")
 async def rotate_credential(
     router_id: str,
@@ -2089,21 +2157,7 @@ async def rotate_credential(
             message="same key different digest",
         )
     if existing is not None:
-        stored = json.loads(existing.response_ref or "{}")
-        body_out = stored.get("body") or {
-            "operation_id": existing.operation_id,
-            "job_id": existing.job_id,
-            "status": "Queued",
-            "links": {
-                "operation": f"{API_PREFIX}/operations/{existing.operation_id}",
-                "job": f"{API_PREFIX}/jobs/{existing.job_id}",
-            },
-        }
-        return JSONResponse(
-            body_out,
-            status_code=int(stored.get("http_status", 202)),
-            headers=_ok_headers(request),
-        )
+        return _sync_credential_idempotency_replay_response(request, existing)
 
     # Claim idempotency before vault mutate (API §4.3/§7.5): conflict must not
     # touch secrets. create_operation_bundle uses BEGIN IMMEDIATE + UNIQUE key.
@@ -2117,7 +2171,7 @@ async def rotate_credential(
             initial_job_status="Succeeded",
             response_ref=json.dumps(
                 {
-                    "status": "Queued",
+                    "status": "Succeeded",
                 }
             ),
             http_status=202,
@@ -2130,24 +2184,12 @@ async def rotate_credential(
             code="idempotency.conflict",
             message="same key different digest",
         )
-    accepted = {
-        "operation_id": outcome.operation_id,
-        "job_id": outcome.job_id,
-        "status": "Queued",
-        "links": {
-            "operation": f"{API_PREFIX}/operations/{outcome.operation_id}",
-            "job": f"{API_PREFIX}/jobs/{outcome.job_id}",
-        },
-    }
+    accepted = _sync_credential_operation_accepted(
+        outcome.operation_id,
+        outcome.job_id,
+    )
     if not outcome.created:
-        if outcome.response_ref:
-            stored = json.loads(outcome.response_ref)
-            return JSONResponse(
-                stored.get("body", accepted),
-                status_code=int(stored.get("http_status", 202)),
-                headers=_ok_headers(request),
-            )
-        return JSONResponse(accepted, status_code=202, headers=_ok_headers(request))
+        return _sync_credential_idempotency_replay_response(request, outcome)
 
     try:
         host.runtime.vault.rotate(credential_ref_id, secret=secret)
@@ -2195,21 +2237,7 @@ async def revoke_credential(
             message="same key different digest",
         )
     if existing is not None:
-        stored = json.loads(existing.response_ref or "{}")
-        body_out = stored.get("body") or {
-            "operation_id": existing.operation_id,
-            "job_id": existing.job_id,
-            "status": "Queued",
-            "links": {
-                "operation": f"{API_PREFIX}/operations/{existing.operation_id}",
-                "job": f"{API_PREFIX}/jobs/{existing.job_id}",
-            },
-        }
-        return JSONResponse(
-            body_out,
-            status_code=int(stored.get("http_status", 202)),
-            headers=_ok_headers(request),
-        )
+        return _sync_credential_idempotency_replay_response(request, existing)
 
     cred_row = host.runtime.store.get_credential_ref(credential_ref_id)
     if cred_row is None or str(cred_row["router_id"]) != router_id:
@@ -2239,7 +2267,7 @@ async def revoke_credential(
             request_digest=digest,
             actor_id="hub_admin",
             initial_job_status="Succeeded",
-            response_ref=json.dumps({"status": "Queued"}),
+            response_ref=json.dumps({"status": "Succeeded"}),
             http_status=202,
             now=host.runtime.clock.now(),
         )
@@ -2250,24 +2278,12 @@ async def revoke_credential(
             code="idempotency.conflict",
             message="same key different digest",
         )
-    accepted = {
-        "operation_id": outcome.operation_id,
-        "job_id": outcome.job_id,
-        "status": "Queued",
-        "links": {
-            "operation": f"{API_PREFIX}/operations/{outcome.operation_id}",
-            "job": f"{API_PREFIX}/jobs/{outcome.job_id}",
-        },
-    }
+    accepted = _sync_credential_operation_accepted(
+        outcome.operation_id,
+        outcome.job_id,
+    )
     if not outcome.created:
-        if outcome.response_ref:
-            stored = json.loads(outcome.response_ref)
-            return JSONResponse(
-                stored.get("body", accepted),
-                status_code=int(stored.get("http_status", 202)),
-                headers=_ok_headers(request),
-            )
-        return JSONResponse(accepted, status_code=202, headers=_ok_headers(request))
+        return _sync_credential_idempotency_replay_response(request, outcome)
 
     try:
         host.runtime.vault.revoke(credential_ref_id)

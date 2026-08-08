@@ -1789,7 +1789,7 @@
         "dualstack-allowedips-soft-drop",
         "operator-notes-vpn-profile"
       ],
-      "lastReviewed": "2026-08-05"
+      "lastReviewed": "2026-08-08"
     },
     {
       "path": "docs/contracts/HARDWARE_GATES.md",
