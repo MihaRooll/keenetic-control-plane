@@ -788,3 +788,31 @@ def test_internet_uplink_run_mutation_toast_tone_from_hub_state() -> None:
     assert "getStateDescriptor(lastVerdict.hubState).tone" in run_mutation_region
     assert "Object.values(HubState).includes(lastVerdict.hubState)" in run_mutation_region
     assert "tone: lastVerdict.success ? 'success' : 'warning'" not in run_mutation_region
+
+
+def test_internet_uplink_connect_persist_failure_shows_warning_with_retry() -> None:
+    """Connect path: persist failure warns + operationRetry, not silent swallow."""
+    source = UPLINK_SCREEN_JS.read_text(encoding="utf-8")
+    connect_start = source.find("if (succeeded && action === 'connect')")
+    assert connect_start != -1
+    connect_region = source[connect_start : connect_start + 2800]
+    assert "persistRememberedUplinkAfterApply" in connect_region
+    assert "operationError = error" in connect_region
+    assert "operationRetry = async () =>" in connect_region
+    assert "tone: 'warning'" in connect_region
+    assert "Не удалось сохранить автоподключение" in connect_region
+    assert "Нажмите «Повторить»" in connect_region
+    assert "remembered persistence failure must not mask apply verdict" not in connect_region
+
+
+def test_internet_uplink_teardown_persist_failure_shows_warning_with_retry() -> None:
+    """Teardown path: deactivate failure warns + operationRetry (mirror contract)."""
+    source = UPLINK_SCREEN_JS.read_text(encoding="utf-8")
+    teardown_start = source.find("if (succeeded && action === 'teardown')")
+    assert teardown_start != -1
+    teardown_region = source[teardown_start : teardown_start + 2200]
+    assert "deactivateRememberedUplink" in teardown_region
+    assert "operationError = error" in teardown_region
+    assert "operationRetry = async () =>" in teardown_region
+    assert "Не удалось отключить автоподключение" in teardown_region
+    assert "Нажмите «Повторить»" in teardown_region

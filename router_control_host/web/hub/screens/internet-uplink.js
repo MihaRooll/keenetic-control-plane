@@ -1208,8 +1208,43 @@ export function render(container, ctx) {
               credentialRefId,
               signal: mutateAbort?.signal,
             });
-          } catch {
-            /* remembered persistence failure must not mask apply verdict */
+          } catch (error) {
+            if (disposed || gen !== generation || isAborted(error)) return;
+            operationError = error;
+            operationRetry = async () => {
+              if (disposed || mutating || offline) return;
+              const retrySession = getSession();
+              if (!retrySession.routerId || !credentialRefId) return;
+              try {
+                rememberedUplink = await persistRememberedUplinkAfterApply({
+                  routerId: retrySession.routerId,
+                  ssid: draft.ssid,
+                  band: draft.band,
+                  credentialRefId,
+                  signal: mutateAbort?.signal,
+                });
+                operationError = null;
+                operationRetry = null;
+                void fetchInternetSourceFlow();
+                renderAll();
+                ctx.showToast({
+                  tone: 'success',
+                  title: 'Автоподключение сохранено',
+                  message:
+                    'Намерение сохранено — Wi‑Fi uplink будет восстанавливаться автоматически.',
+                });
+              } catch (retryError) {
+                if (disposed || isAborted(retryError)) return;
+                operationError = retryError;
+                renderAll();
+              }
+            };
+            ctx.showToast({
+              tone: 'warning',
+              title: 'Не удалось сохранить автоподключение',
+              message:
+                'Роутер подключён к сети, но намерение автоподключения не сохранено — watchdog не восстановит Wi‑Fi после обрыва. Нажмите «Повторить».',
+            });
           }
         }
       }
