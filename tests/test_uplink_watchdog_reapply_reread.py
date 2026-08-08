@@ -8,6 +8,7 @@ from typing import Any
 
 import pytest
 from router_control.application import uplink_watchdog_service
+from router_control.application.internet_status_observe import InternetStatusObservation
 from router_control.application.remembered_uplink import RememberedUplinkService
 from router_control.application.uplink_watchdog_service import UplinkWatchdogHandle
 from router_control.composition import create_offline_runtime
@@ -63,6 +64,38 @@ class _Transport:
 
     def execute_rci_parse(self, _cmd: str) -> dict[str, Any]:
         return {}
+
+
+class _ObserveTransport:
+    pass
+
+
+def _observation(*, gateway_interface: str | None) -> InternetStatusObservation:
+    return InternetStatusObservation(
+        internet=False,
+        reliable=None,
+        gateway_accessible=None,
+        dns_accessible=None,
+        captive_accessible=None,
+        gateway_interface=gateway_interface,
+        gateway_ssid=None,
+        checked_at="2026-08-08T12:00:00Z",
+        read_status="ok",
+    )
+
+
+def _wire_observe_factory(
+    handle: UplinkWatchdogHandle,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    gateway_interface: str | None = "WifiMaster1/WifiStation0",
+) -> None:
+    handle.observe_transport_factory = lambda _rid: _ObserveTransport()
+    monkeypatch.setattr(
+        uplink_watchdog_service,
+        "run_internet_status_observe",
+        lambda *, transport: _observation(gateway_interface=gateway_interface),
+    )
 
 
 def _latest_reapply_audit(store: Any) -> tuple[str, str, str]:
@@ -198,6 +231,7 @@ def test_reapply_applies_with_fresh_remembered_intent(
         )
 
     handle.backup_callback_factory = lambda _rid: lambda: None
+    _wire_observe_factory(handle, monkeypatch)
     monkeypatch.setattr(uplink_watchdog_service, "apply_wifi_station_intent", _fake_apply)
     handle._reapply_locked(router_id, stale_intent, _Transport(), remembered)  # noqa: SLF001
     assert captured["intent"] is not None
@@ -210,3 +244,122 @@ def test_reapply_applies_with_fresh_remembered_intent(
     assert audit is not None
     assert audit[0] == "uplink_watchdog.reapply"
     assert audit[1] == "applied"
+
+
+def test_reapply_aborts_when_gateway_wireguard_under_lock(
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Under-lock re-observe must skip apply when gateway is WireGuard."""
+    handle, router_id, intent, remembered, _remembered_svc, store = _setup_watchdog(tmp_path)
+    apply_called = False
+
+    def _fake_apply(**_kwargs: Any) -> Any:
+        nonlocal apply_called
+        apply_called = True
+        raise AssertionError("apply must not run when gateway is WireGuard under lock")
+
+    handle.backup_callback_factory = lambda _rid: lambda: None
+    _wire_observe_factory(handle, monkeypatch, gateway_interface="Wireguard9")
+    monkeypatch.setattr(uplink_watchdog_service, "apply_wifi_station_intent", _fake_apply)
+    handle._reapply_locked(router_id, intent, _Transport(), remembered)  # noqa: SLF001
+    assert apply_called is False
+    action, outcome, summary = _latest_reapply_audit(store)
+    assert action == "uplink_watchdog.reapply"
+    assert outcome == "failed"
+    assert "gateway is WireGuard under lock" in summary
+
+
+def test_reapply_aborts_when_gateway_ethernet_under_lock(
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Under-lock re-observe must skip apply when gateway is ethernet."""
+    handle, router_id, intent, remembered, _remembered_svc, store = _setup_watchdog(tmp_path)
+    apply_called = False
+
+    def _fake_apply(**_kwargs: Any) -> Any:
+        nonlocal apply_called
+        apply_called = True
+        raise AssertionError("apply must not run when gateway is ethernet under lock")
+
+    handle.backup_callback_factory = lambda _rid: lambda: None
+    _wire_observe_factory(handle, monkeypatch, gateway_interface="GigabitEthernet0")
+    monkeypatch.setattr(uplink_watchdog_service, "apply_wifi_station_intent", _fake_apply)
+    handle._reapply_locked(router_id, intent, _Transport(), remembered)  # noqa: SLF001
+    assert apply_called is False
+    action, outcome, summary = _latest_reapply_audit(store)
+    assert action == "uplink_watchdog.reapply"
+    assert outcome == "failed"
+    assert "gateway is ethernet under lock" in summary
+
+
+def test_reapply_aborts_when_gateway_observe_failed_under_lock(
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Under-lock re-observe must skip apply when transport observe returns failed."""
+    handle, router_id, intent, remembered, _remembered_svc, store = _setup_watchdog(tmp_path)
+    apply_called = False
+
+    def _fake_apply(**_kwargs: Any) -> Any:
+        nonlocal apply_called
+        apply_called = True
+        raise AssertionError("apply must not run when gateway observe failed under lock")
+
+    handle.backup_callback_factory = lambda _rid: lambda: None
+    handle.observe_transport_factory = lambda _rid: _ObserveTransport()
+    monkeypatch.setattr(
+        uplink_watchdog_service,
+        "run_internet_status_observe",
+        lambda *, transport: InternetStatusObservation(
+            internet=None,
+            reliable=None,
+            gateway_accessible=None,
+            dns_accessible=None,
+            captive_accessible=None,
+            gateway_interface=None,
+            gateway_ssid=None,
+            checked_at=None,
+            read_status="failed",
+        ),
+    )
+    monkeypatch.setattr(uplink_watchdog_service, "apply_wifi_station_intent", _fake_apply)
+    handle._reapply_locked(router_id, intent, _Transport(), remembered)  # noqa: SLF001
+    assert apply_called is False
+    action, outcome, summary = _latest_reapply_audit(store)
+    assert action == "uplink_watchdog.reapply"
+    assert outcome == "failed"
+    assert "gateway observe failed under lock" in summary
+
+
+@pytest.mark.parametrize(
+    "observe_factory",
+    [
+        pytest.param(None, id="factory_none"),
+        pytest.param(lambda _rid: None, id="transport_none"),
+    ],
+)
+def test_reapply_aborts_when_observe_transport_unavailable(
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    observe_factory: Callable[[str], Any] | None,
+) -> None:
+    """Under-lock re-observe must fail-closed when observe transport is unavailable."""
+    handle, router_id, intent, remembered, _remembered_svc, store = _setup_watchdog(tmp_path)
+    apply_called = False
+
+    def _fake_apply(**_kwargs: Any) -> Any:
+        nonlocal apply_called
+        apply_called = True
+        raise AssertionError("apply must not run when observe transport unavailable")
+
+    handle.observe_transport_factory = observe_factory
+    handle.backup_callback_factory = lambda _rid: lambda: None
+    monkeypatch.setattr(uplink_watchdog_service, "apply_wifi_station_intent", _fake_apply)
+    handle._reapply_locked(router_id, intent, _Transport(), remembered)  # noqa: SLF001
+    assert apply_called is False
+    action, outcome, summary = _latest_reapply_audit(store)
+    assert action == "uplink_watchdog.reapply"
+    assert outcome == "failed"
+    assert "observe transport unavailable under lock" in summary

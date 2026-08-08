@@ -416,6 +416,30 @@ class UplinkWatchdogHandle:
             intent_redacted["ssid"] = fresh.get("ssid")
             intent_redacted["band"] = fresh.get("band")
             intent_redacted["credential_ref_id"] = fresh.get("credential_ref_id")
+            if self.observe_transport_factory is None:
+                _audit_failure(error_message="observe transport unavailable under lock")
+                outcome_holder[0] = "failed"
+                return
+            observe_transport = self.observe_transport_factory(router_id)
+            if observe_transport is None:
+                _audit_failure(error_message="observe transport unavailable under lock")
+                outcome_holder[0] = "failed"
+                return
+            observation = run_internet_status_observe(transport=observe_transport)
+            if getattr(observation, "read_status", None) == "failed":
+                _audit_failure(error_message="gateway observe failed under lock")
+                outcome_holder[0] = "failed"
+                return
+            gateway = getattr(observation, "gateway_interface", None)
+            gateway_s = str(gateway) if gateway is not None else None
+            if is_wireguard_like_gateway(gateway_s):
+                _audit_failure(error_message="gateway is WireGuard under lock")
+                outcome_holder[0] = "failed"
+                return
+            if is_ethernet_like_gateway(gateway_s):
+                _audit_failure(error_message="gateway is ethernet under lock")
+                outcome_holder[0] = "failed"
+                return
             backup_cb: BackupCallback | None = None
             if self.backup_callback_factory is not None:
                 backup_cb = self.backup_callback_factory(router_id)

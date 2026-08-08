@@ -8,7 +8,6 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-
 from router_control.adapters.netcraze.certification import GateACertification
 from router_control.adapters.netcraze.startup_backup import StartupBackupError
 from router_control.application import uplink_watchdog_service
@@ -21,6 +20,8 @@ from router_control_host.wifi_live_transport import WifiLiveSession
 from router_control_host.wifi_station_apply_routes import (
     build_uplink_watchdog_backup_callback_factory,
 )
+
+from tests.test_uplink_watchdog_reapply_reread import _wire_observe_factory
 
 _COMPONENT_DIGEST = "a" * 64
 _FINGERPRINT_DIGEST = "b" * 64
@@ -90,6 +91,7 @@ def test_reapply_passes_backup_callback_and_invokes_before_apply(
         order.append("backup")
 
     handle.backup_callback_factory = lambda _rid: backup_cb
+    _wire_observe_factory(handle, monkeypatch)
 
     def _fake_apply(**kwargs: Any) -> Any:
         captured["backup_callback"] = kwargs.get("backup_callback")
@@ -128,15 +130,18 @@ def test_reapply_fail_closed_when_backup_factory_returns_none(
         raise AssertionError("apply must not run without backup")
 
     handle.backup_callback_factory = lambda _rid: None
+    _wire_observe_factory(handle, monkeypatch)
     monkeypatch.setattr(uplink_watchdog_service, "apply_wifi_station_intent", _fake_apply)
     handle._reapply_locked(router_id, intent, _Transport(), remembered)  # noqa: SLF001
     assert apply_called is False
     audit = store.conn.execute(
-        "SELECT action, outcome FROM audit_events ORDER BY occurred_at DESC LIMIT 1"
+        "SELECT action, outcome, summary_redacted FROM audit_events "
+        "ORDER BY occurred_at DESC LIMIT 1"
     ).fetchone()
     assert audit is not None
     assert audit[0] == "uplink_watchdog.reapply"
     assert audit[1] == "failed"
+    assert "startup-config backup unavailable" in (audit[2] or "")
 
 
 def test_reapply_fail_closed_when_backup_factory_missing(
@@ -151,13 +156,16 @@ def test_reapply_fail_closed_when_backup_factory_missing(
         apply_called = True
         raise AssertionError("apply must not run without backup factory")
 
+    _wire_observe_factory(handle, monkeypatch)
     monkeypatch.setattr(uplink_watchdog_service, "apply_wifi_station_intent", _fake_apply)
     handle._reapply_locked(router_id, intent, _Transport(), remembered)  # noqa: SLF001
     assert apply_called is False
     audit = store.conn.execute(
-        "SELECT action, outcome FROM audit_events ORDER BY occurred_at DESC LIMIT 1"
+        "SELECT action, outcome, summary_redacted FROM audit_events "
+        "ORDER BY occurred_at DESC LIMIT 1"
     ).fetchone()
     assert audit[1] == "failed"
+    assert "startup-config backup unavailable" in (audit[2] or "")
 
 
 def test_reapply_startup_backup_error_audited_without_success(
@@ -170,6 +178,7 @@ def test_reapply_startup_backup_error_audited_without_success(
         raise StartupBackupError("backup vault unavailable")
 
     handle.backup_callback_factory = lambda _rid: backup_cb
+    _wire_observe_factory(handle, monkeypatch)
 
     def _fake_apply(**kwargs: Any) -> Any:
         callback = kwargs.get("backup_callback")
@@ -180,11 +189,13 @@ def test_reapply_startup_backup_error_audited_without_success(
     monkeypatch.setattr(uplink_watchdog_service, "apply_wifi_station_intent", _fake_apply)
     handle._reapply_locked(router_id, intent, _Transport(), remembered)  # noqa: SLF001
     audit = store.conn.execute(
-        "SELECT action, outcome, summary_redacted FROM audit_events ORDER BY occurred_at DESC LIMIT 1"
+        "SELECT action, outcome, summary_redacted FROM audit_events "
+        "ORDER BY occurred_at DESC LIMIT 1"
     ).fetchone()
     assert audit is not None
     assert audit[0] == "uplink_watchdog.reapply"
     assert audit[1] == "failed"
+    assert "startup-config backup unavailable" in (audit[2] or "")
     assert "password" not in (audit[2] or "").lower()
 
 

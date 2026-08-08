@@ -224,6 +224,12 @@ def test_watchdog_reapply_records_audit_without_password(tmp_path, monkeypatch) 
         host=host,
         backup_callback_factory=lambda _rid: (lambda: None),
     )
+    handle.observe_transport_factory = lambda _rid: object()
+    monkeypatch.setattr(
+        uplink_watchdog_service,
+        "run_internet_status_observe",
+        lambda *, transport: _observation(gateway_interface="WifiMaster1/WifiStation0"),
+    )
     intent = UplinkIntent(
         mode=UplinkMode.WIFI_WAN,
         ssid=str(remembered["ssid"]),
