@@ -132,7 +132,17 @@ class RememberedUplinkService:
                     field="credential_ref_id",
                 )
             credential_ref_id = ref_id
-        current = self.get_remembered()
+        row = self.store.get_remembered_uplink()
+        stored_ref = row.get("credential_ref_id")
+        baseline_configured, _ = self._resolve_credential_ref(
+            str(stored_ref) if stored_ref else None
+        )
+        current = {
+            "router_id": row.get("router_id"),
+            "ssid": row["ssid"],
+            "desired_active": bool(row["desired_active"]),
+            "credential_configured": baseline_configured,
+        }
         will_be_active = (
             desired_active if desired_active is not None else current["desired_active"]
         )

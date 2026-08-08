@@ -275,6 +275,48 @@ def test_update_remembered_rejects_clearing_credential_while_active(tmp_path) ->
     assert exc_info.value.field == "credential_ref_id"
 
 
+def test_update_remembered_preserves_desired_active_when_replacing_revoked_credential(
+    tmp_path,
+) -> None:
+    from router_control.application.remembered_uplink import RememberedUplinkService
+    from router_control.composition import FixedClock, create_offline_runtime
+
+    moment = datetime(2026, 8, 5, 10, 0, 0, tzinfo=UTC)
+    runtime = create_offline_runtime(
+        db_path=tmp_path / "update-replace-revoked-cred.sqlite3",
+        clock=FixedClock(moment),
+    )
+    store = runtime.store
+    site_id = _seed_site(store)
+    router_id = _seed_router(store, site_id)
+    old_cred_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="WifiApPsk",
+        provider="memory",
+        provider_locator="old-revoked-cred",
+        now=moment,
+    )
+    new_cred_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="WifiApPsk",
+        provider="memory",
+        provider_locator="new-valid-cred",
+        now=moment,
+    )
+    svc = RememberedUplinkService(store=store, clock=FixedClock(moment))
+    svc.update_remembered(
+        router_id=router_id,
+        ssid="Net",
+        credential_ref_id=old_cred_id,
+        desired_active=True,
+    )
+    store.mark_credential_revoked(old_cred_id, now=moment)
+    payload = svc.update_remembered(credential_ref_id=new_cred_id)
+    assert payload["desired_active"] is True
+    assert payload["credential_configured"] is True
+    assert payload["credential_ref_id"] == new_cred_id
+
+
 def test_get_remembered_self_heal_desired_active_without_credential(tmp_path) -> None:
     from router_control.application.remembered_uplink import RememberedUplinkService
     from router_control.composition import FixedClock, create_offline_runtime
