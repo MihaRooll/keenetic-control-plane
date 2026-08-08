@@ -852,6 +852,24 @@ def _extract_subscribe_connectivity_callback(source: str) -> str:
     raise AssertionError("subscribeConnectivity callback body not closed")
 
 
+def _extract_render_dispose_callback(source: str) -> str:
+    marker = "return () => {"
+    start = source.find(marker)
+    assert start != -1, "render dispose callback missing"
+    brace = source.find("{", start + len(marker) - 1)
+    depth = 0
+    j = brace
+    while j < len(source):
+        if source[j] == "{":
+            depth += 1
+        elif source[j] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[brace + 1 : j]
+        j += 1
+    raise AssertionError("render dispose callback body not closed")
+
+
 def test_uplink_risk_modal_cancel_offline_stale_revokes_prepared_credential() -> None:
     """hub-offline-abort-followups: prepared credential revoked on cancel/offline/stale."""
     source = UPLINK_SCREEN_JS.read_text(encoding="utf-8")
@@ -864,7 +882,9 @@ def test_uplink_risk_modal_cancel_offline_stale_revokes_prepared_credential() ->
     assert "cancelPreparedMutation();" in risk_body
     offline_confirm = risk_body.split("if (offline)", 1)[1]
     assert "cancelPreparedMutation();" in offline_confirm.split("await onConfirm", 1)[0]
-    stale_confirm = risk_body.split("if (!uplinkIntentMatchesCurrent(intentSnapshot, current))", 1)[1]
+    stale_confirm = risk_body.split(
+        "if (!uplinkIntentMatchesCurrent(intentSnapshot, current))", 1
+    )[1]
     assert "cancelPreparedMutation();" in stale_confirm.split("await onConfirm", 1)[0]
 
 
@@ -880,3 +900,94 @@ def test_uplink_connectivity_offline_aborts_and_revokes_prepared_credential() ->
     assert "cancelPreparedMutation()" in offline_block
     assert "prepareAbort?.abort()" in offline_block
     assert "mutateAbort?.abort()" in offline_block
+
+
+@pytest.mark.parametrize(
+    ("watchdog_enabled", "expected_fragment"),
+    [
+        (True, "включено в сервере управления"),
+        (False, "выключено"),
+        ("null", "неизвестно"),
+    ],
+)
+def test_uplink_describe_auto_reconnect_note_watchdog(
+    tmp_path: Path,
+    watchdog_enabled: bool | str,
+    expected_fragment: str,
+) -> None:
+    """describeUplinkAutoReconnectNote: tri-state honest RU copy."""
+    enabled_expr = "null" if watchdog_enabled == "null" else json.dumps(watchdog_enabled)
+    result = _run_export(
+        tmp_path,
+        label=f"uplink-auto-reconnect-{watchdog_enabled}",
+        script_body=f"""
+console.log(JSON.stringify(
+    mod.describeUplinkAutoReconnectNote({{ watchdogEnabled: {enabled_expr} }})
+));
+""",
+    )
+    assert expected_fragment in result
+    assert "проверено" not in result.lower()
+    assert "heal" not in result.lower()
+
+
+def test_uplink_describe_auto_reconnect_note_running_and_poll(tmp_path: Path) -> None:
+    """Optional running/poll fields surface in enabled note without heal claims."""
+    result = _run_export(
+        tmp_path,
+        label="uplink-auto-reconnect-running",
+        script_body="""
+console.log(JSON.stringify(mod.describeUplinkAutoReconnectNote({
+  watchdogEnabled: true,
+  watchdogRunning: true,
+  pollSeconds: 60,
+})));
+""",
+    )
+    assert "Цикл опроса на сервере управления работает" in result
+    assert "Интервал опроса: 60 с" in result
+    assert "работа на роутере не подтверждена" in result
+
+
+def test_uplink_describe_auto_reconnect_note_not_running(tmp_path: Path) -> None:
+    """watchdogRunning false surfaces honest not-running copy."""
+    result = _run_export(
+        tmp_path,
+        label="uplink-auto-reconnect-not-running",
+        script_body="""
+console.log(JSON.stringify(mod.describeUplinkAutoReconnectNote({
+  watchdogEnabled: true,
+  watchdogRunning: false,
+})));
+""",
+    )
+    assert "Цикл опроса на сервере управления сейчас не работает" in result
+    assert "работа на роутере не подтверждена" in result
+
+
+def test_internet_uplink_screen_loads_watchdog_status() -> None:
+    """Screen loads uplink watchdog status via GET status (mirror VPN loadWatchdogStatus)."""
+    source = UPLINK_SCREEN_JS.read_text(encoding="utf-8")
+    assert "apiGet('status'" in source
+    assert "uplink_watchdog_enabled" in source
+    assert "uplink_watchdog_running" in source
+    assert "uplink_watchdog_poll_seconds" in source
+    assert "loadWatchdogStatus" in source
+    assert "describeUplinkAutoReconnectNote" in source
+    assert "hub-internet-uplink__watchdog-slot" in source
+    watchdog_slot_pos = source.find("hub-internet-uplink__watchdog-slot")
+    source_slot_pos = source.find("hub-internet-uplink__source-slot")
+    verdict_slot_pos = source.find("hub-wifi__verdict-slot")
+    assert source_slot_pos != -1
+    assert watchdog_slot_pos != -1
+    assert verdict_slot_pos != -1
+    assert source_slot_pos < watchdog_slot_pos < verdict_slot_pos
+    assert "void loadWatchdogStatus()" in source
+    load_watchdog_start = source.find("async function loadWatchdogStatus()")
+    assert load_watchdog_start != -1
+    load_watchdog_region = source[load_watchdog_start : load_watchdog_start + 1200]
+    assert "watchdogAbort?.abort()" in load_watchdog_region
+    dispose_body = _extract_render_dispose_callback(source)
+    assert "disposed = true" in dispose_body
+    assert "watchdogAbort?.abort()" in dispose_body
+    assert source.count("watchdogAbort?.abort()") >= 2

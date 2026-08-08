@@ -60,6 +60,31 @@ export const UPLINK_WIFI_OPEN_NETWORK_BLOCKED_MESSAGE =
 export const UPLINK_WIFI_INTENT_STALE_MESSAGE =
   'Пока вы подтверждали действие, название сети, частота или пароль изменились — повторите подключение.';
 
+/** Автопереподключение uplink — честный runtime-текст (не «проверено на устройстве»). */
+export function describeUplinkAutoReconnectNote({
+  watchdogEnabled = false,
+  watchdogRunning = null,
+  pollSeconds = null,
+} = {}) {
+  if (watchdogEnabled === null) {
+    return 'Состояние автопереподключения неизвестно — не удалось загрузить статус с сервера управления.';
+  }
+  if (!watchdogEnabled) {
+    return 'Автоматическое переподключение выключено — при обрыве Wi‑Fi uplink восстановите связь вручную на этом экране.';
+  }
+  let note =
+    'Автоматическое переподключение включено в сервере управления — повтор при обрыве без ручного подтверждения команды; работа на роутере не подтверждена.';
+  if (watchdogRunning === true) {
+    note += ' Цикл опроса на сервере управления работает.';
+  } else if (watchdogRunning === false) {
+    note += ' Цикл опроса на сервере управления сейчас не работает.';
+  }
+  if (typeof pollSeconds === 'number' && Number.isFinite(pollSeconds) && pollSeconds > 0) {
+    note += ` Интервал опроса: ${Math.round(pollSeconds)} с.`;
+  }
+  return note;
+}
+
 /** @type {readonly UplinkSurveyRadio[]} */
 export const UPLINK_SURVEY_RADIOS = Object.freeze(['WifiMaster0', 'WifiMaster1']);
 

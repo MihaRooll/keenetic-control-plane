@@ -6,7 +6,7 @@ import {
   createTextField,
   openModal,
 } from '../components/index.js';
-import { subscribeConnectivity } from '../core/api.js';
+import { subscribeConnectivity, apiGet } from '../core/api.js';
 import { syncActionButtonById } from '../core/form-submit-sync.js';
 import { HubApiError, ERROR_KIND, describeError } from '../core/errors.js';
 import { getSession, isConnectionRestorePending, subscribeSession } from '../core/session.js';
@@ -37,6 +37,7 @@ import {
   UPLINK_WIFI_INTENT_STALE_MESSAGE,
   UPLINK_WIFI_OPEN_NETWORK_BLOCKED_MESSAGE,
   applyUplinkWifiConnection,
+  describeUplinkAutoReconnectNote,
   buildStationPreviewBody,
   buildUplinkIntentSnapshot,
   buildUplinkWifiScreenState,
@@ -164,6 +165,16 @@ export function render(container, ctx) {
 
   /** @type {AbortController|null} */
   let observeAbort = null;
+  /** @type {AbortController|null} */
+  let watchdogAbort = null;
+
+  /** @type {boolean|null} */
+  let watchdogEnabled = null;
+  /** @type {boolean|null} */
+  let watchdogRunning = null;
+  /** @type {number|null} */
+  let watchdogPollSeconds = null;
+  let lastWatchdogSignature = '';
 
   /** @type {Array<{ close: () => void }>} */
   let openModals = [];
@@ -188,6 +199,10 @@ export function render(container, ctx) {
   const sourceStatusSlot = document.createElement('div');
   sourceStatusSlot.className = 'hub-internet-uplink__source-slot';
   screen.appendChild(sourceStatusSlot);
+
+  const watchdogStatusSlot = document.createElement('div');
+  watchdogStatusSlot.className = 'hub-internet-uplink__watchdog-slot';
+  screen.appendChild(watchdogStatusSlot);
 
   const verdictSlot = document.createElement('div');
   verdictSlot.className = 'hub-wifi__verdict-slot';
@@ -329,6 +344,31 @@ export function render(container, ctx) {
     }
     lastSourceSignature = signature;
     sourceAffordance?.update();
+  }
+
+  function buildWatchdogSignature() {
+    return [
+      watchdogEnabled === null ? '?' : String(watchdogEnabled),
+      watchdogRunning === null ? '?' : String(watchdogRunning),
+      watchdogPollSeconds === null ? '?' : String(watchdogPollSeconds),
+    ].join('|');
+  }
+
+  function renderWatchdogStatus() {
+    const signature = buildWatchdogSignature();
+    if (signature === lastWatchdogSignature && watchdogStatusSlot.firstChild) {
+      return;
+    }
+    lastWatchdogSignature = signature;
+    clearElement(watchdogStatusSlot);
+    const note = document.createElement('p');
+    note.className = 'hub-wifi__note hub-internet-uplink__watchdog-note';
+    note.textContent = describeUplinkAutoReconnectNote({
+      watchdogEnabled,
+      watchdogRunning,
+      pollSeconds: watchdogPollSeconds,
+    });
+    watchdogStatusSlot.appendChild(note);
   }
 
   function buildVerdictSignature() {
@@ -885,6 +925,7 @@ export function render(container, ctx) {
   function renderAll() {
     if (disposed) return;
     renderSourceStatus();
+    renderWatchdogStatus();
     rebuildSlot(verdictSlot, renderMutationVerdict);
     const contentSignature = buildContentSignature();
     if (contentSignature !== lastContentSignature || !contentWrap.firstChild) {
@@ -895,6 +936,44 @@ export function render(container, ctx) {
     if (footerSignature !== lastFooterSignature || !footerLeft.firstChild) {
       lastFooterSignature = footerSignature;
       rebuildSlot(footer, renderFooter);
+    }
+  }
+
+  async function loadWatchdogStatus() {
+    if (disposed) {
+      return;
+    }
+    watchdogAbort?.abort();
+    watchdogAbort = new AbortController();
+    const myController = watchdogAbort;
+    try {
+      const response = await apiGet('status', { signal: myController.signal });
+      const payload = /** @type {Record<string, unknown>} */ (response ?? {});
+      watchdogEnabled =
+        typeof payload.uplink_watchdog_enabled === 'boolean'
+          ? payload.uplink_watchdog_enabled
+          : null;
+      watchdogRunning =
+        typeof payload.uplink_watchdog_running === 'boolean'
+          ? payload.uplink_watchdog_running
+          : null;
+      const pollRaw = payload.uplink_watchdog_poll_seconds;
+      watchdogPollSeconds =
+        typeof pollRaw === 'number' && Number.isFinite(pollRaw) ? pollRaw : null;
+    } catch (error) {
+      if (disposed || isAborted(error)) {
+        return;
+      }
+      watchdogEnabled = null;
+      watchdogRunning = null;
+      watchdogPollSeconds = null;
+    } finally {
+      if (watchdogAbort === myController) {
+        watchdogAbort = null;
+      }
+      if (!disposed) {
+        renderAll();
+      }
     }
   }
 
@@ -1369,6 +1448,7 @@ export function render(container, ctx) {
 
   renderAll();
   void fetchInternetSourceFlow();
+  void loadWatchdogStatus();
 
   return () => {
     disposed = true;
@@ -1377,6 +1457,7 @@ export function render(container, ctx) {
     prepareAbort?.abort();
     mutateAbort?.abort();
     observeAbort?.abort();
+    watchdogAbort?.abort();
     closeAllModals();
     revokePendingCredential();
     sourceAffordance?.destroy();
