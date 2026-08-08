@@ -328,7 +328,7 @@ export function computeOverviewReadiness(model, context = {}) {
     }
   }
 
-  // domainPublished (dispatch-only) does not count — only cloud registration verification.
+  // domainPublished (dispatch-only) does not count; keendns/status has no cloud-verified wire yet.
   const domainReady = context.domainCloudVerified === true;
 
   categories.router = routerReady;
@@ -1291,7 +1291,7 @@ export function buildDomainStatusCard(section, navigate, options = {}) {
 
   const statusWrap = document.createElement('div');
   statusWrap.className = 'hub-domain-card__status';
-  statusWrap.appendChild(createBadge({ label: 'Не проверено', tone: 'warning' }));
+  statusWrap.appendChild(createBadge({ label: 'Облако не проверяется', tone: 'warning' }));
   main.appendChild(statusWrap);
 
   const fqdnEl = document.createElement('p');

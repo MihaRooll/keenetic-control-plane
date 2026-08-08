@@ -1267,6 +1267,62 @@ console.log(JSON.stringify({{
     assert payload["hasStaffWifi"] is False
 
 
+def test_overview_domain_note_honest_no_live_router_fetch() -> None:
+    """Домен: note не утверждает live fetch роутера для keendns/status."""
+    source = _read(OVERVIEW_MODEL_JS)
+    assert "запрашивается у роутера" not in source
+    domain_body = _extract_function_body(source, "function buildDomainSection(")
+    assert domain_body is not None
+    assert "запрос к роутеру из обзора не выполняется" in domain_body
+
+
+def test_overview_derive_domain_cloud_verified_honest_false(tmp_path: Path) -> None:
+    """domainCloudVerified не выводится из domainPublished и остаётся false без сигнала API."""
+    model_uri = json.dumps(OVERVIEW_MODEL_JS.as_uri())
+    script = f"""
+const model = await import({model_uri});
+
+const fromEmpty = model.deriveDomainCloudVerified(null);
+const fromUnknown = model.deriveDomainCloudVerified({{
+  feature_availability: 'unknown',
+  name_reservation: 'unknown',
+  access_mode: 'unknown',
+}});
+const fromPublishedLike = model.deriveDomainCloudVerified({{
+  feature_availability: 'unknown',
+  domainPublished: true,
+}});
+
+console.log(JSON.stringify({{
+  fromEmpty,
+  fromUnknown,
+  fromPublishedLike,
+}}));
+"""
+    payload = _run_node_harness(script, tmp_path, "derive-domain-cloud-verified")
+    assert payload["fromEmpty"] is False
+    assert payload["fromUnknown"] is False
+    assert payload["fromPublishedLike"] is False
+
+
+def test_overview_load_includes_domain_cloud_verified(tmp_path: Path) -> None:
+    """loadOverview возвращает domainCloudVerified из deriveDomainCloudVerified."""
+    source = _read(OVERVIEW_MODEL_JS)
+    load_body = _extract_function_body(source, "export async function loadOverview(")
+    assert load_body is not None
+    assert "domainCloudVerified" in load_body
+    assert "deriveDomainCloudVerified" in load_body
+
+
+def test_overview_wires_domain_cloud_verified_in_readiness_context() -> None:
+    """overview.js передаёт domainCloudVerified в computeOverviewReadiness."""
+    source = _read(OVERVIEW_JS)
+    ctx_body = _extract_function_body(source, "function buildOverviewReadinessContext(")
+    assert ctx_body is not None
+    assert "domainCloudVerified" in ctx_body
+    assert "model?.domainCloudVerified" in ctx_body
+
+
 def test_overview_domain_technical_translated_no_raw_notes() -> None:
     """Домен: notes из API не попадают в UI, technical только через перевод значений."""
     source = _read(OVERVIEW_MODEL_JS)

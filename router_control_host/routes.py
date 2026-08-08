@@ -764,6 +764,51 @@ def _wireguard_intent_from_profile_row(
     )
 
 
+def _assignment_policy_metadata(assignment: dict[str, Any]) -> dict[str, Any]:
+    raw = assignment.get("policy_metadata_json")
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _wireguard_intent_from_metadata_dict(
+    *,
+    wg_id: str,
+    metadata: dict[str, Any],
+    enabled: bool = False,
+) -> WireguardIntent:
+    """Best-effort WireguardIntent from assignment/policy metadata (orphan teardown)."""
+    asc_raw = metadata.get("asc9_args")
+    asc_args = tuple(asc_raw) if isinstance(asc_raw, list) else None
+    metadata_keepalive = metadata.get("peer_keepalive_interval")
+    resolved_peer_keepalive_interval = (
+        metadata_keepalive
+        if isinstance(metadata_keepalive, int) and not isinstance(metadata_keepalive, bool)
+        else None
+    )
+    ip_global_priority = metadata.get("ip_global_priority")
+    return WireguardIntent(
+        wg_id=wg_id,
+        enabled=enabled,
+        asc_args=asc_args,
+        peer_public_key=metadata.get("peer_public_key"),
+        peer_endpoint=metadata.get("peer_endpoint"),
+        peer_allow_ips=metadata.get("peer_allow_ips"),
+        peer_keepalive_interval=resolved_peer_keepalive_interval,
+        peer_rci_shape=WireguardPeerRciShape(
+            str(metadata.get("peer_rci_shape", WireguardPeerRciShape.NESTED_RCI.value))
+        ),
+        interface_address=metadata.get("interface_address"),
+        ip_global_auto=bool(metadata.get("ip_global_auto", False)),
+        ip_global_priority=ip_global_priority,
+        tcp_mss_pmtu=bool(metadata.get("tcp_mss_pmtu", False)),
+    )
+
+
 def _profile_mutation_intent_redacted(
     profile_id: str,
     intent: WireguardIntent,
@@ -841,10 +886,15 @@ def _teardown_prior_profile_assignment(
         return
     prior_profile_id = str(prior["profile_id"])
     same_profile = prior_profile_id == profile_id
+    policy_metadata = _assignment_policy_metadata(prior)
     prior_locator = prior.get("observed_vendor_locator")
     prior_wg_id: str | None = None
     if prior_locator and str(prior_locator).strip():
         prior_wg_id = str(prior_locator).strip()
+    if prior_wg_id is None:
+        policy_wg = policy_metadata.get("wg_id")
+        if policy_wg and str(policy_wg).strip():
+            prior_wg_id = str(policy_wg).strip()
     prior_row = host.runtime.store.get_profile(prior_profile_id)
     if prior_wg_id is None and prior_row is not None:
         prior_metadata = json.loads(prior_row["metadata_json"] or "{}")
@@ -856,21 +906,37 @@ def _teardown_prior_profile_assignment(
         if target and prior_wg_id and target == prior_wg_id:
             return
     if prior_wg_id is None:
+        if same_profile:
+            cleared = host.runtime.store.deactivate_tunnel_assignments(
+                router_id,
+                logical_role=logical_role,
+                now=host.runtime.clock.now(),
+            )
+            if cleared == 0:
+                raise WireguardApplyServiceError(
+                    "stuck tunnel assignment could not be cleared "
+                    "(same profile, prior wg_id unresolvable)"
+                )
+            return
         if prior_row is None:
             raise WireguardApplyServiceError(
                 "orphan tunnel assignment has no resolvable wg_id "
-                "(observed_vendor_locator absent)"
+                "(observed_vendor_locator and policy_metadata.wg_id both absent)"
             )
         raise WireguardApplyServiceError(
             "prior VPN profile has no resolvable wg_id "
-            "(observed_vendor_locator and metadata.wg_id both absent)"
+            "(observed_vendor_locator, policy_metadata.wg_id, and metadata.wg_id all absent)"
         )
     if prior_row is not None:
         prior_intent = _wireguard_intent_from_profile_row(
             host, prior_row, wg_id=prior_wg_id, enabled=False
         )
     else:
-        prior_intent = WireguardIntent(wg_id=prior_wg_id, enabled=False)
+        prior_intent = _wireguard_intent_from_metadata_dict(
+            wg_id=prior_wg_id,
+            metadata=policy_metadata,
+            enabled=False,
+        )
     if wg_routes._should_use_live_path(
         cast(wg_routes.WireguardLiveConnectionFields, body), host
     ):

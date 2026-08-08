@@ -244,7 +244,7 @@ def test_domain_card_uses_required_apis(domain_card_block: str) -> None:
     assert "hub-overview__domain-status-card" in domain_card_block
     assert "createIcon('domain'" in domain_card_block or 'createIcon("domain"' in domain_card_block
     assert "createIcon('info'" in domain_card_block or 'createIcon("info"' in domain_card_block
-    assert "Не проверено" in domain_card_block
+    assert "Облако не проверяется" in domain_card_block
     # Подписи плиток обязаны меняться вместе с состоянием: иконка не должна быть
     # единственным признаком того, что пункт ещё не готов.
     assert "Имя подготовлено" in domain_card_block

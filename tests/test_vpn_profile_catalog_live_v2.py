@@ -1601,6 +1601,218 @@ def test_teardown_orphan_assignment_fail_closed_without_locator(
         )
 
 
+def test_teardown_prior_resolves_wg_id_from_policy_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Prior teardown wg_id chain: locator absent → policy_metadata.wg_id → profile metadata."""
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from router_control.persistence.connection import open_database
+    from router_control.persistence.store import PersistenceStore
+    from router_control_host.routes import (
+        VpnProfileActivateBody,
+        _teardown_prior_profile_assignment,
+    )
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
+
+    store = PersistenceStore(open_database(tmp_path / "prior-policy-wg.sqlite3"))
+    router_id = _seed_catalog_router(store)
+    prior_profile_id = _seed_catalog_profile(store, display_name="prior-policy", wg_id="Wireguard6")
+    next_profile_id = _seed_catalog_profile(store, display_name="next-policy", wg_id="Wireguard6")
+    store.upsert_tunnel_assignment(
+        router_id=router_id,
+        profile_id=prior_profile_id,
+        desired_active=True,
+        observed_vendor_locator=None,
+        policy_metadata_json=json.dumps({"wg_id": "Wireguard5"}),
+    )
+
+    captured_wg_ids: list[str] = []
+
+    def _track_teardown(**kwargs: object) -> object:
+        intent = kwargs.get("intent")
+        captured_wg_ids.append(str(getattr(intent, "wg_id", kwargs.get("wg_id"))))
+        return SimpleNamespace(overall="applied")
+
+    host = MagicMock()
+    host.runtime.store = store
+    host.runtime.clock.now.return_value = datetime.now(UTC)
+    body = VpnProfileActivateBody(
+        confirm_live_apply=True,
+        router_id=router_id,
+    )
+
+    monkeypatch.setattr(wg_routes_mod, "_should_use_live_path", lambda *_a, **_k: False)
+    monkeypatch.setattr(routes_mod, "teardown_wireguard", _track_teardown)
+
+    _teardown_prior_profile_assignment(
+        host=host,
+        request=MagicMock(),
+        body=body,
+        wg_routes=wg_routes_mod,
+        router_id=router_id,
+        profile_id=next_profile_id,
+        logical_role="primary",
+        live_params=None,
+        trail_params=None,
+        target_wg_id="Wireguard6",
+    )
+
+    assert captured_wg_ids == ["Wireguard5"]
+
+
+def test_teardown_same_profile_unresolvable_prior_heals_without_teardown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Same profile with unresolvable prior wg_id clears stuck assignment instead of hard-fail."""
+    from unittest.mock import MagicMock
+
+    from router_control.persistence.connection import open_database
+    from router_control.persistence.store import PersistenceStore
+    from router_control_host.routes import (
+        VpnProfileActivateBody,
+        _teardown_prior_profile_assignment,
+    )
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
+
+    store = PersistenceStore(open_database(tmp_path / "same-profile-heal.sqlite3"))
+    router_id = _seed_catalog_router(store)
+    profile_id = store.import_profile(
+        display_name="stuck-same-profile",
+        vpn_kind="AmneziaWG",
+        content_digest="digest-stuck-same-profile",
+        metadata_json=json.dumps(
+            {
+                "peer_public_key": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
+                "peer_endpoint": "example.com:51820",
+                "peer_allow_ips": "0.0.0.0/0",
+            }
+        ),
+    )
+    store.upsert_tunnel_assignment(
+        router_id=router_id,
+        profile_id=profile_id,
+        desired_active=True,
+        observed_vendor_locator=None,
+    )
+
+    teardown_called = False
+
+    def _unexpected_teardown(**_kwargs: object) -> object:
+        nonlocal teardown_called
+        teardown_called = True
+        raise AssertionError("teardown must not run when same-profile heal clears assignment")
+
+    host = MagicMock()
+    host.runtime.store = store
+    host.runtime.clock.now.return_value = datetime.now(UTC)
+    body = VpnProfileActivateBody(
+        confirm_live_apply=True,
+        router_id=router_id,
+    )
+
+    monkeypatch.setattr(wg_routes_mod, "_should_use_live_path", lambda *_a, **_k: False)
+    monkeypatch.setattr(routes_mod, "teardown_wireguard", _unexpected_teardown)
+
+    _teardown_prior_profile_assignment(
+        host=host,
+        request=MagicMock(),
+        body=body,
+        wg_routes=wg_routes_mod,
+        router_id=router_id,
+        profile_id=profile_id,
+        logical_role="primary",
+        live_params=None,
+        trail_params=None,
+        target_wg_id="Wireguard6",
+    )
+
+    assert teardown_called is False
+    assert store.get_active_tunnel_assignment(router_id) is None
+
+
+def test_teardown_orphan_intent_enriched_from_policy_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Orphan teardown builds fuller WireguardIntent from policy_metadata when profile row missing."""
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from router_control.persistence.connection import open_database
+    from router_control.persistence.store import PersistenceStore
+    from router_control_host.routes import (
+        VpnProfileActivateBody,
+        _teardown_prior_profile_assignment,
+    )
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
+
+    store = PersistenceStore(open_database(tmp_path / "orphan-policy-intent.sqlite3"))
+    router_id = _seed_catalog_router(store)
+    next_profile_id = _seed_catalog_profile(store, display_name="next-after-orphan-meta", wg_id="Wireguard6")
+    orphan_profile_id = "00000000-0000-4000-8000-000000000097"
+    ts = datetime.now(UTC).isoformat()
+    store._conn.execute("PRAGMA foreign_keys = OFF")
+    store._conn.execute(
+        "INSERT INTO tunnel_assignments("
+        "assignment_id, router_id, profile_id, logical_role, desired_active, "
+        "policy_metadata_json, observed_vendor_locator, created_at, retired_at"
+        ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)",
+        (
+            f"tun-orphan-{orphan_profile_id}",
+            router_id,
+            orphan_profile_id,
+            "primary",
+            1,
+            json.dumps({"wg_id": "Wireguard5", "ip_global_auto": True, "ip_global_priority": 700}),
+            "Wireguard5",
+            ts,
+        ),
+    )
+    store._conn.commit()
+    store._conn.execute("PRAGMA foreign_keys = ON")
+
+    captured_intents: list[object] = []
+
+    def _track_teardown(**kwargs: object) -> object:
+        captured_intents.append(kwargs.get("intent"))
+        return SimpleNamespace(overall="applied")
+
+    host = MagicMock()
+    host.runtime.store = store
+    host.runtime.clock.now.return_value = datetime.now(UTC)
+    body = VpnProfileActivateBody(
+        confirm_live_apply=True,
+        router_id=router_id,
+    )
+
+    monkeypatch.setattr(wg_routes_mod, "_should_use_live_path", lambda *_a, **_k: False)
+    monkeypatch.setattr(routes_mod, "teardown_wireguard", _track_teardown)
+
+    _teardown_prior_profile_assignment(
+        host=host,
+        request=MagicMock(),
+        body=body,
+        wg_routes=wg_routes_mod,
+        router_id=router_id,
+        profile_id=next_profile_id,
+        logical_role="primary",
+        live_params=None,
+        trail_params=None,
+        target_wg_id="Wireguard6",
+    )
+
+    assert len(captured_intents) == 1
+    intent = captured_intents[0]
+    assert getattr(intent, "wg_id") == "Wireguard5"
+    assert getattr(intent, "ip_global_auto") is True
+    assert getattr(intent, "ip_global_priority") == 700
+    assert store.get_active_tunnel_assignment(router_id) is None
+
+
 def test_activate_merges_wg_id_into_profile_metadata(
     authed_client, monkeypatch: pytest.MonkeyPatch
 ) -> None:

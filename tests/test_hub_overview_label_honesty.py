@@ -244,7 +244,7 @@ def test_vpn_helpers_negative_and_unknown_labels(vpn_helper_block: str) -> None:
 def test_domain_card_negative_and_unknown_labels(domain_card_block: str) -> None:
     assert "Имя не готово" in domain_card_block
     assert "Событие не выбрано" in domain_card_block
-    assert "createBadge({ label: 'Не проверено', tone: 'warning' })" in domain_card_block
+    assert "createBadge({ label: 'Облако не проверяется', tone: 'warning' })" in domain_card_block
 
 
 def test_resolve_router_check_tile_label_runtime(tmp_path: Path) -> None:

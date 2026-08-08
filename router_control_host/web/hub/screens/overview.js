@@ -901,6 +901,7 @@ export function render(container, ctx) {
       routerInternetObserve,
       vpnItems,
       domainPublished: domainPublishedSession,
+      domainCloudVerified: model?.domainCloudVerified === true,
       internetEnrichmentBusy,
       vpnEnrichmentBusy,
       systemCheckRunning,

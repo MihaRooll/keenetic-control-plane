@@ -16,7 +16,7 @@ import { runSystemCheckWithTransientRetry } from './system-check.js';
 
 /** @typedef {{ state: string, title: string, subtitle: string|null, badge: { label: string, tone: string }|null, note: string|null, technical: string|null, error: HubApiError|null, route: string|null, mock: boolean, checkedAt?: string|null, options?: Array<{ id: string, name: string }> }} OverviewSection */
 
-/** @typedef {{ router: OverviewSection, systemCheck: OverviewSection, domain: OverviewSection, generatedAt: string, adapterMode: string, selectedRouterId: string|null, systemCheckFacts: import('./system-check.js').DescribedFact[]|null }} OverviewModel */
+/** @typedef {{ router: OverviewSection, systemCheck: OverviewSection, domain: OverviewSection, domainCloudVerified: boolean, generatedAt: string, adapterMode: string, selectedRouterId: string|null, systemCheckFacts: import('./system-check.js').DescribedFact[]|null }} OverviewModel */
 
 /** @typedef {{ routerId?: string|null, routerHost?: string|null, siteId?: string|null, hostKeyConfirmed?: boolean, eventPresetId?: string|null, eventPresetName?: string|null, wifiLive?: { host?: string|null, username?: string|null, credentialRefId?: string|null, sshHostKeySha256?: string|null }, wifiRoles?: { staffApId?: string|null, guestApId?: string|null } }} SessionInput */
 
@@ -470,6 +470,23 @@ function buildVpnSection(data, error) {
 }
 
 /**
+ * Honest cloud-registration verification from keendns/status only.
+ * Never infer from domainPublished/dispatch-only apply outcomes.
+ * @param {unknown} statusPayload
+ * @returns {boolean}
+ */
+export function deriveDomainCloudVerified(statusPayload) {
+  if (!statusPayload || typeof statusPayload !== 'object') {
+    return false;
+  }
+  const payload = /** @type {Record<string, unknown>} */ (statusPayload);
+  // classify_keendns_status (inject-only) emits no sealed cloud-verified signal today.
+  // Reserved for explicit backend fields when device-observed verification exists.
+  void payload;
+  return false;
+}
+
+/**
  * @param {unknown} data
  * @param {HubApiError|null} error
  * @returns {OverviewSection}
@@ -502,7 +519,7 @@ function buildDomainSection(data, error) {
     title: 'Домен',
     subtitle: 'Состояние домена неизвестно',
     badge: null,
-    note: 'Общий статус запрашивается у роутера; не все параметры облачного имени отображаются',
+    note: 'Статус KeenDNS — только по переданным данным; запрос к роутеру из обзора не выполняется',
     technical,
     error: null,
     route: '#/domain',
@@ -594,6 +611,7 @@ export async function loadOverview({ session, runtime, signal, onHealthAttempt }
     ),
     systemCheck: buildSystemCheckSection(verdict, systemCheckResult.error),
     domain: buildDomainSection(domainResult.data, domainResult.error),
+    domainCloudVerified: deriveDomainCloudVerified(domainResult.data),
     generatedAt,
     adapterMode,
     selectedRouterId,
