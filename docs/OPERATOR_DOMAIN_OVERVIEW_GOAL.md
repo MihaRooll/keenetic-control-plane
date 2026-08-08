@@ -55,6 +55,7 @@ Everything else (event checklist, «Проверить домен», «Откр�
 | `keendns/status` returns empty → always «unknown» | Badge «Облако не проверяется» is honest but noisy | Optional one-line after publish; no fake verify |
 | `domainCloudVerified` always false | Readiness domain segment never greens | Do **not** green from `overall=applied` alone until sealed cloud verify |
 | Stale docs (M-5 «только заявка», IMPLEMENTATION_STATUS human-gate-only) | Agents re-ask or rebuild gates | Prefer STATUS + this doc + HUMAN_GATE standing |
+| Default starter `promo` often **taken** in cloud | Operator sees generic router failure toast | Parse apply `logs[]` / device message → «имя занято» + suggest another label |
 | Live cloud registration **not** device-proven | R-8 still `КОД ГОТОВ`, not `ЖИВЬЁМ` | Live book + observe `show ndns` / `get-booked` next honesty step |
 
 ---

@@ -21,6 +21,7 @@ import {
   DOMAIN_SIMPLE_DEFAULT_NAME_HONESTY,
   DOMAIN_SIMPLE_GATE_WHY,
   DOMAIN_ROUTER_DEFAULT_FQDN_LABEL,
+  DOMAIN_ROUTER_BOOKED_FQDN_LABEL,
   KEENDNS_DEFAULT_ACCESS_MODE,
   KEENDNS_DOMAIN_OPTIONS,
   buildPublishRequestSummary,
@@ -44,6 +45,7 @@ import {
  * @property {'full'|'overview'} [variant]
  * @property {(routeId: string) => void} [navigate]
  * @property {() => string|null} [getRouterDefaultFqdn]
+ * @property {() => string|null} [getRouterBookedFqdn]
  * @property {() => boolean|null} [getRouterSslValid]
  * @property {string} [title]
  */
@@ -88,6 +90,7 @@ export function mountDomainSimplePublishAffordance(container, options) {
     navigate,
     title = 'Домен',
     getRouterDefaultFqdn,
+    getRouterBookedFqdn,
     getRouterSslValid,
   } = options;
 
@@ -217,6 +220,19 @@ export function mountDomainSimplePublishAffordance(container, options) {
   routerSslHint.hidden = true;
   routerDefaultBlock.appendChild(routerSslHint);
   body.appendChild(routerDefaultBlock);
+
+  const routerBookedBlock = document.createElement('div');
+  routerBookedBlock.className = 'hub-domain__router-booked';
+  routerBookedBlock.hidden = true;
+  const routerBookedLabel = document.createElement('p');
+  routerBookedLabel.className = 'hub-domain__note hub-domain__router-booked-label';
+  routerBookedLabel.textContent = DOMAIN_ROUTER_BOOKED_FQDN_LABEL;
+  routerBookedBlock.appendChild(routerBookedLabel);
+  const routerBookedFqdn = document.createElement('p');
+  routerBookedFqdn.className = 'hub-domain__compact-fqdn hub-domain__router-booked-fqdn';
+  routerBookedFqdn.id = `${idPrefix}-router-booked-fqdn`;
+  routerBookedBlock.appendChild(routerBookedFqdn);
+  body.appendChild(routerBookedBlock);
 
   const fqdnPreview = document.createElement('p');
   fqdnPreview.className = 'hub-domain__compact-fqdn';
@@ -350,6 +366,8 @@ export function mountDomainSimplePublishAffordance(container, options) {
     if (isOverview) {
       const routerFqdn =
         typeof getRouterDefaultFqdn === 'function' ? getRouterDefaultFqdn() : null;
+      const routerBooked =
+        typeof getRouterBookedFqdn === 'function' ? getRouterBookedFqdn() : null;
       const routerSsl =
         typeof getRouterSslValid === 'function' ? getRouterSslValid() : null;
 
@@ -371,6 +389,14 @@ export function mountDomainSimplePublishAffordance(container, options) {
         routerDefaultBlock.hidden = true;
         routerSslHint.textContent = '';
         routerSslHint.hidden = true;
+      }
+
+      if (typeof routerBooked === 'string' && routerBooked.trim()) {
+        routerBookedFqdn.textContent = routerBooked.trim();
+        routerBookedBlock.hidden = false;
+      } else {
+        routerBookedFqdn.textContent = '';
+        routerBookedBlock.hidden = true;
       }
 
       if (state.valid && state.draftUrl) {

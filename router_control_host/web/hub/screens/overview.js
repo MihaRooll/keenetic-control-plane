@@ -38,7 +38,9 @@ import {
 import {
   applyKeendnsBooking,
   KEENDNS_DEFAULT_ACCESS_MODE,
+  normalizeDomainName,
   resolveDomainSimpleDefaultName,
+  resolveKeendnsBookedFqdn,
   probeOperatorHostInternet,
 } from '../features/domain-model.js';
 import { fetchRememberedUplink } from '../features/uplink-wifi-model.js';
@@ -399,6 +401,7 @@ export function render(container, ctx) {
   let domainDraftName = resolveDomainSimpleDefaultName();
   let domainDraftSuffix = 'netcraze.pro';
   let domainPublishedSession = false;
+  let domainDraftPrefilledFromObserve = false;
   /** @type {import('../features/system-check.js').DescribedFact[]|null} */
   let lastSystemCheckFacts = null;
   /** @type {ReturnType<typeof mountOverviewSimpleNetworks>|null} */
@@ -972,6 +975,26 @@ export function render(container, ctx) {
     );
   }
 
+  function maybePrefillDomainDraftFromObserve() {
+    if (domainDraftPrefilledFromObserve) {
+      return;
+    }
+    const observe = model?.keendnsObserve;
+    if (!observe || typeof observe.booked_name !== 'string' || !observe.booked_name.trim()) {
+      return;
+    }
+    const currentName = normalizeDomainName(domainDraftName);
+    const defaultName = resolveDomainSimpleDefaultName();
+    if (currentName && currentName !== defaultName) {
+      return;
+    }
+    domainDraftName = normalizeDomainName(observe.booked_name);
+    if (typeof observe.booked_domain === 'string' && observe.booked_domain.trim()) {
+      domainDraftSuffix = observe.booked_domain.trim().toLowerCase();
+    }
+    domainDraftPrefilledFromObserve = true;
+  }
+
   function mountOverviewActionSlots() {
     if (networksMount) {
       return;
@@ -1004,6 +1027,7 @@ export function render(container, ctx) {
         }
         return null;
       },
+      getRouterBookedFqdn: () => resolveKeendnsBookedFqdn(model?.keendnsObserve ?? null),
       getRouterSslValid: () => {
         if (typeof model?.keendnsObserve?.ssl_valid === 'boolean') {
           return model.keendnsObserve.ssl_valid;
@@ -2454,6 +2478,7 @@ export function render(container, ctx) {
       lastSystemCheckFacts = Array.isArray(nextModel.systemCheckFacts)
         ? nextModel.systemCheckFacts
         : null;
+      maybePrefillDomainDraftFromObserve();
       if (wasNullModel) {
         vpnCatalogSettled = false;
       }

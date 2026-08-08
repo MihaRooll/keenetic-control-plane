@@ -233,12 +233,18 @@ def test_overview_no_dual_domain_slots(overview_source: str) -> None:
         assert needle not in overview_source, f"forbidden overview domain needle: {needle!r}"
 
 
-def test_overview_mounts_compact_variant(mount_overview_domain_body: str) -> None:
+def test_overview_mounts_compact_variant(
+    mount_overview_domain_body: str,
+    overview_source: str,
+) -> None:
     assert "variant: 'overview'" in mount_overview_domain_body
     assert "navigate: (routeId) => ctx.navigate(routeId)" in mount_overview_domain_body
     assert "openDomainPublishApplyConfirm" in mount_overview_domain_body
     assert "applyKeendnsBooking" in mount_overview_domain_body
     assert "KEENDNS_DEFAULT_ACCESS_MODE" in mount_overview_domain_body
+    assert "getRouterBookedFqdn" in mount_overview_domain_body
+    assert "resolveKeendnsBookedFqdn" in mount_overview_domain_body
+    assert "maybePrefillDomainDraftFromObserve" in overview_source
 
 
 def test_overview_compact_publish_surface(overview_compact_block: str) -> None:
@@ -249,6 +255,9 @@ def test_overview_compact_publish_surface(overview_compact_block: str) -> None:
     assert "hub-domain__compact-fqdn" in overview_compact_block
     assert "hub-domain__router-default" in overview_compact_block
     assert "getRouterDefaultFqdn" in overview_compact_block
+    assert "getRouterBookedFqdn" in overview_compact_block
+    assert "DOMAIN_ROUTER_BOOKED_FQDN_LABEL" in overview_compact_block
+    assert "hub-domain__router-booked" in overview_compact_block
     assert "KEENDNS_APPLY_DISPATCH_HONESTY" not in overview_compact_block
     assert "hub-overview__quiet-link" in overview_compact_block
     assert "#/domain" in overview_compact_block

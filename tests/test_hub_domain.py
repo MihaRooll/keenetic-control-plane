@@ -1240,6 +1240,7 @@ console.log(JSON.stringify({{
   message: outcome.message,
   dispatchTitle: mod.KEENDNS_APPLY_DISPATCH_TITLE,
   dispatchHonesty: mod.KEENDNS_APPLY_DISPATCH_HONESTY,
+  failedGenericMessage: mod.KEENDNS_APPLY_FAILED_GENERIC_MESSAGE,
 }}));
 """,
     )
@@ -1250,6 +1251,82 @@ console.log(JSON.stringify({{
     else:
         assert result["hubState"] == "ERROR"
         assert result["title"] != result["dispatchTitle"]
+        assert result["message"] == result["failedGenericMessage"]
+
+
+def test_domain_describe_keendns_apply_outcome_name_taken_from_logs(tmp_path: Path) -> None:
+    """failed + device log 'not available' → Russian taken-name message with FQDN."""
+    result = _run_export(
+        tmp_path,
+        label="keendns-apply-taken-logs",
+        script_body="""
+const outcome = mod.describeKeendnsApplyOutcome({
+  overall: 'failed',
+  name: 'promo',
+  domain: 'netcraze.pro',
+  logs: ['dispatch failed for ndns book-name: Name is not available'],
+});
+console.log(JSON.stringify({ message: outcome.message }));
+""",
+    )
+    assert "занято" in result["message"]
+    assert "promo.netcraze.pro" in result["message"]
+    assert "выберите другое имя" in result["message"]
+
+
+def test_domain_describe_keendns_apply_outcome_name_taken_from_failed_to_book_log(
+    tmp_path: Path,
+) -> None:
+    """failed + failed to book log → parse FQDN from quoted string."""
+    result = _run_export(
+        tmp_path,
+        label="keendns-apply-taken-book-log",
+        script_body="""
+const outcome = mod.describeKeendnsApplyOutcome({
+  overall: 'failed',
+  logs: ['failed to book "promo.netcraze.pro".'],
+});
+console.log(JSON.stringify({ message: outcome.message }));
+""",
+    )
+    assert "занято" in result["message"]
+    assert "promo.netcraze.pro" in result["message"]
+
+
+def test_domain_describe_keendns_apply_outcome_failed_device_detail(tmp_path: Path) -> None:
+    """failed + non-taken device detail → localized failure with detail tail."""
+    result = _run_export(
+        tmp_path,
+        label="keendns-apply-failed-detail",
+        script_body="""
+const outcome = mod.describeKeendnsApplyOutcome({
+  overall: 'failed',
+  logs: ['dispatch failed for ndns book-name: upstream timeout'],
+});
+console.log(JSON.stringify({ message: outcome.message }));
+""",
+    )
+    assert "Не удалось зарегистрировать имя в облаке" in result["message"]
+    assert "upstream timeout" in result["message"]
+    assert "занято" not in result["message"]
+
+
+def test_domain_resolve_keendns_booked_fqdn(tmp_path: Path) -> None:
+    """resolveKeendnsBookedFqdn prefers booked_fqdn, else name+domain."""
+    result = _run_export(
+        tmp_path,
+        label="keendns-booked-fqdn",
+        script_body="""
+console.log(JSON.stringify({
+  direct: mod.resolveKeendnsBookedFqdn({ booked_fqdn: 'rc39d9d0.netcraze.pro' }),
+  composed: mod.resolveKeendnsBookedFqdn({ booked_name: 'rc39d9d0', booked_domain: 'netcraze.pro' }),
+  empty: mod.resolveKeendnsBookedFqdn(null),
+}));
+""",
+    )
+    assert result["direct"] == "rc39d9d0.netcraze.pro"
+    assert result["composed"] == "rc39d9d0.netcraze.pro"
+    assert result["empty"] is None
 
 
 def test_domain_publish_apply_confirm_title_not_cloud_overclaim() -> None:

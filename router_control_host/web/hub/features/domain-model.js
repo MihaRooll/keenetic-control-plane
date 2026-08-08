@@ -63,6 +63,13 @@ export const KEENDNS_DEFAULT_ACCESS_MODE = 'auto';
 /** Подпись автоматического имени CrazeDNS с роутера (observe). */
 export const DOMAIN_ROUTER_DEFAULT_FQDN_LABEL = 'Автоматическое имя CrazeDNS на роутере';
 
+/** Подпись личного зарегистрированного имени CrazeDNS с роутера (observe). */
+export const DOMAIN_ROUTER_BOOKED_FQDN_LABEL = 'Личное имя в CrazeDNS';
+
+/** Fallback, когда apply вернул failed без деталей с устройства. */
+export const KEENDNS_APPLY_FAILED_GENERIC_MESSAGE =
+  'Не удалось отправить команду на роутер — публикация в облаке не выполнена.';
+
 /** @typedef {{ default_fqdn?: string|null, ssl_valid?: boolean|null, booked_name?: string|null, booked_domain?: string|null, booked_fqdn?: string|null, access_mode?: string, name_reservation?: string, notes?: string[]|null, certification_eligible?: boolean }} KeendnsObservePayload */
 
 /** Текст для режима «только заявка» (drop / copy path). */
@@ -1179,6 +1186,144 @@ export function applyKeendnsBooking({ name, domain, mode, session, signal }) {
 }
 
 /**
+ * @param {KeendnsObservePayload|null|undefined} observe
+ * @returns {string|null}
+ */
+export function resolveKeendnsBookedFqdn(observe) {
+  if (!observe || typeof observe !== 'object') {
+    return null;
+  }
+  if (typeof observe.booked_fqdn === 'string' && observe.booked_fqdn.trim()) {
+    return observe.booked_fqdn.trim();
+  }
+  const bookedName =
+    typeof observe.booked_name === 'string' && observe.booked_name.trim()
+      ? observe.booked_name.trim()
+      : null;
+  const bookedDomain =
+    typeof observe.booked_domain === 'string' && observe.booked_domain.trim()
+      ? observe.booked_domain.trim()
+      : null;
+  if (bookedName && bookedDomain) {
+    return `${bookedName}.${bookedDomain}`;
+  }
+  return null;
+}
+
+/** @type {RegExp} */
+const KEENDNS_FAILED_BOOK_FQDN_PATTERN = /failed to book\s+"([^"]+)"/i;
+
+/**
+ * @param {string} text
+ * @returns {boolean}
+ */
+function keendnsFailureTextIndicatesNameTaken(text) {
+  const lower = text.toLowerCase();
+  return (
+    lower.includes('not available')
+    || lower.includes('taken')
+    || lower.includes('failed to book')
+  );
+}
+
+/**
+ * @param {string[]} texts
+ * @returns {string|null}
+ */
+function parseKeendnsTakenFqdnFromTexts(texts) {
+  for (const text of texts) {
+    const match = KEENDNS_FAILED_BOOK_FQDN_PATTERN.exec(text);
+    if (match?.[1]?.trim()) {
+      return match[1].trim();
+    }
+  }
+  return null;
+}
+
+/**
+ * @param {Record<string, unknown>} payload
+ * @returns {string[]}
+ */
+function collectKeendnsApplyFailureTexts(payload) {
+  /** @type {string[]} */
+  const texts = [];
+
+  const steps = Array.isArray(payload.steps) ? payload.steps : [];
+  for (const step of steps) {
+    if (!step || typeof step !== 'object') {
+      continue;
+    }
+    const entry = /** @type {Record<string, unknown>} */ (step);
+    if (typeof entry.error === 'string' && entry.error.trim()) {
+      texts.push(entry.error.trim());
+    }
+  }
+
+  const logs = Array.isArray(payload.logs) ? payload.logs : [];
+  for (const log of logs) {
+    if (typeof log === 'string' && log.trim()) {
+      texts.push(log.trim());
+    }
+  }
+
+  for (const note of Array.isArray(payload.notes) ? payload.notes : []) {
+    if (typeof note === 'string' && note.trim()) {
+      texts.push(note.trim());
+    }
+  }
+
+  return texts;
+}
+
+/**
+ * @param {Record<string, unknown>} payload
+ * @param {string[]} failureTexts
+ * @returns {string|null}
+ */
+function resolveKeendnsApplyIntentFqdn(payload, failureTexts) {
+  const fromFailure = parseKeendnsTakenFqdnFromTexts(failureTexts);
+  if (fromFailure) {
+    return fromFailure;
+  }
+  const name = typeof payload.name === 'string' ? normalizeDomainName(payload.name) : '';
+  const domain = typeof payload.domain === 'string' ? payload.domain.trim().toLowerCase() : '';
+  if (name && domain) {
+    return `${name}.${domain}`;
+  }
+  return null;
+}
+
+/**
+ * @param {string|null|undefined} fqdn
+ * @returns {string}
+ */
+export function describeKeendnsNameTakenFailureMessage(fqdn) {
+  const trimmed = typeof fqdn === 'string' ? fqdn.trim() : '';
+  if (trimmed) {
+    return `Имя ${trimmed} уже занято в облаке — выберите другое имя для публикации.`;
+  }
+  return 'Это имя уже занято в облаке — выберите другое имя для публикации.';
+}
+
+/**
+ * @param {string} detail
+ * @returns {string}
+ */
+function describeKeendnsApplyDeviceFailureMessage(detail) {
+  const trimmed = detail.trim();
+  const colonIdx = trimmed.indexOf(': ');
+  const tail = colonIdx >= 0 ? trimmed.slice(colonIdx + 2).trim() : trimmed;
+  if (keendnsFailureTextIndicatesNameTaken(tail) || keendnsFailureTextIndicatesNameTaken(trimmed)) {
+    const fqdn = parseKeendnsTakenFqdnFromTexts([trimmed, tail]);
+    return describeKeendnsNameTakenFailureMessage(fqdn);
+  }
+  if (/^[a-z0-9._-]+$/i.test(tail) && tail.includes('.')) {
+    return `Не удалось зарегистрировать имя в облаке: ${tail}.`;
+  }
+  return `Не удалось зарегистрировать имя в облаке: ${tail || trimmed}.`;
+}
+
+/**
  * @param {unknown} applyResponse
  * @returns {{ hubState: string, title: string, message: string, notes: string[] }}
  */
@@ -1190,10 +1335,22 @@ export function describeKeendnsApplyOutcome(applyResponse) {
     : [];
 
   if (overall === 'failed') {
+    const failureTexts = collectKeendnsApplyFailureTexts(payload);
+    const indicatesTaken = failureTexts.some(keendnsFailureTextIndicatesNameTaken);
+    /** @type {string} */
+    let message = KEENDNS_APPLY_FAILED_GENERIC_MESSAGE;
+    if (indicatesTaken) {
+      message = describeKeendnsNameTakenFailureMessage(
+        resolveKeendnsApplyIntentFqdn(payload, failureTexts),
+      );
+    } else if (failureTexts.length > 0) {
+      const preferred = failureTexts.find((text) => text.includes(': ')) ?? failureTexts[0];
+      message = describeKeendnsApplyDeviceFailureMessage(preferred);
+    }
     return {
       hubState: HubState.ERROR,
       title: DOMAIN_NOT_PUBLISHED_TITLE,
-      message: 'Не удалось отправить команду на роутер — публикация в облаке не выполнена.',
+      message,
       notes,
     };
   }
