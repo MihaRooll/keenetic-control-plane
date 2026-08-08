@@ -33,6 +33,7 @@ from router_control.application.wifi_station_apply_planner import (
     WifiStationPlannerOptions,
     station_id_for_band,
 )
+from router_control.application.internet_status_observe import InternetStatusTransport
 from router_control.application.wifi_station_apply_service import (
     WifiStationApplyResult,
     WifiStationApplyServiceError,
@@ -194,6 +195,82 @@ class _DefaultFakeStationTransport:
         return _station_ack_for_body(request.body)
 
 
+class _EphemeralLiveInternetStatusTransport:
+    """Opens a fresh pinned SSH session for each internet-status observe call."""
+
+    def __init__(
+        self,
+        *,
+        params: WifiLiveConnectionParams,
+        vault: Any,
+        certification: Any = None,
+        router_id: str | None = None,
+    ) -> None:
+        self._params = params
+        self._vault = vault
+        self._certification = certification
+        self._router_id = router_id
+
+    def _ensure_tuple_match(self, session: Any) -> None:
+        if self._certification is None:
+            raise LiveIdentityTupleMismatchError(
+                "Gate A certification required for live mutation"
+            )
+        ensure_live_gate_a_tuple_match(
+            session,
+            self._certification,
+            router_id=self._router_id,
+        )
+
+    def execute_rci_parse(self, cli_command: str) -> dict[str, Any]:
+        with open_wifi_live_session(params=self._params, vault=self._vault) as session:
+            self._ensure_tuple_match(session)
+            return cast(dict[str, Any], session.transport.execute_rci_parse(cli_command))
+
+
+class _EphemeralLiveStationApplyTransport:
+    """Opens a fresh pinned SSH session for each station apply/teardown call."""
+
+    wifi_station_live_dispatch: Literal[True] = True
+
+    def __init__(
+        self,
+        *,
+        params: WifiLiveConnectionParams,
+        vault: Any,
+        certification: Any = None,
+        router_id: str | None = None,
+    ) -> None:
+        self._params = params
+        self._vault = vault
+        self._certification = certification
+        self._router_id = router_id
+
+    def _ensure_tuple_match(self, session: Any) -> None:
+        if self._certification is None:
+            raise LiveIdentityTupleMismatchError(
+                "Gate A certification required for live mutation"
+            )
+        ensure_live_gate_a_tuple_match(
+            session,
+            self._certification,
+            router_id=self._router_id,
+        )
+
+    def execute_sealed_rci_write(self, request: SealedRciWriteRequest) -> list[dict[str, Any]]:
+        with open_wifi_live_session(params=self._params, vault=self._vault) as session:
+            self._ensure_tuple_match(session)
+            return cast(
+                list[dict[str, Any]],
+                session.transport.execute_sealed_rci_write(request),
+            )
+
+    def execute_rci_parse(self, cli_command: str) -> dict[str, Any]:
+        with open_wifi_live_session(params=self._params, vault=self._vault) as session:
+            self._ensure_tuple_match(session)
+            return cast(dict[str, Any], session.transport.execute_rci_parse(cli_command))
+
+
 def _resolve_uplink_watchdog_connection_params(
     host: HostState,
     router_id: str,
@@ -274,6 +351,99 @@ def build_uplink_watchdog_backup_callback_factory(
                 backup_startup_config(tunnel=session.tunnel, certification=cert)
 
         return backup_callback
+
+    return _live
+
+
+def build_uplink_watchdog_observe_transport_factory(
+    host: HostState,
+) -> Callable[[str], InternetStatusTransport | None] | None:
+    """Resolve per-router observe transport for env-gated uplink watchdog."""
+    if host.internet_status_transport_factory is not None:
+        injected = host.internet_status_transport_factory
+
+        def _injected(_router_id: str) -> InternetStatusTransport:
+            return cast(InternetStatusTransport, injected())
+
+        return _injected
+
+    allow_fake = host.adapter_mode == "fake" and (
+        host.allow_fake_mutations or os.environ.get("RC_ALLOW_FAKE_MUTATIONS") == "1"
+    )
+    if allow_fake:
+        from router_control_host.internet_status_routes import (
+            _DefaultFakeInternetStatusTransport,
+        )
+
+        def _fake(_router_id: str) -> InternetStatusTransport:
+            return _DefaultFakeInternetStatusTransport()
+
+        return _fake
+
+    if host.adapter_mode != "live" or not host.gate_a_open():
+        return None
+
+    cert = host.gate_a_certification
+    if cert is None:
+        return None
+
+    vault = host.runtime.vault
+
+    def _live(router_id: str) -> InternetStatusTransport | None:
+        params = _resolve_uplink_watchdog_connection_params(host, router_id)
+        if params is None or not is_win32_live_capable():
+            return None
+        return _EphemeralLiveInternetStatusTransport(
+            params=params,
+            vault=vault,
+            certification=cert,
+            router_id=router_id,
+        )
+
+    return _live
+
+
+def build_uplink_watchdog_apply_transport_factory(
+    host: HostState,
+) -> Callable[[str], WifiStationApplyTransport | None] | None:
+    """Resolve per-router apply transport for env-gated uplink watchdog."""
+    if host.wifi_station_apply_transport_factory is not None:
+        injected = host.wifi_station_apply_transport_factory
+
+        def _injected(_router_id: str) -> WifiStationApplyTransport:
+            return cast(WifiStationApplyTransport, injected())
+
+        return _injected
+
+    allow_fake = host.adapter_mode == "fake" and (
+        host.allow_fake_mutations or os.environ.get("RC_ALLOW_FAKE_MUTATIONS") == "1"
+    )
+    if allow_fake:
+
+        def _fake(_router_id: str) -> WifiStationApplyTransport:
+            return _DefaultFakeStationTransport()
+
+        return _fake
+
+    if host.adapter_mode != "live" or not host.gate_a_open():
+        return None
+
+    cert = host.gate_a_certification
+    if cert is None:
+        return None
+
+    vault = host.runtime.vault
+
+    def _live(router_id: str) -> WifiStationApplyTransport | None:
+        params = _resolve_uplink_watchdog_connection_params(host, router_id)
+        if params is None or not is_win32_live_capable():
+            return None
+        return _EphemeralLiveStationApplyTransport(
+            params=params,
+            vault=vault,
+            certification=cert,
+            router_id=router_id,
+        )
 
     return _live
 

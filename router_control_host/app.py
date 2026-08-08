@@ -9,7 +9,6 @@ import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import cast
 from urllib.parse import quote, unquote
 
 from fastapi import FastAPI, Request
@@ -206,14 +205,17 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         from router_control.application.gate_a_refresh_watchdog import GateARefreshWatchdogHandle
-        from router_control.application.internet_status_observe import InternetStatusTransport
         from router_control.application.uplink_watchdog_service import UplinkWatchdogHandle
         from router_control.application.vpn_watchdog_service import VpnWatchdogHandle
-        from router_control.application.wifi_station_apply_service import WifiStationApplyTransport
 
         from router_control_host.wireguard_apply_routes import (
             build_vpn_watchdog_backup_callback_factory,
             build_vpn_watchdog_transport_factory,
+        )
+        from router_control_host.wifi_station_apply_routes import (
+            build_uplink_watchdog_apply_transport_factory,
+            build_uplink_watchdog_backup_callback_factory,
+            build_uplink_watchdog_observe_transport_factory,
         )
 
         host = app.state.host
@@ -229,33 +231,19 @@ def create_app(
         host.vpn_watchdog = vpn_watchdog
         vpn_watchdog.start()
 
-        def _uplink_observe_factory(_router_id: str) -> InternetStatusTransport | None:
-            factory = getattr(host, "internet_status_transport_factory", None)
-            if factory is None:
-                return None
-            return cast(InternetStatusTransport, factory())
-
-        def _uplink_apply_factory(_router_id: str) -> WifiStationApplyTransport | None:
-            factory = getattr(host, "wifi_station_apply_transport_factory", None)
-            if factory is None:
-                return None
-            return cast(WifiStationApplyTransport, factory())
-
         def _uplink_host_internet_probe() -> bool | None:
             from router_control_host.host_probes import DefaultHostProbeRunner
 
             runner = host.host_probe_runner or DefaultHostProbeRunner()
             return runner.probe_internet(targets_profile="default").internet_reachable
 
-        from router_control_host.wifi_station_apply_routes import (
-            build_uplink_watchdog_backup_callback_factory,
-        )
-
+        uplink_observe_factory = build_uplink_watchdog_observe_transport_factory(host)
+        uplink_apply_factory = build_uplink_watchdog_apply_transport_factory(host)
         uplink_backup_callback_factory = build_uplink_watchdog_backup_callback_factory(host)
         uplink_watchdog = UplinkWatchdogHandle(
             host,
-            observe_transport_factory=_uplink_observe_factory,
-            apply_transport_factory=_uplink_apply_factory,
+            observe_transport_factory=uplink_observe_factory,
+            apply_transport_factory=uplink_apply_factory,
             credential_resolver=host.wifi_station_apply_credential_resolver,
             backup_callback_factory=uplink_backup_callback_factory,
             host_internet_probe=_uplink_host_internet_probe,
