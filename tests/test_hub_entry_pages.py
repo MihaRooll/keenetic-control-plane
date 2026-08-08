@@ -1883,3 +1883,18 @@ def test_entry_pages_save_publish_skip_success_on_abort_or_offline() -> None:
     load_idx = publish_body.find("await loadList({ soft: true })")
     guard_idx = publish_body.find("if (offline || publishAbort.signal.aborted)")
     assert guard_idx != -1 and load_idx != -1 and guard_idx < load_idx
+
+
+def test_entry_pages_self_check_skips_result_when_offline_or_aborted() -> None:
+    """vpn-entry-overview-offline-settle: selfCheck skips applying result when offline/aborted."""
+    source = _read(ENTRY_SCREEN_JS)
+    body = _extract_function_body(source, "async function handleSelfCheck()")
+    assert body is not None
+    after_await = body.split("await selfCheckEntryPage(", 1)[1]
+    result_idx = after_await.find("selfCheckResult = parseSelfCheckResult(")
+    assert result_idx != -1
+    guard = after_await[:result_idx]
+    assert "offline || selfCheckAbort.signal.aborted" in guard
+    assert "return" in guard
+    assert "} finally {" in body
+    assert "selfChecking = false" in body.split("} finally {", 1)[1]

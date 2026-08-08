@@ -1016,6 +1016,10 @@ export function render(container, ctx) {
     mutateGeneration = null;
     parseGeneration = null;
     importGeneration = null;
+    validatingProfileIds = {};
+    activatingProfileIds = {};
+    deactivatingProfileIds = {};
+    removingProfileIds = {};
   }
 
   function registerModal(modalRef) {
@@ -2357,13 +2361,17 @@ export function render(container, ctx) {
     renderStatusSlot();
     renderCatalogSlot();
     renderFooter();
+    mutateAbort?.abort();
+    mutateAbort = new AbortController();
+    const mutationSignal = mutateAbort.signal;
     try {
       const response = await activateVpnProfile({
         profileId,
         session: getSession(),
         wgId: selectedWgId,
+        signal: mutationSignal,
       });
-      if (disposed) {
+      if (disposed || offline || mutationSignal.aborted) {
         return;
       }
       if (response?.activated === true) {
@@ -2379,9 +2387,11 @@ export function render(container, ctx) {
           message: 'Запрос отправлен, но подтверждения нет — проверьте состояние туннеля.',
         });
       }
-      await loadCatalogFlow();
+      if (!offline && !mutationSignal.aborted) {
+        await loadCatalogFlow();
+      }
     } catch (error) {
-      if (disposed) {
+      if (disposed || isAborted(error) || offline) {
         return;
       }
       const describedErr = describeError(error);
@@ -2417,12 +2427,16 @@ export function render(container, ctx) {
     renderStatusSlot();
     renderCatalogSlot();
     renderFooter();
+    mutateAbort?.abort();
+    mutateAbort = new AbortController();
+    const mutationSignal = mutateAbort.signal;
     try {
       const response = await deactivateVpnProfile({
         wgId: selectedWgId,
         session: getSession(),
+        signal: mutationSignal,
       });
-      if (disposed) {
+      if (disposed || offline || mutationSignal.aborted) {
         return;
       }
       if (response?.deactivated === true) {
@@ -2438,9 +2452,11 @@ export function render(container, ctx) {
           message: 'Запрос отправлен, но подтверждения нет — проверьте состояние туннеля.',
         });
       }
-      await loadCatalogFlow();
+      if (!offline && !mutationSignal.aborted) {
+        await loadCatalogFlow();
+      }
     } catch (error) {
-      if (disposed) {
+      if (disposed || isAborted(error) || offline) {
         return;
       }
       const describedErr = describeError(error);
@@ -2531,9 +2547,12 @@ export function render(container, ctx) {
     }
     removingProfileIds = { ...removingProfileIds, [profileId]: '1' };
     renderCatalogSlot();
+    mutateAbort?.abort();
+    mutateAbort = new AbortController();
+    const mutationSignal = mutateAbort.signal;
     try {
-      await removeVpnProfileFromCatalog({ profileId });
-      if (disposed) {
+      await removeVpnProfileFromCatalog({ profileId, signal: mutationSignal });
+      if (disposed || offline || mutationSignal.aborted) {
         return;
       }
       ctx.showToast({
@@ -2541,9 +2560,11 @@ export function render(container, ctx) {
         title: 'Профиль убран',
         message: 'Профиль исчез из списка доступных VPN.',
       });
-      await loadCatalogFlow();
+      if (!offline && !mutationSignal.aborted) {
+        await loadCatalogFlow();
+      }
     } catch (error) {
-      if (disposed) {
+      if (disposed || isAborted(error) || offline) {
         return;
       }
       const describedErr = describeError(error);
@@ -2572,34 +2593,41 @@ export function render(container, ctx) {
     longOpKind = 'validate';
     renderCatalogSlot();
     renderFooter();
+    mutateAbort?.abort();
+    mutateAbort = new AbortController();
+    const mutationSignal = mutateAbort.signal;
     try {
       const response = await validateVpnProfile({
         profileId,
         idempotencyKey: createIdempotencyKey(),
+        signal: mutationSignal,
       });
-      if (!disposed) {
-        const validationStatus =
-          typeof response?.validation_status === 'string' ? response.validation_status : '';
-        if (validationStatus === 'Valid') {
-          ctx.showToast({
-            tone: 'success',
-            title: 'Проверка завершена',
-            message: 'Статус профиля в каталоге обновлён.',
-          });
-        } else {
-          const described = describeVpnProfileItem(
-            typeof response === 'object' && response !== null ? response : {},
-          );
-          ctx.showToast({
-            tone: 'warning',
-            title: 'Проверка не пройдена',
-            message: described.validationLabel,
-          });
-        }
+      if (disposed || offline || mutationSignal.aborted) {
+        return;
       }
-      await loadCatalogFlow();
+      const validationStatus =
+        typeof response?.validation_status === 'string' ? response.validation_status : '';
+      if (validationStatus === 'Valid') {
+        ctx.showToast({
+          tone: 'success',
+          title: 'Проверка завершена',
+          message: 'Статус профиля в каталоге обновлён.',
+        });
+      } else {
+        const described = describeVpnProfileItem(
+          typeof response === 'object' && response !== null ? response : {},
+        );
+        ctx.showToast({
+          tone: 'warning',
+          title: 'Проверка не пройдена',
+          message: described.validationLabel,
+        });
+      }
+      if (!offline && !mutationSignal.aborted) {
+        await loadCatalogFlow();
+      }
     } catch (error) {
-      if (disposed) {
+      if (disposed || isAborted(error) || offline) {
         return;
       }
       const described = describeError(error);

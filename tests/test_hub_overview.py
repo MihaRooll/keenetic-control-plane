@@ -3717,3 +3717,32 @@ def test_overview_networks_run_mutation_skips_toast_when_aborted_or_offline() ->
     toast_region = run_mutation_body.split("options.showToast({", 1)[0]
     assert "!signal?.aborted" in toast_region
     assert "resolveOffline()" in toast_region
+
+
+def test_overview_connectivity_offline_bumps_generation() -> None:
+    """vpn-entry-overview-offline-settle: offline arm bumps generation before aborts."""
+    source = _read(OVERVIEW_JS)
+    callback = _extract_subscribe_connectivity_callback(source)
+    offline_arm_start = callback.find("if (!online)")
+    assert offline_arm_start != -1
+    offline_arm = callback[offline_arm_start:]
+    offline_return = offline_arm.find("return")
+    offline_block = offline_arm[: offline_return + len("return")]
+    gen_idx = offline_block.find("generation += 1")
+    abort_idx = offline_block.find("loadAbort?.abort()")
+    assert gen_idx != -1 and abort_idx != -1 and gen_idx < abort_idx
+
+
+def test_overview_run_system_check_only_skips_toast_and_model_when_offline() -> None:
+    """vpn-entry-overview-offline-settle: runSystemCheckOnly skips toast/model write when offline/aborted."""
+    source = _read(OVERVIEW_JS)
+    body = _extract_function_body(source, "async function runSystemCheckOnly(")
+    assert body is not None
+    after_check = body.split("await runSystemCheck(", 1)[1]
+    model_write = after_check.find("lastSystemCheckFacts =")
+    assert model_write != -1
+    success_guard = after_check[:model_write]
+    assert "offline || systemCheckAbort.signal.aborted" in success_guard
+    assert "return" in success_guard
+    catch_block = body.split("} catch (error) {", 1)[1].split("} finally {", 1)[0]
+    assert "if (offline || systemCheckAbort.signal.aborted)" in catch_block

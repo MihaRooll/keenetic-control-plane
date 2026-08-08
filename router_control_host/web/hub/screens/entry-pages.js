@@ -1038,18 +1038,17 @@ export function render(container, ctx) {
 
     try {
       const payload = await selfCheckEntryPage(pageId, { signal: selfCheckAbort.signal });
-      if (disposed) {
+      if (disposed || offline || selfCheckAbort.signal.aborted) {
         return;
       }
       selfCheckResult = parseSelfCheckResult(payload);
-      selfChecking = false;
-      paint();
     } catch (err) {
       if (isAborted(err)) {
         return;
       }
-      selfChecking = false;
       selfCheckError = err;
+    } finally {
+      selfChecking = false;
       paint();
     }
   }

@@ -2494,7 +2494,7 @@ export function render(container, ctx) {
         adapterMode: ctx.runtime?.adapterMode ?? 'unknown',
         signal: systemCheckAbort.signal,
       });
-      if (disposed || gen !== generation) {
+      if (disposed || gen !== generation || offline || systemCheckAbort.signal.aborted) {
         return;
       }
       if (!model) {
@@ -2517,6 +2517,9 @@ export function render(container, ctx) {
       renderStatusStrip();
     } catch (error) {
       if (disposed || gen !== generation || isAborted(error)) {
+        return;
+      }
+      if (offline || systemCheckAbort.signal.aborted) {
         return;
       }
       if (model) {
@@ -2653,6 +2656,7 @@ export function render(container, ctx) {
     if (!online) {
       offline = true;
       recovering = false;
+      generation += 1;
       loadAbort?.abort();
       systemCheckAbort?.abort();
       internetObserveAbort?.abort();

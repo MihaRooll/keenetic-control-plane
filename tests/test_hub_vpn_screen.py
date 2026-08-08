@@ -1112,3 +1112,51 @@ def test_vpn_connectivity_offline_invalidates_all_operations() -> None:
     invalidate_idx = offline_block.find("invalidateAllOperations()")
     render_idx = offline_block.find("renderAll()")
     assert invalidate_idx != -1 and render_idx != -1 and invalidate_idx < render_idx
+
+
+def test_vpn_invalidate_all_operations_clears_catalog_busy_maps() -> None:
+    """vpn-entry-overview-offline-settle: invalidateAllOperations clears catalog busy id maps."""
+    source = _read(VPN_SCREEN_JS)
+    invalidate_body = _extract_function_body(source, "function invalidateAllOperations(")
+    assert invalidate_body is not None
+    for map_name in (
+        "validatingProfileIds = {}",
+        "activatingProfileIds = {}",
+        "deactivatingProfileIds = {}",
+        "removingProfileIds = {}",
+    ):
+        assert map_name in invalidate_body
+
+
+def test_vpn_catalog_mutations_pass_mutate_abort_signal() -> None:
+    """vpn-entry-overview-offline-settle: catalog runners pass mutateAbort signal to API."""
+    source = _read(VPN_SCREEN_JS)
+    for fn_sig in (
+        "async function runActivateProfile(",
+        "async function runDeactivateProfile(",
+        "async function runRemoveCatalogProfile(",
+        "async function validateCatalogProfile(",
+    ):
+        body = _extract_function_body(source, fn_sig)
+        assert body is not None
+        assert "mutateAbort = new AbortController()" in body
+        assert "signal: mutationSignal" in body
+
+
+def test_vpn_catalog_mutations_skip_toast_when_offline_or_aborted() -> None:
+    """vpn-entry-overview-offline-settle: catalog runners skip success toast when offline/aborted."""
+    source = _read(VPN_SCREEN_JS)
+    for fn_sig in (
+        "async function runActivateProfile(",
+        "async function runDeactivateProfile(",
+        "async function runRemoveCatalogProfile(",
+        "async function validateCatalogProfile(",
+    ):
+        body = _extract_function_body(source, fn_sig)
+        assert body is not None
+        after_await = body.split("await ", 1)[1]
+        toast_idx = after_await.find("ctx.showToast(")
+        assert toast_idx != -1
+        guard = after_await[:toast_idx]
+        assert "offline || mutationSignal.aborted" in guard
+        assert "return" in guard
