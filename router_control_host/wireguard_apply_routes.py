@@ -443,12 +443,15 @@ def build_vpn_watchdog_backup_callback_factory(
 
         return _fake
 
-    if host.adapter_mode != "live" or not host.gate_a_open():
+    if host.adapter_mode != "live":
         return None
 
     vault = host.runtime.vault
 
     def _live(router_id: str) -> Callable[[], None] | None:
+        cert = host.gate_a_certification
+        if cert is None or not cert.is_open:
+            return None
         params = _resolve_vpn_watchdog_connection_params(host, router_id)
         if params is None or not is_win32_live_capable():
             return None
@@ -458,7 +461,11 @@ def build_vpn_watchdog_backup_callback_factory(
             if cert is None or not cert.is_open:
                 raise StartupBackupError("Gate A certification required for watchdog backup")
             with open_wifi_live_session(params=params, vault=vault) as session:
-                ensure_live_gate_a_tuple_match(session, cert)
+                ensure_live_gate_a_tuple_match(
+                    session,
+                    cert,
+                    router_id=router_id,
+                )
                 backup_startup_config(tunnel=session.tunnel, certification=cert)
 
         return backup_callback

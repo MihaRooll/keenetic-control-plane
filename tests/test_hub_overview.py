@@ -3614,7 +3614,7 @@ def test_overview_mutations_use_dedicated_mutate_abort() -> None:
         toast_idx = response_guard.find("ctx.showToast(")
         assert toast_idx != -1
         before_toast = response_guard[:toast_idx]
-        assert "if (disposed || offline)" in before_toast
+        assert "if (disposed || offline || mutationSignal.aborted)" in before_toast
         assert "return" in before_toast
 
 

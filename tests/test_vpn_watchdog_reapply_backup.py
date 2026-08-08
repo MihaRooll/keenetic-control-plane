@@ -283,6 +283,23 @@ def _patch_live_backup_mocks(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     return captured
 
 
+def test_backup_callback_factory_rereads_gate_a_on_invoke(
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    host, router_id = _live_host(tmp_path)
+    captured = _patch_live_backup_mocks(monkeypatch)
+    host.gate_a_certification = None
+    factory = build_vpn_watchdog_backup_callback_factory(host)
+    assert factory is not None
+    assert factory(router_id) is None
+    host.gate_a_certification = _open_gate_a()
+    callback = factory(router_id)
+    assert callback is not None
+    callback()
+    assert captured["certification"] is host.gate_a_certification
+
+
 def test_backup_callback_factory_live_uses_current_gate_a_cert(
     tmp_path: Any,
     monkeypatch: pytest.MonkeyPatch,

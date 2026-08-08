@@ -1337,7 +1337,7 @@ export function render(container, ctx) {
         wgId,
         signal: mutationSignal,
       });
-      if (disposed || offline) {
+      if (disposed || offline || mutationSignal.aborted) {
         return;
       }
       if (response?.activated === true) {
@@ -1430,7 +1430,7 @@ export function render(container, ctx) {
         session: getSession(),
         signal: mutationSignal,
       });
-      if (disposed || offline) {
+      if (disposed || offline || mutationSignal.aborted) {
         return;
       }
       if (response?.deactivated === true) {
