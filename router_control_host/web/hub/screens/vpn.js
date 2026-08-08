@@ -65,6 +65,7 @@ import {
   describeCatalogConnectionBadge,
   describeVpnProfileKeepalive,
   describeVpnProfileTileStatus,
+  VPN_TUNNEL_UNVERIFIED_MESSAGE,
   VPN_PROFILE_TILE_STATUS_HONESTY_NOTE,
   createVpnProfileStatusTileGrid,
   fetchVpnCatalogLiveStatus,
@@ -633,6 +634,25 @@ export function render(container, ctx) {
       if (disposed || gen !== catalogGeneration || signal.aborted) {
         return;
       }
+      /** @type {typeof catalogLiveStatusById} */
+      const failedLive = {};
+      for (const item of catalogItems) {
+        const row = /** @type {Record<string, unknown>} */ (item ?? {});
+        const profileId =
+          typeof row.profile_id === 'string' ? row.profile_id : '';
+        if (!profileId || row.is_active !== true) {
+          continue;
+        }
+        failedLive[profileId] = {
+          live_probed: true,
+          live_tunnel_verification_status: null,
+          probe_error: VPN_TUNNEL_UNVERIFIED_MESSAGE,
+          observed_at: null,
+          routed_through_tunnel: null,
+          routing_probe_status: null,
+        };
+      }
+      catalogLiveStatusById = failedLive;
     } finally {
       if (catalogLiveStatusAbort === liveController) {
         catalogLiveStatusAbort = null;

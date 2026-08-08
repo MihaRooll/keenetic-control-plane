@@ -199,7 +199,15 @@ class VpnWatchdogHandle:
                 psk_ref = str(ref["credential_ref_id"])
         asc_raw = metadata.get("asc9_args")
         asc_args = tuple(asc_raw) if isinstance(asc_raw, list) else None
-        wg_id = str(metadata.get("wg_id") or "Wireguard5")
+        observed_locator = assignment.get("observed_vendor_locator")
+        if observed_locator and str(observed_locator).strip():
+            wg_id = str(observed_locator).strip()
+        else:
+            meta_wg_id = metadata.get("wg_id")
+            if meta_wg_id and str(meta_wg_id).strip():
+                wg_id = str(meta_wg_id).strip()
+            else:
+                return None
         ip_global_priority = metadata.get("ip_global_priority")
         metadata_keepalive = metadata.get("peer_keepalive_interval")
         return WireguardIntent(

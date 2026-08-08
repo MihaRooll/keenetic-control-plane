@@ -1107,10 +1107,24 @@ def test_wifi_apply_invalid_captive_portal_422(wifi_client) -> None:
     assert "captive_portal" in detail_blob.lower()
 
 
-def test_missing_connection_fields_body_source_not_reported_missing(
+def test_missing_connection_fields_body_source_not_reported_missing_without_binding(
     tmp_path: Path,
 ) -> None:
-    """Body source_address must satisfy completeness even when store endpoint is NULL."""
+    """Without router binding, body source_address satisfies completeness."""
+    missing = missing_connection_fields(
+        host="192.168.2.1",
+        username="admin",
+        router_credential_ref_id="credref:x",
+        ssh_host_key_sha256=_VALID_SSH_HOST_KEY_SHA256,
+        source_address="192.168.2.10",
+    )
+    assert "source_address" not in missing
+
+
+def test_missing_connection_fields_binding_present_ignores_client_source(
+    tmp_path: Path,
+) -> None:
+    """SSRF-safe binding: store source is authoritative; client source must not override."""
     from router_control.persistence.connection import open_database
     from router_control.persistence.store import PersistenceStore
 
@@ -1135,7 +1149,7 @@ def test_missing_connection_fields_body_source_not_reported_missing(
         router_id=router_id,
         store=store,
     )
-    assert "source_address" not in missing
+    assert "source_address" in missing
 
 
 def test_map_wifi_live_transport_error_missing_field_is_422_not_503() -> None:
@@ -1156,6 +1170,51 @@ def test_map_wifi_live_transport_error_identity_mismatch_is_422() -> None:
     )
     assert mapped.status_code == 422
     assert mapped.code == "wifi.identity_mismatch"
+
+
+def test_binding_empty_host_does_not_fall_back_to_client_host(
+    tmp_path: Path,
+) -> None:
+    """SSRF-safe binding: empty store host must not use client-supplied host."""
+    from router_control.persistence.connection import open_database
+    from router_control.persistence.store import PersistenceStore
+
+    store = PersistenceStore(open_database(tmp_path / "empty-binding-host.sqlite3"))
+    site = store.create_site(display_name="Lab", now=datetime(2026, 8, 4, tzinfo=UTC))
+    router_id = store.enroll_router(
+        site_id=site,
+        display_name="R1",
+        vendor="Fake",
+        model="M1",
+        identity_fingerprint="digest:fp:empty-host",
+        host="192.168.2.1",
+        source_address="192.168.2.10",
+        now=datetime(2026, 8, 4, tzinfo=UTC),
+    )
+    store._conn.execute(
+        "UPDATE router_endpoints SET host = '' WHERE router_id = ?",
+        (router_id,),
+    )
+    params = connection_params_from_fields(
+        host="evil.example.com",
+        username="admin",
+        router_credential_ref_id="credref:x",
+        ssh_host_key_sha256=_VALID_SSH_HOST_KEY_SHA256,
+        source_address="10.0.0.99",
+        router_id=router_id,
+        store=store,
+    )
+    assert params is None
+    missing = missing_connection_fields(
+        host="evil.example.com",
+        username="admin",
+        router_credential_ref_id="credref:x",
+        ssh_host_key_sha256=_VALID_SSH_HOST_KEY_SHA256,
+        source_address="10.0.0.99",
+        router_id=router_id,
+        store=store,
+    )
+    assert "host" in missing
 
 
 def test_live_apply_sealed_dispatch_gate_a_closed_mid_flight_returns_503() -> None:

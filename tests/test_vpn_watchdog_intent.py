@@ -134,3 +134,80 @@ def test_watchdog_intent_carries_ip_global_priority_from_metadata(tmp_path: Path
     plan = compile_wireguard_intent_to_ops(intent)
     ops = [op.operation for op in plan.apply_ops]
     assert WireguardRciOperation.IP_GLOBAL.value in ops
+
+
+def test_watchdog_intent_prefers_observed_vendor_locator_over_metadata(
+    tmp_path: Path,
+) -> None:
+    store = PersistenceStore(open_database(tmp_path / "watchdog-locator.sqlite3"))
+    profile_id = store.import_profile(
+        display_name="Locator profile",
+        vpn_kind="AmneziaWG",
+        content_digest="sha256:locator",
+        metadata_json=json.dumps(
+            {
+                "wg_id": "Wireguard5",
+                "peer_public_key": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
+                "peer_endpoint": "example.com:51820",
+                "peer_allow_ips": "0.0.0.0/0",
+            }
+        ),
+    )
+    service = _handle()
+    intent = service._intent_from_assignment(
+        {
+            "profile_id": profile_id,
+            "observed_vendor_locator": "Wireguard6",
+        },
+        store,
+    )
+    assert intent is not None
+    assert intent.wg_id == "Wireguard6"
+
+
+def test_watchdog_intent_uses_metadata_wg_id_when_locator_absent(
+    tmp_path: Path,
+) -> None:
+    store = PersistenceStore(open_database(tmp_path / "watchdog-meta-wg.sqlite3"))
+    profile_id = store.import_profile(
+        display_name="Metadata wg profile",
+        vpn_kind="AmneziaWG",
+        content_digest="sha256:meta-wg",
+        metadata_json=json.dumps(
+            {
+                "wg_id": "Wireguard7",
+                "peer_public_key": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
+                "peer_endpoint": "example.com:51820",
+                "peer_allow_ips": "0.0.0.0/0",
+            }
+        ),
+    )
+    service = _handle()
+    intent = service._intent_from_assignment(
+        {"profile_id": profile_id},
+        store,
+    )
+    assert intent is not None
+    assert intent.wg_id == "Wireguard7"
+
+
+def test_watchdog_intent_returns_none_without_wg_id(tmp_path: Path) -> None:
+    store = PersistenceStore(open_database(tmp_path / "watchdog-no-wg.sqlite3"))
+    profile_id = store.import_profile(
+        display_name="No wg profile",
+        vpn_kind="AmneziaWG",
+        content_digest="sha256:no-wg",
+        metadata_json=json.dumps(
+            {
+                "peer_public_key": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
+                "peer_endpoint": "example.com:51820",
+                "peer_allow_ips": "0.0.0.0/0",
+            }
+        ),
+    )
+    service = _handle()
+    intent = service._intent_from_assignment(
+        {"profile_id": profile_id, "observed_vendor_locator": ""},
+        store,
+    )
+    assert intent is None

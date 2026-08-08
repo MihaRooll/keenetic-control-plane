@@ -245,7 +245,9 @@ def _resolve_connection_endpoint_fields(
                 if endpoint["source_address"]
                 else None
             )
-            return ep_host or explicit_host, ep_source or explicit_source
+            if not ep_host:
+                return None, ep_source
+            return ep_host, ep_source
     return explicit_host, explicit_source
 
 

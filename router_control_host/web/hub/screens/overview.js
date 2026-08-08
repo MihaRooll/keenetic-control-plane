@@ -1395,7 +1395,7 @@ export function render(container, ctx) {
         return;
       }
     } catch (error) {
-      if (disposed || isAborted(error)) {
+      if (disposed || isAborted(error) || offline || mutationSignal.aborted) {
         return;
       }
       const described = describeError(error);
@@ -1475,7 +1475,7 @@ export function render(container, ctx) {
         return;
       }
     } catch (error) {
-      if (disposed || isAborted(error)) {
+      if (disposed || isAborted(error) || offline || mutationSignal.aborted) {
         return;
       }
       const described = describeError(error);

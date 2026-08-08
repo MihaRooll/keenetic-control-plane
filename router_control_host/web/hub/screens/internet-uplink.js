@@ -1253,12 +1253,14 @@ export function render(container, ctx) {
                 renderAll();
               }
             };
-            ctx.showToast({
-              tone: 'warning',
-              title: 'Не удалось сохранить автоподключение',
-              message:
-                'Роутер подключён к сети, но намерение автоподключения не сохранено — watchdog не восстановит Wi‑Fi после обрыва. Нажмите «Повторить».',
-            });
+            if (!(disposed || offline || mutateAbort?.signal.aborted)) {
+              ctx.showToast({
+                tone: 'warning',
+                title: 'Не удалось сохранить автоподключение',
+                message:
+                  'Роутер подключён к сети, но намерение автоподключения не сохранено — watchdog не восстановит Wi‑Fi после обрыва. Нажмите «Повторить».',
+              });
+            }
           }
         }
       }
@@ -1294,12 +1296,14 @@ export function render(container, ctx) {
               renderAll();
             }
           };
-          ctx.showToast({
-            tone: 'warning',
-            title: 'Не удалось отключить автоподключение',
-            message:
-              'Роутер отключён от сети, но намерение автоподключения не сохранено — watchdog может восстановить Wi‑Fi. Нажмите «Повторить».',
-          });
+          if (!(disposed || offline || mutateAbort?.signal.aborted)) {
+            ctx.showToast({
+              tone: 'warning',
+              title: 'Не удалось отключить автоподключение',
+              message:
+                'Роутер отключён от сети, но намерение автоподключения не сохранено — watchdog может восстановить Wi‑Fi. Нажмите «Повторить».',
+            });
+          }
         }
       }
       if (succeeded) {
