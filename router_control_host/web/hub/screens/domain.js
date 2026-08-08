@@ -1266,6 +1266,9 @@ export function render(container, ctx) {
       }
       return;
     }
+    if (offline) {
+      return;
+    }
     publishModalOpen = true;
     openDomainPublishApplyConfirm({
       openModal: (modalOptions) => registerModal(openModal(modalOptions)),
@@ -1274,6 +1277,7 @@ export function render(container, ctx) {
       name: domainName,
       domain: domainSuffix,
       mode: resolvePreviewMode() || KEENDNS_DEFAULT_ACCESS_MODE,
+      offline,
       onConfirmApply: async () => {
         const result = await applyKeendnsBooking({
           name: domainName,

@@ -296,6 +296,7 @@ export function mountDomainSimplePublishAffordance(container, options) {
  * @property {string|null|undefined} [name]
  * @property {string|null|undefined} [domain]
  * @property {string|null|undefined} [mode]
+ * @property {boolean} [offline]
  * @property {() => Promise<unknown>} onConfirmApply
  * @property {() => void} [onClose]
  */
@@ -304,7 +305,18 @@ export function mountDomainSimplePublishAffordance(container, options) {
  * @param {DomainPublishApplyConfirmParams} params
  * @returns {{ close: () => void }}
  */
+function isPublishApplyOffline(params) {
+  if (params.offline === true) {
+    return true;
+  }
+  return typeof navigator !== 'undefined' && navigator.onLine === false;
+}
+
 export function openDomainPublishApplyConfirm(params) {
+  if (isPublishApplyOffline(params)) {
+    return { close: () => {} };
+  }
+
   const normalizedName = typeof params.name === 'string' ? params.name.trim().toLowerCase() : '';
   const normalizedDomain = typeof params.domain === 'string' ? params.domain.trim() : '';
   const mode = params.mode ?? KEENDNS_DEFAULT_ACCESS_MODE;
@@ -330,8 +342,8 @@ export function openDomainPublishApplyConfirm(params) {
   let modalRef = null;
 
   modalRef = params.openModal({
-    title: 'Опубликовать имя в облаке?',
-    description: 'Будет отправлена одна команда облачной регистрации на роутер.',
+    title: 'Отправить команду публикации?',
+    description: 'Будет отправлена одна команда регистрации имени на роутер через программу.',
     body,
     tone: 'warning',
     actions: [
@@ -347,6 +359,10 @@ export function openDomainPublishApplyConfirm(params) {
         variant: 'primary',
         onActivate: () => {
           void (async () => {
+            if (isPublishApplyOffline(params)) {
+              modalRef?.close();
+              return;
+            }
             try {
               const response = await params.onConfirmApply();
               const outcome = describeKeendnsApplyOutcome(response);

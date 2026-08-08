@@ -1974,14 +1974,52 @@ export function render(container, ctx) {
     if (!lastVerdict?.success) {
       return;
     }
+    const resolvedCredentialRefId =
+      credentialRefId ?? standing.staff_password_credential_ref_id;
     try {
       const body = buildStaffStandingPreferencesUpdate({
         ssid: draft.ssid,
-        credentialRefId: credentialRefId ?? standing.staff_password_credential_ref_id,
+        credentialRefId: resolvedCredentialRefId,
       });
       standing = await updateStaffStandingNetworkPreferences(body);
-    } catch {
-      // Non-blocking: project apply succeeded; standing sync can retry later.
+    } catch (error) {
+      if (disposed || isAborted(error)) {
+        return;
+      }
+      operationError = error;
+      operationRetry = async () => {
+        if (disposed || mutating || offline) {
+          return;
+        }
+        try {
+          const body = buildStaffStandingPreferencesUpdate({
+            ssid: draft.ssid,
+            credentialRefId: resolvedCredentialRefId,
+          });
+          standing = await updateStaffStandingNetworkPreferences(body);
+          operationError = null;
+          operationRetry = null;
+          renderAll();
+          ctx.showToast({
+            tone: 'success',
+            title: 'Обычные настройки сохранены',
+            message: 'Имя и пароль по умолчанию обновлены на хосте.',
+          });
+        } catch (retryError) {
+          if (disposed || isAborted(retryError)) {
+            return;
+          }
+          operationError = retryError;
+          renderAll();
+        }
+      };
+      ctx.showToast({
+        tone: 'warning',
+        title: 'Не удалось сохранить обычные настройки',
+        message:
+          'Настройки применены на роутере, но имя и пароль по умолчанию на хосте не обновлены — «Применить обычные» может подставить старые значения. Нажмите «Повторить».',
+      });
+      renderAll();
     }
   }
 

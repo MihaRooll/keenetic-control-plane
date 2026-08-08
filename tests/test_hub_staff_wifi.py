@@ -3758,3 +3758,19 @@ def test_staff_wifi_run_mutation_toast_tone_from_hub_state() -> None:
     assert "getStateDescriptor(lastVerdict.hubState).tone" in body
     assert "Object.values(HubState).includes(lastVerdict.hubState)" in body
     assert "tone: lastVerdict.success ? 'success' : 'warning'" not in body
+
+
+def test_staff_wifi_standing_persist_failure_shows_warning_with_retry() -> None:
+    """After apply success, standing PUT failure warns + operationRetry, not silent swallow."""
+    source = STAFF_WIFI_SCREEN_JS.read_text(encoding="utf-8")
+    persist_start = source.find("async function persistStandingPreferencesAfterSuccess(")
+    assert persist_start != -1
+    persist_region = source[persist_start : persist_start + 2200]
+    assert "updateStaffStandingNetworkPreferences" in persist_region
+    assert "operationError = error" in persist_region
+    assert "operationRetry = async () =>" in persist_region
+    assert "tone: 'warning'" in persist_region
+    assert "Не удалось сохранить обычные настройки" in persist_region
+    assert "Нажмите «Повторить»" in persist_region
+    assert "// Non-blocking" not in persist_region
+    assert "catch {" not in persist_region

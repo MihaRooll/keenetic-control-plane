@@ -16,6 +16,7 @@ HUB = REPO_ROOT / "router_control_host" / "web" / "hub"
 DOMAIN_MODEL_JS = HUB / "features" / "domain-model.js"
 DOMAIN_SIMPLE_PUBLISH_JS = HUB / "features" / "domain-simple-publish.js"
 DOMAIN_SCREEN_JS = HUB / "screens" / "domain.js"
+OVERVIEW_JS = HUB / "screens" / "overview.js"
 UI_DOM_HARNESS = REPO_ROOT / "tests" / "support" / "ui_dom_harness.js"
 
 NODE_SKIP_ENV = "HUB_TESTS_ALLOW_SKIP_NODE"
@@ -1235,3 +1236,124 @@ console.log(JSON.stringify({{
     else:
         assert result["hubState"] == "ERROR"
         assert result["title"] != result["dispatchTitle"]
+
+
+def test_domain_publish_apply_confirm_title_not_cloud_overclaim() -> None:
+    """Apply confirm title must not overclaim cloud registration as already done."""
+    source = DOMAIN_SIMPLE_PUBLISH_JS.read_text(encoding="utf-8")
+    confirm_body = _extract_function_body(source, "export function openDomainPublishApplyConfirm(")
+    assert confirm_body is not None
+    assert "Отправить команду публикации?" in confirm_body
+    assert "Опубликовать имя в облаке?" not in confirm_body
+
+
+def test_domain_publish_apply_confirm_offline_guard_in_source() -> None:
+    """openDomainPublishApplyConfirm must fail-closed on offline param or navigator.onLine."""
+    source = DOMAIN_SIMPLE_PUBLISH_JS.read_text(encoding="utf-8")
+    confirm_body = _extract_function_body(source, "export function openDomainPublishApplyConfirm(")
+    assert confirm_body is not None
+    assert "isPublishApplyOffline" in source
+    assert "if (isPublishApplyOffline(params))" in confirm_body
+    assert confirm_body.count("isPublishApplyOffline(params)") >= 2
+
+
+def test_domain_screen_open_publish_apply_modal_offline_guard() -> None:
+    """Domain screen must not open publish confirm modal while offline."""
+    source = DOMAIN_SCREEN_JS.read_text(encoding="utf-8")
+    apply_body = _extract_function_body(source, "function openPublishApplyModal(")
+    assert apply_body is not None
+    assert "if (offline)" in apply_body
+    assert "offline," in apply_body or "offline\n" in apply_body.replace(" ", "")
+
+
+def test_overview_publish_apply_offline_guard() -> None:
+    """Overview domain CTA must not open publish confirm modal while offline."""
+    source = OVERVIEW_JS.read_text(encoding="utf-8")
+    mount_region = source[source.find("domainMount = mountDomainSimplePublishAffordance"): source.find("entryPagesSlot.appendChild")]
+    assert "onPublishApply:" in mount_region
+    publish_body = mount_region[mount_region.find("onPublishApply:") : mount_region.find("});", mount_region.find("onPublishApply:"))]
+    assert "if (offline)" in publish_body
+    assert "openDomainPublishApplyConfirm" in publish_body
+
+
+def test_domain_publish_apply_confirm_skips_modal_when_offline(tmp_path: Path) -> None:
+    """Offline (param or navigator.onLine) must not open apply confirm modal."""
+    harness_uri = json.dumps(str(UI_DOM_HARNESS))
+    simple_uri = json.dumps(DOMAIN_SIMPLE_PUBLISH_JS.as_uri())
+    script = f"""import {{ createRequire }} from 'node:module';
+
+const require = createRequire(import.meta.url);
+const {{ createUiDomHarness }} = require({harness_uri});
+const dom = createUiDomHarness();
+
+function patchElement(el) {{
+  if (!el.getAttributeNames) {{
+    el.getAttributeNames = () => Object.keys(el.attributes || {{}});
+  }}
+  return el;
+}}
+
+globalThis.document = dom.document;
+const origCreateElement = dom.document.createElement.bind(dom.document);
+dom.document.createElement = (tag) => patchElement(origCreateElement(tag));
+dom.document.createElementNS = (_ns, tag) => patchElement(origCreateElement(tag));
+dom.document.createTextNode = (text) => {{
+  const node = patchElement(origCreateElement('span'));
+  node.textContent = String(text ?? '');
+  return node;
+}};
+dom.document.addEventListener = () => {{}};
+dom.document.removeEventListener = () => {{}};
+
+const sampleBtn = dom.document.createElement('button');
+globalThis.HTMLElement = sampleBtn.constructor;
+globalThis.HTMLButtonElement = sampleBtn.constructor;
+
+Object.defineProperty(globalThis, 'navigator', {{ value: {{ onLine: false }}, configurable: true }});
+globalThis.window = {{ addEventListener() {{}}, removeEventListener() {{}} }};
+
+const mod = await import({simple_uri});
+
+let navigatorOfflineOpened = false;
+mod.openDomainPublishApplyConfirm({{
+  offline: false,
+  openModal: () => {{ navigatorOfflineOpened = true; return {{ close: () => {{}} }}; }},
+  createButton: () => sampleBtn,
+  showToast: () => {{}},
+  name: 'promo',
+  domain: 'keenetic.pro',
+  onConfirmApply: async () => ({{ overall: 'applied' }}),
+}});
+
+let paramOfflineOpened = false;
+mod.openDomainPublishApplyConfirm({{
+  offline: true,
+  openModal: () => {{ paramOfflineOpened = true; return {{ close: () => {{}} }}; }},
+  createButton: () => sampleBtn,
+  showToast: () => {{}},
+  name: 'promo',
+  domain: 'keenetic.pro',
+  onConfirmApply: async () => ({{ overall: 'applied' }}),
+}});
+
+globalThis.navigator.onLine = true;
+let onlineOpened = false;
+mod.openDomainPublishApplyConfirm({{
+  openModal: () => {{ onlineOpened = true; return {{ close: () => {{}} }}; }},
+  createButton: () => sampleBtn,
+  showToast: () => {{}},
+  name: 'promo',
+  domain: 'keenetic.pro',
+  onConfirmApply: async () => ({{ overall: 'applied' }}),
+}});
+
+console.log(JSON.stringify({{
+  navigatorOfflineOpened,
+  paramOfflineOpened,
+  onlineOpened,
+}}));
+"""
+    result = _run_node_harness(script, tmp_path, "publish-confirm-offline")
+    assert result["navigatorOfflineOpened"] is False
+    assert result["paramOfflineOpened"] is False
+    assert result["onlineOpened"] is True

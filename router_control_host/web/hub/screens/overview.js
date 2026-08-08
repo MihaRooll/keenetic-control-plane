@@ -995,6 +995,9 @@ export function render(container, ctx) {
       showSuffixSelect: true,
       idPrefix: 'hub-overview-domain',
       onPublishApply: () => {
+        if (offline) {
+          return;
+        }
         openDomainPublishApplyConfirm({
           openModal,
           createButton,
@@ -1002,6 +1005,7 @@ export function render(container, ctx) {
           name: domainDraftName,
           domain: domainDraftSuffix,
           mode: KEENDNS_DEFAULT_ACCESS_MODE,
+          offline,
           onConfirmApply: async () => {
             const response = await applyKeendnsBooking({
               name: domainDraftName,

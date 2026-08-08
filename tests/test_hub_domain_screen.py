@@ -477,6 +477,18 @@ def test_domain_simple_publish_module_honesty_guards() -> None:
     assert "blob:" not in source
 
 
+def test_domain_open_publish_apply_modal_blocks_offline() -> None:
+    """openPublishApplyModal must return before openDomainPublishApplyConfirm when offline."""
+    source = _read(DOMAIN_SCREEN_JS)
+    apply_body = _extract_function_body(source, "function openPublishApplyModal(")
+    assert apply_body is not None
+    offline_idx = apply_body.find("if (offline)")
+    open_idx = apply_body.find("openDomainPublishApplyConfirm")
+    assert offline_idx != -1
+    assert open_idx != -1
+    assert offline_idx < open_idx
+
+
 def test_domain_apply_clears_operation_error_only_on_applied() -> None:
     """operationError сбрасывается только при overall === 'applied', не при любом non-failed."""
     source = _read(DOMAIN_SCREEN_JS)

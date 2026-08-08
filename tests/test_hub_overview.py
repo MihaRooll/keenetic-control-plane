@@ -2163,6 +2163,27 @@ def test_overview_networks_form_dirty_and_standing_gated_on_verdict_success() ->
     assert "if (guestRememberDefault && enabled && verdict.success)" in guest_apply_body
 
 
+def test_overview_networks_standing_persist_failure_shows_warning_after_apply_success() -> None:
+    """Staff/guest apply success + standing PUT failure → warning toast after apply verdict."""
+    source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
+    staff_enable_body = _extract_function_body(source, "async function runStaffEnable(")
+    assert staff_enable_body is not None
+    assert "standingPersistWarningKind = 'staff'" in staff_enable_body
+    assert "// non-blocking" not in staff_enable_body
+
+    guest_apply_body = _extract_function_body(source, "async function runGuestApply(")
+    assert guest_apply_body is not None
+    assert "standingPersistWarningKind = 'guest'" in guest_apply_body
+
+    run_mutation_body = _extract_function_body(source, "async function runMutation(")
+    assert run_mutation_body is not None
+    assert "showStandingPersistWarningToast" in run_mutation_body
+    assert "verdict?.success" in run_mutation_body
+    assert "standingPersistWarningKind" in run_mutation_body
+    assert "Не удалось сохранить обычные настройки" in source
+    assert "Не удалось запомнить обычное имя" in source
+
+
 def test_overview_networks_observed_refresh_gated_on_should_refresh() -> None:
     """AC-6: observed refresh runs only when shouldRefreshWifiObservedAfterMutation(verdict)."""
     source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)

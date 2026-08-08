@@ -260,6 +260,8 @@ export function mountOverviewSimpleNetworks(options) {
   /** @type {ReturnType<typeof createGuestWifiFormDraft>} */
   let guestDraft = { ssid: '', wpaMode: 'WPA2', password: '' };
   let guestRememberDefault = false;
+  /** @type {'staff'|'guest'|null} */
+  let standingPersistWarningKind = null;
   let staffFormDirty = false;
   let guestFormDirty = false;
   let staffBusy = false;
@@ -403,6 +405,28 @@ export function mountOverviewSimpleNetworks(options) {
   }
 
   /**
+   * @param {'staff'|'guest'} kind
+   * @param {(opts: object) => void} showToast
+   */
+  function showStandingPersistWarningToast(kind, showToast) {
+    if (kind === 'staff') {
+      showToast({
+        tone: 'warning',
+        title: 'Не удалось сохранить обычные настройки',
+        message:
+          'Настройки применены на роутере, но имя и пароль по умолчанию на хосте не обновлены — «Применить обычные» может подставить старые значения.',
+      });
+      return;
+    }
+    showToast({
+      tone: 'warning',
+      title: 'Не удалось запомнить обычное имя',
+      message:
+        'Гостевая сеть сохранена на роутере, но обычное имя не записано на хосте — в новых проектах подставится прежнее.',
+    });
+  }
+
+  /**
    * @param {AbortSignal|undefined} signal
    * @returns {Promise<WifiApplyVerdict>}
    */
@@ -486,7 +510,7 @@ export function mountOverviewSimpleNetworks(options) {
         });
         standing = await updateStaffStandingNetworkPreferences(body);
       } catch {
-        // non-blocking
+        standingPersistWarningKind = 'staff';
       }
     }
     if (shouldRefreshWifiObservedAfterMutation(verdict)) {
@@ -663,7 +687,7 @@ export function mountOverviewSimpleNetworks(options) {
         const body = buildGuestStandingPreferencesUpdate(guestDraft.ssid);
         standing = await updateGuestStandingNetworkPreferences(body);
       } catch {
-        // non-blocking
+        standingPersistWarningKind = 'guest';
       }
     }
 
@@ -689,6 +713,7 @@ export function mountOverviewSimpleNetworks(options) {
     if (resolveDisabled()) {
       return;
     }
+    standingPersistWarningKind = null;
     const signal = typeof getSignal === 'function' ? getSignal() : undefined;
     const slot = action.startsWith('staff') ? staffBody : guestBody;
     if (action.startsWith('staff')) {
@@ -725,6 +750,14 @@ export function mountOverviewSimpleNetworks(options) {
           title: verdict.title,
           message: verdict.message,
         });
+      }
+      if (
+        verdict?.success
+        && standingPersistWarningKind
+        && typeof options.showToast === 'function'
+      ) {
+        showStandingPersistWarningToast(standingPersistWarningKind, options.showToast);
+        standingPersistWarningKind = null;
       }
       if (verdict?.success) {
         if (action.startsWith('staff')) {
