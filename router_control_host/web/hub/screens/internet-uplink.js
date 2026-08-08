@@ -368,7 +368,8 @@ export function render(container, ctx) {
       watchdogEnabled,
       watchdogRunning,
       pollSeconds: watchdogPollSeconds,
-      desiredActive: rememberedUplink?.desired_active === true,
+      desiredActive:
+        rememberedUplink == null ? null : rememberedUplink.desired_active === true,
     });
     watchdogStatusSlot.appendChild(note);
   }

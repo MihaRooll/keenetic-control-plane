@@ -935,6 +935,26 @@ console.log(JSON.stringify(
     assert "heal" not in result.lower()
 
 
+def test_uplink_describe_auto_reconnect_note_enabled_unknown_desired_active(
+    tmp_path: Path,
+) -> None:
+    """Enabled watchdog with unloaded intent must not claim reconnect or no-intent."""
+    result = _run_export(
+        tmp_path,
+        label="uplink-auto-reconnect-unknown-desired",
+        script_body="""
+console.log(JSON.stringify(mod.describeUplinkAutoReconnectNote({
+  watchdogEnabled: true,
+  desiredActive: null,
+})));
+""",
+    )
+    assert "ещё не загружено" in result
+    assert "неизвестно" in result
+    assert "запомненного намерения нет" not in result
+    assert "повтор при обрыве без ручного подтверждения" not in result
+
+
 def test_uplink_describe_auto_reconnect_note_enabled_without_desired_active(
     tmp_path: Path,
 ) -> None:
@@ -1039,7 +1059,12 @@ def test_internet_uplink_screen_loads_watchdog_status() -> None:
     assert "uplink_watchdog_poll_seconds" in source
     assert "loadWatchdogStatus" in source
     assert "describeUplinkAutoReconnectNote" in source
-    assert "desiredActive: rememberedUplink?.desired_active === true" in source
+    assert (
+        "desiredActive:"
+        in source
+        and "rememberedUplink == null ? null : rememberedUplink.desired_active === true"
+        in source
+    )
     assert "rememberedUplink?.desired_active === true ? '1'" in source
     assert "hub-internet-uplink__watchdog-slot" in source
     watchdog_slot_pos = source.find("hub-internet-uplink__watchdog-slot")
