@@ -59,6 +59,37 @@ export const VPN_CONFIGURATION_ROLLED_BACK_MESSAGE = 'Настройки отк�
 /** Строка 1: отклонено. */
 export const VPN_CONFIGURATION_FAILED_MESSAGE = 'Роутер отклонил настройки туннеля';
 
+/** Зеркало wireguard_apply_service.py — конфигурация принята устройством. */
+const CONFIGURATION_ACCEPTED_STATUS = 'device_accepted_configuration';
+
+/** Префикс наблюдаемого admin-state интерфейса при overall=applied. */
+const INTERFACE_PRESENT_STATUS_PREFIX = 'interface_present_';
+
+/** interface_absent — успех teardown при overall=applied. */
+const INTERFACE_ABSENT_STATUS = 'interface_absent';
+
+/**
+ * @param {string|null} status
+ * @returns {boolean}
+ */
+function isConfigurationAccepted(status) {
+  return !status || status === CONFIGURATION_ACCEPTED_STATUS;
+}
+
+/**
+ * @param {string|null} status
+ * @returns {boolean}
+ */
+function isInterfaceObservedOk(status) {
+  if (!status) {
+    return true;
+  }
+  return (
+    status.startsWith(INTERFACE_PRESENT_STATUS_PREFIX)
+    || status === INTERFACE_ABSENT_STATUS
+  );
+}
+
 /** Строка 2: связь не проверялась. */
 export const VPN_TUNNEL_NOT_CHECKED_MESSAGE = 'Связь с сервером VPN не проверялась';
 
@@ -488,8 +519,8 @@ export function describeConfigurationOutcome(response) {
 
   if (overall === 'applied') {
     const needsWarning =
-      (configurationStatus && configurationStatus !== 'configuration_verified')
-      || (interfaceStatus && interfaceStatus !== 'interface_verified');
+      !isConfigurationAccepted(configurationStatus)
+      || !isInterfaceObservedOk(interfaceStatus);
     return {
       hubState: HubState.WARNING,
       title: 'Настройка на роутере',

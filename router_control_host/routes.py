@@ -2509,12 +2509,15 @@ def activate_vpn_profile(
             tcp_mss_pmtu=body.tcp_mss_pmtu,
         )
     except (IntentValidationError, ValueError) as exc:
-        message = str(getattr(exc, "message", exc))
+        _ = exc
         return error_response(
             request,
             status_code=422,
             code="profile.activate_failed",
-            message=message,
+            message=synthesize_operator_message(
+                code="profile.activate_failed",
+                reason="profile_validation_failed",
+            ),
         )
     from router_control.adapters.netcraze.startup_backup import StartupBackupError
     from router_control.persistence.errors import SealedApplyTrailBeginError
@@ -2632,11 +2635,12 @@ def activate_vpn_profile(
                 router_id=router_id,
                 route="vpn-profiles",
             )
+            _ = exc
             return error_response(
                 request,
                 status_code=422,
                 code="profile.activate_failed",
-                message=str(exc),
+                message=wg_routes._synthesised_apply_failed_message(),
             )
         except Exception as exc:
             wg_routes._record_wireguard_sealed_audit(
@@ -2698,11 +2702,12 @@ def activate_vpn_profile(
                 router_id=router_id,
                 route="vpn-profiles",
             )
+            _ = exc
             return error_response(
                 request,
                 status_code=422,
                 code="profile.activate_failed",
-                message=str(exc),
+                message=wg_routes._synthesised_apply_failed_message(),
             )
         except Exception:
             wg_routes._record_wireguard_sealed_audit(
@@ -2890,11 +2895,12 @@ def deactivate_vpn_profile(
                 router_id=router_id,
                 route="vpn-profiles",
             )
+            _ = exc
             return error_response(
                 request,
                 status_code=422,
                 code="profile.deactivate_failed",
-                message=str(exc),
+                message=wg_routes._synthesised_apply_failed_message(),
             )
         except Exception as exc:
             wg_routes._record_wireguard_sealed_audit(
@@ -2956,11 +2962,12 @@ def deactivate_vpn_profile(
                 router_id=router_id,
                 route="vpn-profiles",
             )
+            _ = exc
             return error_response(
                 request,
                 status_code=422,
                 code="profile.deactivate_failed",
-                message=str(exc),
+                message=wg_routes._synthesised_apply_failed_message(),
             )
         except Exception:
             wg_routes._record_wireguard_sealed_audit(

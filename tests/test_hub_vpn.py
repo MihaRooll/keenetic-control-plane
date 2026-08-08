@@ -654,16 +654,52 @@ console.log(JSON.stringify({{
 
 
 def test_vpn_configuration_outcome_applied_clean_when_verified(tmp_path: Path) -> None:
-    """applied + verified statuses → чистое принятие."""
+    """applied + backend verification statuses → чистое принятие."""
     response = {
         "overall": "applied",
-        "configuration_verification_status": "configuration_verified",
-        "interface_verification_status": "interface_verified",
+        "configuration_verification_status": "device_accepted_configuration",
+        "interface_verification_status": "interface_present_up",
     }
     response_json = json.dumps(response, ensure_ascii=False)
     result = _run_export(
         tmp_path,
         label="config-outcome-verified",
+        script_body=f"""
+console.log(JSON.stringify(mod.describeConfigurationOutcome({response_json}).message));
+""",
+    )
+    assert result == "Настройки туннеля приняты роутером"
+
+
+def test_vpn_configuration_outcome_applied_clean_when_present_down(tmp_path: Path) -> None:
+    """applied + interface_present_down (disable) → чистое принятие."""
+    response = {
+        "overall": "applied",
+        "configuration_verification_status": "device_accepted_configuration",
+        "interface_verification_status": "interface_present_down",
+    }
+    response_json = json.dumps(response, ensure_ascii=False)
+    result = _run_export(
+        tmp_path,
+        label="config-outcome-present-down",
+        script_body=f"""
+console.log(JSON.stringify(mod.describeConfigurationOutcome({response_json}).message));
+""",
+    )
+    assert result == "Настройки туннеля приняты роутером"
+
+
+def test_vpn_configuration_outcome_applied_clean_when_interface_absent(tmp_path: Path) -> None:
+    """applied + interface_absent (teardown) → чистое принятие."""
+    response = {
+        "overall": "applied",
+        "configuration_verification_status": "device_accepted_configuration",
+        "interface_verification_status": "interface_absent",
+    }
+    response_json = json.dumps(response, ensure_ascii=False)
+    result = _run_export(
+        tmp_path,
+        label="config-outcome-interface-absent",
         script_body=f"""
 console.log(JSON.stringify(mod.describeConfigurationOutcome({response_json}).message));
 """,

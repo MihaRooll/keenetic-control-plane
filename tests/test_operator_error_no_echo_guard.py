@@ -3,7 +3,7 @@
 Covered: event-preset validation, network-family preview (vlan/dhcp/dns/firewall),
 StarletteHTTPException envelope, Wi-Fi apply/preview/observed-state/site-survey routes,
 WireGuard apply/preview/observe routes (HTTP + sealed-apply audit), VPN profile
-parse-preview, VPN policy-routing preview.
+parse-preview, VPN profile activate/deactivate, VPN policy-routing preview.
 """
 
 from __future__ import annotations
@@ -472,6 +472,67 @@ def test_vpn_parse_preview_plain_marker_absent(client) -> None:
     _assert_plain_marker_absent(body)
     assert body["error"]["code"] == "profile.validation_failed"
     _assert_structured_details_no_values(body["error"])
+
+
+def _seed_vpn_profile_for_no_echo(store, *, display_name: str) -> str:
+    return store.import_profile(
+        display_name=display_name,
+        vpn_kind="AmneziaWG",
+        content_digest=f"digest-{display_name}",
+        metadata_json=json.dumps(
+            {
+                "wg_id": "Wireguard5",
+                "peer_public_key": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
+                "peer_endpoint": "example.com:51820",
+                "peer_allow_ips": "0.0.0.0/0",
+            }
+        ),
+    )
+
+
+def test_vpn_profile_activate_service_error_plain_marker_absent(
+    wg_apply_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import router_control_host.routes as routes_mod
+
+    profile_id = _seed_vpn_profile_for_no_echo(
+        _wg_apply_store(wg_apply_client),
+        display_name="no-echo-activate",
+    )
+
+    def _fail(*_args: object, **_kwargs: object) -> None:
+        raise WireguardApplyServiceError(f"activate failed marker={_PLAIN_MARKER}")
+
+    monkeypatch.setattr(routes_mod, "apply_wireguard_intent", _fail)
+    resp = wg_apply_client.post(
+        f"{_API}/vpn-profiles/{profile_id}/activate",
+        json={"confirm_live_apply": True, "wg_id": "Wireguard5"},
+    )
+    assert resp.status_code == 422
+    body = resp.json()
+    _assert_plain_marker_absent(body)
+    assert body["error"]["code"] == "profile.activate_failed"
+    assert body["error"]["message"] == "WireGuard apply failed"
+
+
+def test_vpn_profile_deactivate_service_error_plain_marker_absent(
+    wg_apply_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import router_control_host.routes as routes_mod
+
+    def _fail(*_args: object, **_kwargs: object) -> None:
+        raise WireguardApplyServiceError(f"deactivate failed marker={_PLAIN_MARKER}")
+
+    monkeypatch.setattr(routes_mod, "teardown_wireguard", _fail)
+    resp = wg_apply_client.post(
+        f"{_API}/vpn-profiles/deactivate",
+        json={"confirm_live_apply": True, "wg_id": "Wireguard5"},
+    )
+    assert resp.status_code == 422
+    body = resp.json()
+    _assert_plain_marker_absent(body)
+    assert body["error"]["code"] == "profile.deactivate_failed"
+    assert body["error"]["message"] == "WireGuard apply failed"
 
 
 def test_wireguard_observe_connection_fields_plain_marker_absent(client) -> None:

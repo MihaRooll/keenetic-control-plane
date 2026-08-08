@@ -769,8 +769,9 @@ def test_activate_prior_teardown_failed_fail_closed(
     assert resp.status_code == 422
     body = resp.json()
     assert body["error"]["code"] == "profile.activate_failed"
-    assert "prior VPN profile teardown" in body["error"]["message"]
-    assert "overall=failed" in body["error"]["message"]
+    assert body["error"]["message"] == "WireGuard apply failed"
+    assert "prior VPN profile teardown" not in body["error"]["message"]
+    assert "overall=failed" not in body["error"]["message"]
     assert apply_calls == []
     active = store.get_active_tunnel_assignment(router_id)
     assert active is not None
