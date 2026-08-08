@@ -31,6 +31,7 @@ from router_control.domain.network_intents import WireguardIntent
 from router_control_host.app import create_app
 from router_control_host.auth import mint_hub_admin_cookie
 from router_control_host.wifi_live_transport import LiveIdentityTupleMismatchError, WifiLiveSession
+from router_control_host.wifi_live_transport import WifiLiveConnectionParams
 
 SAMPLE_PROFILE = """
 [Interface]
@@ -66,6 +67,32 @@ _LIVE_CONN: dict[str, str] = {
     "ssh_host_key_sha256": _VALID_SSH_HOST_KEY_SHA256,
     "source_address": "192.168.2.10",
 }
+
+_IDENTITY_MISMATCH_ROUTER_ID = "router-lab-identity-mismatch"
+
+_FORCED_LIVE_PARAMS = WifiLiveConnectionParams(
+    host="192.168.2.1",
+    username="admin",
+    router_credential_ref_id="credref:router-admin",
+    ssh_host_key_sha256=_VALID_SSH_HOST_KEY_SHA256,
+    source_address="192.168.2.10",
+)
+
+
+def _force_vpn_live_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
+
+    monkeypatch.setattr(
+        wg_routes_mod,
+        "_validate_live_connection_fields",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(wg_routes_mod, "_should_use_live_path", lambda *_a, **_k: True)
+    monkeypatch.setattr(
+        wg_routes_mod,
+        "_live_params_from_body",
+        lambda *_a, **_k: _FORCED_LIVE_PARAMS,
+    )
 
 
 def _open_gate_a() -> GateACertification:
@@ -1029,6 +1056,7 @@ def test_vpn_activate_identity_mismatch_returns_422(
     authed_client, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     authed_client.app.state.host.gate_a_certification = _open_gate_a()
+    _force_vpn_live_path(monkeypatch)
     import_resp = authed_client.post(
         "/api/router-control/v1/vpn-profiles/import",
         json={
@@ -1072,7 +1100,12 @@ def test_vpn_activate_identity_mismatch_returns_422(
 
     resp = authed_client.post(
         f"/api/router-control/v1/vpn-profiles/{profile_id}/activate",
-        json={"confirm_live_apply": True, "wg_id": "Wireguard5", **_LIVE_CONN},
+        json={
+            "confirm_live_apply": True,
+            "wg_id": "Wireguard5",
+            "router_id": _IDENTITY_MISMATCH_ROUTER_ID,
+            **_LIVE_CONN,
+        },
     )
     assert resp.status_code == 422
     assert resp.json()["error"]["code"] == "wireguard.identity_mismatch"
@@ -1083,6 +1116,7 @@ def test_vpn_deactivate_identity_mismatch_returns_422(
     authed_client, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     authed_client.app.state.host.gate_a_certification = _open_gate_a()
+    _force_vpn_live_path(monkeypatch)
     backup_calls: list[str] = []
 
     @contextmanager
@@ -1115,7 +1149,12 @@ def test_vpn_deactivate_identity_mismatch_returns_422(
 
     resp = authed_client.post(
         "/api/router-control/v1/vpn-profiles/deactivate",
-        json={"confirm_live_apply": True, "wg_id": "Wireguard5", **_LIVE_CONN},
+        json={
+            "confirm_live_apply": True,
+            "wg_id": "Wireguard5",
+            "router_id": _IDENTITY_MISMATCH_ROUTER_ID,
+            **_LIVE_CONN,
+        },
     )
     assert resp.status_code == 422
     assert resp.json()["error"]["code"] == "wireguard.identity_mismatch"

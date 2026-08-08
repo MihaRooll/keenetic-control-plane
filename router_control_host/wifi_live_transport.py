@@ -59,6 +59,14 @@ def live_connection_incomplete_code(family_prefix: str) -> str:
     return f"{family_prefix}.live_connection_incomplete"
 
 
+def normalize_live_apply_router_id(router_id: str | None) -> str | None:
+    """Return stripped router_id for live sealed-write paths, or None if blank."""
+    if router_id is None:
+        return None
+    stripped = str(router_id).strip()
+    return stripped if stripped else None
+
+
 def live_platform_unsupported_code(family_prefix: str) -> str:
     return f"{family_prefix}.live_platform_unsupported"
 
@@ -510,6 +518,7 @@ __all__ = [
     "live_platform_unsupported_message",
     "map_wifi_live_transport_error",
     "missing_connection_fields",
+    "normalize_live_apply_router_id",
     "open_wifi_live_session",
     "params_complete",
 ]

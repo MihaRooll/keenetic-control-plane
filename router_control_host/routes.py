@@ -83,6 +83,7 @@ from router_control_host.wifi_live_transport import (
     LiveIdentityTupleMismatchError,
     is_win32_live_capable,
     map_wifi_live_transport_error,
+    normalize_live_apply_router_id,
 )
 
 IdempotencyKeyHeader = Annotated[str, Header(alias="Idempotency-Key")]
@@ -2617,6 +2618,10 @@ def activate_vpn_profile(
                 request,
                 "Gate A certification required for live activate (startup-config backup)",
             )
+        if normalize_live_apply_router_id(router_id) is None:
+            return wg_routes._connection_incomplete_error(
+                request, missing=["router_id"]
+            )
         try:
             result = run_with_router_apply_lock(lock_key, _dispatch_activate)
         except LiveIdentityTupleMismatchError:
@@ -2876,6 +2881,10 @@ def deactivate_vpn_profile(
             return wg_routes._gate_a_required_error(
                 request,
                 "Gate A certification required for live deactivate (startup-config backup)",
+            )
+        if normalize_live_apply_router_id(router_id) is None:
+            return wg_routes._connection_incomplete_error(
+                request, missing=["router_id"]
             )
         try:
             result = run_with_router_apply_lock(lock_key, _dispatch_deactivate)

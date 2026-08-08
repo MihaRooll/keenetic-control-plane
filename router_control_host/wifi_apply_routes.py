@@ -72,6 +72,7 @@ from router_control_host.wifi_live_transport import (
     live_platform_unsupported_code,
     live_platform_unsupported_message,
     map_wifi_live_transport_error,
+    normalize_live_apply_router_id,
     open_wifi_live_session,
 )
 
@@ -736,6 +737,8 @@ def wifi_apply(request: Request, body: WifiApplyBody) -> JSONResponse:
                 request,
                 "Gate A certification required for live apply (startup-config backup)",
             )
+        if normalize_live_apply_router_id(router_id) is None:
+            return _connection_incomplete_error(request, missing=["router_id"])
         try:
             result = run_with_router_apply_lock(
                 lock_key,
@@ -912,6 +915,8 @@ def wifi_teardown(request: Request, body: WifiTeardownBody) -> JSONResponse:
                 request,
                 "Gate A certification required for live teardown (startup-config backup)",
             )
+        if normalize_live_apply_router_id(router_id) is None:
+            return _connection_incomplete_error(request, missing=["router_id"])
         try:
             result = run_with_router_apply_lock(
                 lock_key,
