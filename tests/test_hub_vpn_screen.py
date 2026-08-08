@@ -986,3 +986,69 @@ def test_vpn_screen_catalog_runners_gate_offline() -> None:
     assert deactivate.find("offline") < deactivate.find("deactivateVpnProfile(")
     assert validate.find("offline") < validate.find("validateVpnProfile(")
     assert remove.find("offline") < remove.find("removeVpnProfileFromCatalog(")
+
+
+def test_vpn_screen_recheck_disabled_includes_offline() -> None:
+    """Recheck runner and button disabled state include offline before observe API."""
+    source = _read(VPN_SCREEN_JS)
+    run_observe = _extract_function_body(source, "async function runObserveRecheck(")
+    assert run_observe is not None
+    assert "offline" in run_observe.split("observing = true", maxsplit=1)[0]
+    status_row = re.search(
+        r"const recheckDisabled =([\s\S]*?);\s*\n\s*const recheckBtn",
+        source,
+    )
+    assert status_row is not None
+    assert "offline" in status_row.group(1)
+
+
+def test_vpn_screen_import_load_config_gates_offline_and_can_prepare() -> None:
+    """Import/load config paths gate offline and canPrepareProfile before parse/import."""
+    source = _read(VPN_SCREEN_JS)
+    open_import = _extract_function_body(source, "function openImportModal(")
+    assert open_import is not None
+    open_guard = open_import.split("importModalOpen = true", maxsplit=1)[0]
+    assert "offline" in open_guard
+    assert "canPrepareProfile" in open_guard
+
+    active_cfg = _extract_function_body(source, "function renderActiveConfigurationCard(")
+    assert active_cfg is not None
+    assert "canPrepareProfile" in active_cfg
+    assert "Загрузить конфигурацию" in active_cfg
+
+    run_parse = re.search(
+        r"async function runParseProfile\(\) \{([\s\S]*?\n    \})",
+        source,
+    )
+    assert run_parse is not None
+    parse_body = run_parse.group(1)
+    parse_guard = parse_body.split("parseVpnProfileText(", maxsplit=1)[0]
+    assert "offline" in parse_guard
+    assert "canPrepareProfile" in parse_guard
+
+    run_import = re.search(
+        r"async function runCatalogImport\(\) \{([\s\S]*?\n    \})",
+        source,
+    )
+    assert run_import is not None
+    import_body = run_import.group(1)
+    import_guard = import_body.split("importVpnProfileToCatalog(", maxsplit=1)[0]
+    assert "offline" in import_guard
+    assert "canPrepareProfile" in import_guard
+
+
+def test_vpn_screen_parse_clears_textarea_only_after_success() -> None:
+    """Textarea clear happens only on successful parse path, after parseVpnProfileText."""
+    source = _read(VPN_SCREEN_JS)
+    run_parse = re.search(
+        r"async function runParseProfile\(\) \{([\s\S]*?\n    \})",
+        source,
+    )
+    assert run_parse is not None
+    body = run_parse.group(1)
+    parse_call = body.find("parseVpnProfileText(")
+    clear_idx = body.find("textareaEl.value = ''")
+    assert parse_call != -1
+    assert clear_idx != -1
+    assert clear_idx > parse_call
+    assert "textareaEl.value = ''" not in body[:parse_call]

@@ -1231,7 +1231,7 @@ export function render(container, ctx) {
   }
 
   function openImportModal(returnFocusTo) {
-    if (importModalOpen) {
+    if (importModalOpen || offline || !screenState().canPrepareProfile) {
       return;
     }
     importModalOpen = true;
@@ -1278,7 +1278,7 @@ export function render(container, ctx) {
     const prepareBtn = createButton({
       label: parsingProfile ? 'Разбираем…' : 'Подготовить к подключению',
       variant: 'primary',
-      disabled: parsingProfile || importingCatalog,
+      disabled: parsingProfile || importingCatalog || offline || !screenState().canPrepareProfile,
       onActivate: () => {
         void runParseProfile();
       },
@@ -1287,7 +1287,7 @@ export function render(container, ctx) {
     const catalogBtn = createButton({
       label: importingCatalog ? 'Сохраняем…' : 'Сохранить в каталог',
       variant: 'secondary',
-      disabled: parsingProfile || importingCatalog,
+      disabled: parsingProfile || importingCatalog || offline || !screenState().canPrepareProfile,
       onActivate: () => {
         void runCatalogImport();
       },
@@ -1322,12 +1322,17 @@ export function render(container, ctx) {
     }
 
     async function runParseProfile() {
-      if (!textareaEl || parsingProfile || importingCatalog) {
+      if (
+        !textareaEl
+        || parsingProfile
+        || importingCatalog
+        || offline
+        || !screenState().canPrepareProfile
+      ) {
         return;
       }
       const profileText = textareaEl.value;
       lastProfileText = profileText;
-      textareaEl.value = '';
       if (!profileText.trim()) {
         ctx.showToast({
           tone: 'warning',
@@ -1357,6 +1362,7 @@ export function render(container, ctx) {
         const summary = summarizeParsedProfile(response);
         preparedOperatorLines = summary.operatorLines;
         preparedTechnicalLines = summary.technicalLines;
+        textareaEl.value = '';
         renderParseResult(summary);
         if (!disposed) {
           const parseReadiness = evaluatePreparedParseConnectReadiness(response);
@@ -1396,8 +1402,10 @@ export function render(container, ctx) {
         if (parseAbort === myController) {
           parseAbort = null;
         }
-        prepareBtn.disabled = parsingProfile || importingCatalog;
-        catalogBtn.disabled = parsingProfile || importingCatalog;
+        prepareBtn.disabled =
+          parsingProfile || importingCatalog || offline || !screenState().canPrepareProfile;
+        catalogBtn.disabled =
+          parsingProfile || importingCatalog || offline || !screenState().canPrepareProfile;
         closeBtn.disabled = parsingProfile || importingCatalog;
         if (!disposed && gen === generation) {
           renderAll();
@@ -1406,7 +1414,12 @@ export function render(container, ctx) {
     }
 
     async function runCatalogImport() {
-      if (importingCatalog || parsingProfile) {
+      if (
+        importingCatalog
+        || parsingProfile
+        || offline
+        || !screenState().canPrepareProfile
+      ) {
         return;
       }
       const displayNameEl = document.getElementById('hub-vpn-import-display-name');
@@ -1486,8 +1499,10 @@ export function render(container, ctx) {
         if (importAbort === myController) {
           importAbort = null;
         }
-        prepareBtn.disabled = parsingProfile || importingCatalog;
-        catalogBtn.disabled = parsingProfile || importingCatalog;
+        prepareBtn.disabled =
+          parsingProfile || importingCatalog || offline || !screenState().canPrepareProfile;
+        catalogBtn.disabled =
+          parsingProfile || importingCatalog || offline || !screenState().canPrepareProfile;
         closeBtn.disabled = parsingProfile || importingCatalog;
         if (!disposed && gen === generation) {
           renderAll();
@@ -1636,7 +1651,7 @@ export function render(container, ctx) {
   }
 
   async function runObserveRecheck() {
-    if (disposed || observing || !screenState().canObserve) {
+    if (disposed || observing || offline || !screenState().canObserve) {
       return;
     }
     observing = true;
@@ -1962,7 +1977,8 @@ export function render(container, ctx) {
     if (index === 1 && tunnelOutcomesByWgId[selectedWgId] && !connecting) {
       const status = currentStatusLines();
       if (status && !status.healthy) {
-        const recheckDisabled = !screenState().canObserve || observing || controlsLocked();
+        const recheckDisabled =
+          !screenState().canObserve || observing || controlsLocked() || offline;
         const recheckBtn = createButton({
           label: applyTimeoutUnknownByWgId[selectedWgId]
             ? 'Проверить состояние'
@@ -2147,11 +2163,12 @@ export function render(container, ctx) {
 
     const btnRow = document.createElement('div');
     btnRow.className = 'hub-vpn__btn-row';
+    const importState = screenState();
     btnRow.appendChild(
       createButton({
         label: 'Загрузить конфигурацию',
         variant: 'secondary',
-        disabled: controlsLocked(),
+        disabled: controlsLocked() || !importState.canPrepareProfile,
         onActivate: () => {
           const focusEl =
             document.activeElement instanceof HTMLElement ? document.activeElement : null;
