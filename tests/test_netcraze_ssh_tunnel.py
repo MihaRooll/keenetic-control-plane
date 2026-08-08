@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import socket
+from pathlib import Path
 from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
@@ -1055,6 +1056,77 @@ def test_ssh_dial_pins_first_vetted_private_ip_toctou_closed() -> None:
     assert resolve_calls == 1
     assert dial_hosts == [private_ip]
     assert private_ip != public_ip
+
+
+def test_tcp_connect_host_returns_pinned_ip_not_hostname_after_open() -> None:
+    private_ip = "192.168.1.50"
+    key_bytes = b"pinned-key"
+    fingerprint = _fingerprint_for(key_bytes)
+    fake_transport = MagicMock()
+    fake_transport.get_remote_server_key.return_value = _FakeKey("ssh-ed25519", key_bytes)
+    fake_transport.auth_password.return_value = []
+
+    config = _make_config(ssh_host="router.local", host_key_sha256=fingerprint)
+    tunnel = PinnedSshTunnel(config, _transport_factory=lambda _cfg: fake_transport)
+
+    assert tunnel.tcp_connect_host == "router.local"
+
+    with patch(
+        "router_control.adapters.netcraze.ssh_tunnel.socket.getaddrinfo",
+        return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", (private_ip, 0))],
+    ):
+        with tunnel:
+            assert tunnel.tcp_connect_host == private_ip
+            assert tunnel.tcp_connect_host != "router.local"
+
+
+def test_pinned_ssh_transport_tcp_connect_host_returns_pinned_ip_after_open() -> None:
+    private_ip = "192.168.1.50"
+    key_bytes = b"pinned-key"
+    fingerprint = _fingerprint_for(key_bytes)
+    fake_transport = MagicMock()
+    fake_transport.get_remote_server_key.return_value = _FakeKey("ssh-ed25519", key_bytes)
+    fake_transport.auth_password.return_value = []
+    fake_transport.is_active.return_value = True
+
+    config = _make_config(ssh_host="router.local", host_key_sha256=fingerprint)
+    transport_ctx = PinnedSshTransport(
+        config,
+        _transport_factory=lambda _cfg: fake_transport,
+    )
+
+    assert transport_ctx.tcp_connect_host == "router.local"
+
+    with patch(
+        "router_control.adapters.netcraze.ssh_tunnel.socket.getaddrinfo",
+        return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", (private_ip, 0))],
+    ):
+        with transport_ctx:
+            assert transport_ctx.tcp_connect_host == private_ip
+
+
+def test_backup_router_startup_host_is_private_uses_shared_helper() -> None:
+    import importlib.util
+
+    script_path = (
+        Path(__file__).resolve().parents[1] / "scripts" / "backup-router-startup.py"
+    )
+    spec = importlib.util.spec_from_file_location("backup_router_startup_cli", script_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    with patch(
+        "router_control.adapters.netcraze.ssh_tunnel.socket.getaddrinfo",
+        return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 0))],
+    ):
+        assert module._host_is_private("metadata.local") is False
+
+    with patch(
+        "router_control.adapters.netcraze.ssh_tunnel.socket.getaddrinfo",
+        return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.168.1.50", 0))],
+    ):
+        assert module._host_is_private("router.local") is True
 
 
 def test_resolve_private_connect_targets_preserves_fe80_scope_id() -> None:

@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import argparse
-import ipaddress
 import json
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+from router_control.adapters.netcraze.ssh_tunnel import host_is_private
 
 DEFAULT_SECRETS_ROOT = REPO_ROOT / "data" / "secrets"
 DEFAULT_BACKUPS_ROOT = REPO_ROOT / "data" / "backups"
@@ -43,13 +44,7 @@ def _host_is_private(host: str) -> bool:
 
         parsed = urlparse(host)
         candidate = parsed.hostname or host
-    if candidate.endswith(".local"):
-        return True
-    try:
-        addr = ipaddress.ip_address(candidate)
-    except ValueError:
-        return False
-    return addr.is_private or addr.is_link_local or addr.is_loopback
+    return host_is_private(candidate)
 
 
 def _validate_ssh_tunnel_preflight(

@@ -217,6 +217,19 @@ def host_is_private(hostname: str) -> bool:
         return False
 
 
+def pinned_tcp_connect_host(
+    pinned_targets: list[str],
+    *,
+    canonical_host: str,
+    config_ssh_host: str,
+) -> str:
+    """Return first vetted dial target after pin; hostname fallback before open."""
+    if pinned_targets:
+        return strip_host_brackets(pinned_targets[0])
+    fallback = canonical_host or config_ssh_host
+    return strip_host_brackets(fallback)
+
+
 def _connect_private_tcp(
     host: str,
     port: int,
@@ -594,7 +607,11 @@ class PinnedSshTunnel:
 
     @property
     def tcp_connect_host(self) -> str:
-        return strip_host_brackets(self._remote_rci_host)
+        return pinned_tcp_connect_host(
+            self._pinned_ssh_targets,
+            canonical_host=self._remote_rci_host,
+            config_ssh_host=self.config.ssh_host,
+        )
 
     def _authenticate_transport(self, transport: Any, paramiko: Any) -> None:
         auth_exception = getattr(
@@ -995,7 +1012,11 @@ class PinnedSshTransport:
 
     @property
     def tcp_connect_host(self) -> str:
-        return strip_host_brackets(self._remote_host)
+        return pinned_tcp_connect_host(
+            self._pinned_ssh_targets,
+            canonical_host=self._remote_host,
+            config_ssh_host=self.config.ssh_host,
+        )
 
     def open(self) -> None:
         if self._transport is not None:
