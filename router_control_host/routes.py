@@ -79,6 +79,12 @@ from router_control_host.errors import (
     synthesize_operator_message,
 )
 from router_control_host.state import HostState
+from router_control_host.vpn_assignment_helpers import (
+    assignment_policy_metadata as _assignment_policy_metadata,
+    merge_teardown_metadata as _merge_teardown_metadata,
+    resolve_assignment_wg_id as _resolve_assignment_wg_id,
+    wireguard_intent_from_metadata_dict as _wireguard_intent_from_metadata_dict,
+)
 from router_control_host.wifi_live_transport import (
     LiveGateARequiredError,
     LiveIdentityTupleMismatchError,
@@ -764,39 +770,6 @@ def _wireguard_intent_from_profile_row(
     )
 
 
-def _assignment_policy_metadata(assignment: dict[str, Any]) -> dict[str, Any]:
-    raw = assignment.get("policy_metadata_json")
-    if not raw:
-        return {}
-    try:
-        parsed = json.loads(raw)
-    except json.JSONDecodeError:
-        return {}
-    return parsed if isinstance(parsed, dict) else {}
-
-
-def _resolve_assignment_wg_id(
-    assignment: dict[str, Any],
-    *,
-    profile_metadata: dict[str, Any] | None = None,
-) -> str | None:
-    """Resolve wg_id: observed_vendor_locator → policy_metadata.wg_id → profile metadata.wg_id."""
-    observed = assignment.get("observed_vendor_locator")
-    if observed:
-        observed_wg = str(observed).strip()
-        if observed_wg:
-            return observed_wg
-    policy = _assignment_policy_metadata(assignment)
-    policy_wg = policy.get("wg_id")
-    if policy_wg and str(policy_wg).strip():
-        return str(policy_wg).strip()
-    if profile_metadata is not None:
-        meta_wg = profile_metadata.get("wg_id")
-        if meta_wg is not None and str(meta_wg).strip():
-            return str(meta_wg).strip()
-    return None
-
-
 def _policy_metadata_from_intent(
     intent: WireguardIntent,
     *,
@@ -827,37 +800,38 @@ def _policy_metadata_from_intent(
     return payload
 
 
-def _wireguard_intent_from_metadata_dict(
+def _deactivate_teardown_intent(
     *,
-    wg_id: str,
-    metadata: dict[str, Any],
-    enabled: bool = False,
+    host: HostState,
+    assignment: dict[str, Any] | None,
+    assignment_row: dict[str, Any] | None,
+    assignment_profile_metadata: dict[str, Any] | None,
+    request_wg_id: str,
 ) -> WireguardIntent:
-    """Best-effort WireguardIntent from assignment/policy metadata (orphan teardown)."""
-    asc_raw = metadata.get("asc9_args")
-    asc_args = tuple(asc_raw) if isinstance(asc_raw, list) else None
-    metadata_keepalive = metadata.get("peer_keepalive_interval")
-    resolved_peer_keepalive_interval = (
-        metadata_keepalive
-        if isinstance(metadata_keepalive, int) and not isinstance(metadata_keepalive, bool)
-        else None
-    )
-    ip_global_priority = metadata.get("ip_global_priority")
-    return WireguardIntent(
+    """Build deactivate teardown intent; enrich from policy/profile metadata when possible."""
+    wg_id = request_wg_id.strip()
+    if assignment is not None and assignment_row is not None:
+        return _wireguard_intent_from_profile_row(
+            host,
+            assignment_row,
+            wg_id=wg_id,
+            enabled=False,
+        )
+    if assignment is not None:
+        policy_metadata = _assignment_policy_metadata(assignment)
+        merged_metadata = _merge_teardown_metadata(
+            profile_metadata=assignment_profile_metadata,
+            policy_metadata=policy_metadata,
+        )
+        return _wireguard_intent_from_metadata_dict(
+            wg_id=wg_id,
+            metadata=merged_metadata,
+            enabled=False,
+        )
+    return _wireguard_intent_from_metadata_dict(
         wg_id=wg_id,
-        enabled=enabled,
-        asc_args=asc_args,
-        peer_public_key=metadata.get("peer_public_key"),
-        peer_endpoint=metadata.get("peer_endpoint"),
-        peer_allow_ips=metadata.get("peer_allow_ips"),
-        peer_keepalive_interval=resolved_peer_keepalive_interval,
-        peer_rci_shape=WireguardPeerRciShape(
-            str(metadata.get("peer_rci_shape", WireguardPeerRciShape.NESTED_RCI.value))
-        ),
-        interface_address=metadata.get("interface_address"),
-        ip_global_auto=bool(metadata.get("ip_global_auto", False)),
-        ip_global_priority=ip_global_priority,
-        tcp_mss_pmtu=bool(metadata.get("tcp_mss_pmtu", False)),
+        metadata={},
+        enabled=False,
     )
 
 
@@ -892,6 +866,12 @@ def _deactivate_wg_id_mismatch_message(*, expected_wg_id: str, request_wg_id: st
     )
 
 
+def _deactivate_wg_error_code(exc: VpnProfileDeactivateWgMismatchError) -> str:
+    if str(exc).startswith("cannot resolve assignment wg_id"):
+        return "profile.deactivate_wg_unresolvable"
+    return "profile.deactivate_wg_mismatch"
+
+
 def _validate_deactivate_assignment_under_lock(
     *,
     fresh_assignment: dict[str, Any] | None,
@@ -906,15 +886,18 @@ def _validate_deactivate_assignment_under_lock(
         fresh_assignment,
         profile_metadata=profile_metadata,
     )
-    if expected_wg_id:
-        request_wg = request_wg_id.strip()
-        if expected_wg_id != request_wg:
-            raise VpnProfileDeactivateWgMismatchError(
-                _deactivate_wg_id_mismatch_message(
-                    expected_wg_id=expected_wg_id,
-                    request_wg_id=request_wg,
-                )
+    if expected_wg_id is None:
+        raise VpnProfileDeactivateWgMismatchError(
+            "cannot resolve assignment wg_id from active tunnel assignment"
+        )
+    request_wg = request_wg_id.strip()
+    if expected_wg_id != request_wg:
+        raise VpnProfileDeactivateWgMismatchError(
+            _deactivate_wg_id_mismatch_message(
+                expected_wg_id=expected_wg_id,
+                request_wg_id=request_wg,
             )
+        )
     if outside_assignment is not None:
         outside_profile_id = str(outside_assignment["profile_id"])
         fresh_profile_id = str(fresh_assignment["profile_id"])
@@ -3053,24 +3036,33 @@ def deactivate_vpn_profile(
             assignment,
             profile_metadata=assignment_profile_metadata,
         )
-        if expected_wg_id:
-            request_wg = body.wg_id.strip()
-            if expected_wg_id != request_wg:
-                return error_response(
-                    request,
-                    status_code=422,
-                    code="profile.deactivate_wg_mismatch",
-                    message=_deactivate_wg_id_mismatch_message(
-                        expected_wg_id=expected_wg_id,
-                        request_wg_id=request_wg,
-                    ),
-                )
-    intent = WireguardIntent(wg_id=body.wg_id, enabled=False, asc_args=None)
+        if expected_wg_id is None:
+            return error_response(
+                request,
+                status_code=422,
+                code="profile.deactivate_wg_unresolvable",
+                message="cannot resolve assignment wg_id from active tunnel assignment",
+            )
+        request_wg = body.wg_id.strip()
+        if expected_wg_id != request_wg:
+            return error_response(
+                request,
+                status_code=422,
+                code="profile.deactivate_wg_mismatch",
+                message=_deactivate_wg_id_mismatch_message(
+                    expected_wg_id=expected_wg_id,
+                    request_wg_id=request_wg,
+                ),
+            )
+    # No active assignment: body.wg_id is accepted for teardown-only (no catalog binding).
+    intent = _deactivate_teardown_intent(
+        host=host,
+        assignment=assignment,
+        assignment_row=assignment_row,
+        assignment_profile_metadata=assignment_profile_metadata,
+        request_wg_id=body.wg_id,
+    )
     profile_id = str(assignment["profile_id"]) if assignment is not None else None
-    if assignment_row is not None:
-        intent = _wireguard_intent_from_profile_row(
-            host, assignment_row, wg_id=body.wg_id, enabled=False
-        )
 
     intent_redacted = _profile_mutation_intent_redacted(
         profile_id or "unknown",
@@ -3132,15 +3124,18 @@ def deactivate_vpn_profile(
                     still_active,
                     profile_metadata=assignment_profile_metadata,
                 )
-                if expected_wg_id:
-                    request_wg = body.wg_id.strip()
-                    if expected_wg_id != request_wg:
-                        raise VpnProfileDeactivateWgMismatchError(
-                            _deactivate_wg_id_mismatch_message(
-                                expected_wg_id=expected_wg_id,
-                                request_wg_id=request_wg,
-                            )
+                if expected_wg_id is None:
+                    raise VpnProfileDeactivateWgMismatchError(
+                        "cannot resolve assignment wg_id from active tunnel assignment"
+                    )
+                request_wg = body.wg_id.strip()
+                if expected_wg_id != request_wg:
+                    raise VpnProfileDeactivateWgMismatchError(
+                        _deactivate_wg_id_mismatch_message(
+                            expected_wg_id=expected_wg_id,
+                            request_wg_id=request_wg,
                         )
+                    )
                 cleared = host.runtime.store.deactivate_tunnel_assignments(
                     router_id,
                     logical_role=body.logical_role,
@@ -3199,7 +3194,7 @@ def deactivate_vpn_profile(
             return error_response(
                 request,
                 status_code=422,
-                code="profile.deactivate_wg_mismatch",
+                code=_deactivate_wg_error_code(exc),
                 message=str(exc),
             )
         except WireguardApplyServiceError as exc:
@@ -3283,7 +3278,7 @@ def deactivate_vpn_profile(
             return error_response(
                 request,
                 status_code=422,
-                code="profile.deactivate_wg_mismatch",
+                code=_deactivate_wg_error_code(exc),
                 message=str(exc),
             )
         except WireguardApplyServiceError as exc:

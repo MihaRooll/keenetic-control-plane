@@ -20,6 +20,7 @@ from router_control.application.wireguard_apply_service import (
 from router_control_host.errors import error_response, operator_structured_error_response
 from router_control_host.routes import API_PREFIX, _ok_headers
 from router_control_host.state import HostState
+from router_control_host.vpn_assignment_helpers import resolve_assignment_wg_id
 from router_control_host.wifi_live_transport import (
     WifiLiveConnectionParams,
     connection_fields_present,
@@ -147,17 +148,10 @@ def _catalog_rows(host: HostState) -> tuple[list[dict[str, Any]], dict[str, dict
         is_active = active_assignment is not None
         assigned_wg_id: str | None = None
         if is_active and active_assignment is not None:
-            if active_assignment.get("observed_vendor_locator"):
-                assigned_wg_id = str(active_assignment["observed_vendor_locator"])
-            policy_raw = active_assignment.get("policy_metadata_json")
-            if policy_raw:
-                policy = json.loads(policy_raw)
-                if not assigned_wg_id and policy.get("wg_id"):
-                    assigned_wg_id = str(policy["wg_id"])
-            if not assigned_wg_id:
-                meta_wg = metadata.get("wg_id")
-                if meta_wg is not None:
-                    assigned_wg_id = str(meta_wg)
+            assigned_wg_id = resolve_assignment_wg_id(
+                active_assignment,
+                profile_metadata=metadata,
+            )
         rows.append(
             {
                 "profile_id": profile_id,
