@@ -31,6 +31,7 @@ Everything else (event checklist, «Проверить домен», «Откр�
 | Problem | Why it hurts | Fix direction |
 |---|---|---|
 | Overview card too tall | Operator loses R-9; looks like a form dump | Single compact card: name + suffix + publish (+ optional short FQDN) |
+| HTML `hidden` on `.hub-domain__btn-row` | Author CSS `display:flex` overrides UA `[hidden]` → starter button still visible | Do **not** mount starter/draft nodes for `variant=overview` |
 | Dual layout (status card + «Имя для черновика») | Duplicate notes, two titles | Merge into one Overview surface |
 | Event checklist on Domain card | Not required for publish | Cut from Overview |
 | `keendns/status` returns empty → always «unknown» | Badge «Облако не проверяется» is honest but noisy | Optional one-line after publish; no fake verify |
