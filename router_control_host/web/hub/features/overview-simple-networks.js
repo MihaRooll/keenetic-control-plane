@@ -33,6 +33,8 @@ import {
   evaluateGuestWifiMutationReadiness,
   fetchGuestWifiObservedState,
   getGuestStaffApOverlapWarning,
+  GUEST_WIFI_STAFF_AP_OVERLAP_WARNING,
+  wouldStandingApRolesOverlap,
   guestWifiWpaFieldHint,
   isObservedWpaModeKnown,
   isWifiWpaModeDraftSelected,
@@ -824,6 +826,17 @@ export function mountOverviewSimpleNetworks(options) {
    * @param {AbortSignal|undefined} signal
    */
   async function handleStaffApRoleChange(nextApId, signal) {
+    if (wouldStandingApRolesOverlap(nextApId, selectedGuestApId)) {
+      if (typeof options.showToast === 'function') {
+        options.showToast({
+          tone: 'danger',
+          title: 'Нельзя назначить ту же точку',
+          message: GUEST_WIFI_STAFF_AP_OVERLAP_WARNING,
+        });
+      }
+      update();
+      return;
+    }
     staffBusy = true;
     update();
     try {
@@ -862,6 +875,17 @@ export function mountOverviewSimpleNetworks(options) {
    * @param {AbortSignal|undefined} signal
    */
   async function handleGuestApRoleChange(nextApId, signal) {
+    if (wouldStandingApRolesOverlap(selectedStaffApId, nextApId)) {
+      if (typeof options.showToast === 'function') {
+        options.showToast({
+          tone: 'danger',
+          title: 'Нельзя назначить ту же точку',
+          message: GUEST_WIFI_STAFF_AP_OVERLAP_WARNING,
+        });
+      }
+      update();
+      return;
+    }
     guestBusy = true;
     update();
     try {

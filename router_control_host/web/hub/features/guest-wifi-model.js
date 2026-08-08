@@ -272,11 +272,15 @@ export function validateGuestWifiForm(params) {
  * @param {string|null|undefined} guestApId
  * @returns {string|null}
  */
+export function wouldStandingApRolesOverlap(staffApId, guestApId) {
+  return Boolean(staffApId && guestApId && staffApId === guestApId);
+}
+
 export function getGuestStaffApOverlapWarning(session, guestApId) {
   if (!guestApId || !session?.wifiRoles?.staffApId) {
     return null;
   }
-  if (guestApId === session.wifiRoles.staffApId) {
+  if (wouldStandingApRolesOverlap(session.wifiRoles.staffApId, guestApId)) {
     return GUEST_WIFI_STAFF_AP_OVERLAP_WARNING;
   }
   return null;

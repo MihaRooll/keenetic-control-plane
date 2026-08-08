@@ -256,3 +256,42 @@ def test_put_guest_ap_id_null_clears_assignment(client) -> None:
     )
     assert response.status_code == 200
     assert response.json()["guest_ap_id"] is None
+
+
+def test_put_rejects_overlapping_ap_roles(client) -> None:
+    ap_id = "WifiMaster0/AccessPoint0"
+    assert client.put(
+        "/api/router-control/v1/standing-network-preferences",
+        json={"staff_ap_id": ap_id},
+    ).status_code == 200
+    response = client.put(
+        "/api/router-control/v1/standing-network-preferences",
+        json={"guest_ap_id": ap_id},
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "standing.ap_role_overlap"
+
+
+def test_put_rejects_simultaneous_same_ap_roles(client) -> None:
+    ap_id = "WifiMaster0/AccessPoint1"
+    response = client.put(
+        "/api/router-control/v1/standing-network-preferences",
+        json={"staff_ap_id": ap_id, "guest_ap_id": ap_id},
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "standing.ap_role_overlap"
+
+
+def test_put_staff_ap_id_rejects_when_guest_already_assigned(client) -> None:
+    staff_ap = "WifiMaster0/AccessPoint2"
+    guest_ap = "WifiMaster0/AccessPoint3"
+    assert client.put(
+        "/api/router-control/v1/standing-network-preferences",
+        json={"staff_ap_id": staff_ap, "guest_ap_id": guest_ap},
+    ).status_code == 200
+    response = client.put(
+        "/api/router-control/v1/standing-network-preferences",
+        json={"staff_ap_id": guest_ap},
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "standing.ap_role_overlap"

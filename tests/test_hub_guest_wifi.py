@@ -562,11 +562,17 @@ def test_guest_wifi_staff_ap_overlap_warning(tmp_path: Path) -> None:
 console.log(JSON.stringify({{
   same: mod.getGuestStaffApOverlapWarning({session_json}, 'WifiMaster0/AccessPoint3'),
   different: mod.getGuestStaffApOverlapWarning({session_json}, 'WifiMaster1/AccessPoint5'),
+  standingOverlap: mod.wouldStandingApRolesOverlap('WifiMaster0/AccessPoint3', 'WifiMaster0/AccessPoint3'),
+  standingDistinct: mod.wouldStandingApRolesOverlap('WifiMaster0/AccessPoint3', 'WifiMaster1/AccessPoint5'),
+  standingPartial: mod.wouldStandingApRolesOverlap('WifiMaster0/AccessPoint3', null),
 }}));
 """,
     )
     assert "перетирать" in result["same"]
     assert result["different"] is None
+    assert result["standingOverlap"] is True
+    assert result["standingDistinct"] is False
+    assert result["standingPartial"] is False
 
 
 def test_guest_wifi_operator_text_has_required_honest_strings(tmp_path: Path) -> None:

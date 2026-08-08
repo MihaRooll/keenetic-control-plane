@@ -2265,6 +2265,23 @@ def test_overview_guest_overlap_uses_persisted_staff_ap_id() -> None:
     assert "options.getSession()" not in overlap_call
 
 
+def test_overview_ap_role_change_blocks_standing_overlap() -> None:
+    """AP-role handlers reject same staff/guest AP before standing PUT."""
+    source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
+    staff_body = _extract_function_body(source, "async function handleStaffApRoleChange(")
+    guest_body = _extract_function_body(source, "async function handleGuestApRoleChange(")
+    assert staff_body is not None
+    assert guest_body is not None
+    assert "wouldStandingApRolesOverlap(nextApId, selectedGuestApId)" in staff_body
+    assert "wouldStandingApRolesOverlap(selectedStaffApId, nextApId)" in guest_body
+    assert staff_body.index("wouldStandingApRolesOverlap") < staff_body.index(
+        "updateStaffStandingNetworkPreferences"
+    )
+    assert guest_body.index("wouldStandingApRolesOverlap") < guest_body.index(
+        "updateGuestStandingNetworkPreferences"
+    )
+
+
 def test_overview_internet_observe_refresh_guards_restore_pending() -> None:
     """F-c2-3: refreshRouterInternetObserve и session subscribe не обходят restore gate."""
     source = _read(OVERVIEW_JS)

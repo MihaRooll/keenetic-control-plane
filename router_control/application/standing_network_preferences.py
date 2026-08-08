@@ -120,6 +120,22 @@ def _validate_ap_id(value: str, *, field: str) -> str:
 
 
 
+def _validate_ap_roles_no_overlap(
+    *,
+    staff_ap_id: str | None,
+    guest_ap_id: str | None,
+) -> None:
+    if staff_ap_id is not None and guest_ap_id is not None and staff_ap_id == guest_ap_id:
+        raise StandingNetworkPreferencesValidationError(
+            "staff and guest AP roles must not use the same access point",
+            code="standing.ap_role_overlap",
+            field=None,
+        )
+
+
+
+
+
 @dataclass
 
 class StandingNetworkPreferencesService:
@@ -259,6 +275,22 @@ class StandingNetworkPreferencesService:
         if guest_ap_id is not _UNSET and guest_ap_id is not None:
 
             resolved_guest_ap_id = _validate_ap_id(str(guest_ap_id), field="guest_ap_id")
+
+        current = self.get_preferences()
+        effective_staff_ap_id = (
+            current["staff_ap_id"]
+            if staff_ap_id is _UNSET
+            else resolved_staff_ap_id
+        )
+        effective_guest_ap_id = (
+            current["guest_ap_id"]
+            if guest_ap_id is _UNSET
+            else resolved_guest_ap_id
+        )
+        _validate_ap_roles_no_overlap(
+            staff_ap_id=effective_staff_ap_id,
+            guest_ap_id=effective_guest_ap_id,
+        )
 
         self.store.upsert_standing_network_preferences(
 

@@ -414,3 +414,38 @@ def test_service_update_preferences_validates_ap_id(store: PersistenceStore) -> 
         service.update_preferences(staff_ap_id="WifiMaster0/AccessPoint9")
     prefs = service.update_preferences(staff_ap_id="WifiMaster0/AccessPoint2")
     assert prefs["staff_ap_id"] == "WifiMaster0/AccessPoint2"
+
+
+def test_service_update_preferences_rejects_overlapping_ap_roles(
+    store: PersistenceStore,
+) -> None:
+    service = StandingNetworkPreferencesService(store=store, clock=SystemClock())
+    ap_id = "WifiMaster0/AccessPoint0"
+    service.update_preferences(staff_ap_id=ap_id)
+    with pytest.raises(StandingNetworkPreferencesValidationError) as exc_info:
+        service.update_preferences(guest_ap_id=ap_id)
+    assert exc_info.value.code == "standing.ap_role_overlap"
+    assert exc_info.value.field is None
+
+
+def test_service_update_preferences_rejects_simultaneous_same_ap_roles(
+    store: PersistenceStore,
+) -> None:
+    service = StandingNetworkPreferencesService(store=store, clock=SystemClock())
+    ap_id = "WifiMaster0/AccessPoint1"
+    with pytest.raises(StandingNetworkPreferencesValidationError) as exc_info:
+        service.update_preferences(staff_ap_id=ap_id, guest_ap_id=ap_id)
+    assert exc_info.value.code == "standing.ap_role_overlap"
+
+
+def test_service_update_preferences_allows_clearing_overlap(store: PersistenceStore) -> None:
+    service = StandingNetworkPreferencesService(store=store, clock=SystemClock())
+    ap_id = "WifiMaster0/AccessPoint2"
+    store.upsert_standing_network_preferences(
+        staff_ap_id=ap_id,
+        guest_ap_id=ap_id,
+        now=datetime(2026, 8, 5, tzinfo=UTC),
+    )
+    cleared = service.update_preferences(guest_ap_id=None)
+    assert cleared["staff_ap_id"] == ap_id
+    assert cleared["guest_ap_id"] is None
