@@ -127,6 +127,152 @@ def test_upsert_standing_preferences_partial_update(store: PersistenceStore) -> 
     assert updated["guest_default_ssid"] == "Гостевая сеть"
 
 
+def test_clear_standing_staff_password_ref_if_matches_clears_revoked_ref(
+    store: PersistenceStore,
+) -> None:
+    site_id = _seed_site(store)
+    router_id = _seed_router(store, site_id)
+    now = datetime(2026, 8, 5, tzinfo=UTC)
+    revoked_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="WifiApPsk",
+        provider="memory",
+        provider_locator="loc-revoked-cas",
+        now=now,
+    )
+    store.mark_credential_revoked(revoked_id, now=now)
+    store.upsert_standing_network_preferences(
+        staff_password_credential_ref_id=revoked_id,
+        now=now,
+    )
+    assert store.clear_standing_staff_password_ref_if_matches(revoked_id, now=now) is True
+    row = store.get_standing_network_preferences()
+    assert row["staff_password_credential_ref_id"] is None
+
+
+def test_clear_standing_staff_password_ref_if_matches_noop_after_replacement(
+    store: PersistenceStore,
+) -> None:
+    site_id = _seed_site(store)
+    router_id = _seed_router(store, site_id)
+    now = datetime(2026, 8, 5, tzinfo=UTC)
+    revoked_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="WifiApPsk",
+        provider="memory",
+        provider_locator="loc-revoked-race",
+        now=now,
+    )
+    store.mark_credential_revoked(revoked_id, now=now)
+    store.upsert_standing_network_preferences(
+        staff_password_credential_ref_id=revoked_id,
+        now=now,
+    )
+    new_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="WifiApPsk",
+        provider="memory",
+        provider_locator="loc-new-usable",
+        now=now,
+    )
+    store.upsert_standing_network_preferences(
+        staff_password_credential_ref_id=new_id,
+        now=now,
+    )
+    assert store.clear_standing_staff_password_ref_if_matches(revoked_id, now=now) is False
+    row = store.get_standing_network_preferences()
+    assert row["staff_password_credential_ref_id"] == new_id
+
+
+def test_service_get_heals_revoked_ref_honestly(store: PersistenceStore) -> None:
+    site_id = _seed_site(store)
+    router_id = _seed_router(store, site_id)
+    now = datetime(2026, 8, 5, tzinfo=UTC)
+    revoked_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="WifiApPsk",
+        provider="memory",
+        provider_locator="loc-heal-revoked",
+        now=now,
+    )
+    store.mark_credential_revoked(revoked_id, now=now)
+    store.upsert_standing_network_preferences(
+        staff_password_credential_ref_id=revoked_id,
+        now=now,
+    )
+    service = StandingNetworkPreferencesService(store=store, clock=SystemClock())
+    prefs = service.get_preferences()
+    assert prefs["staff_password_configured"] is False
+    assert prefs["staff_password_credential_ref_id"] is None
+    row = store.get_standing_network_preferences()
+    assert row["staff_password_credential_ref_id"] is None
+
+
+def test_service_get_heal_rereads_after_cas_noop_mid_flight_put(
+    store: PersistenceStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Heal CAS no-op: concurrent PUT during clear must re-read usable ref."""
+    site_id = _seed_site(store)
+    router_id = _seed_router(store, site_id)
+    now = datetime(2026, 8, 5, tzinfo=UTC)
+    revoked_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="WifiApPsk",
+        provider="memory",
+        provider_locator="loc-race-revoked",
+        now=now,
+    )
+    store.mark_credential_revoked(revoked_id, now=now)
+    store.upsert_standing_network_preferences(
+        staff_password_credential_ref_id=revoked_id,
+        now=now,
+    )
+    new_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="WifiApPsk",
+        provider="memory",
+        provider_locator="loc-race-new",
+        now=now,
+    )
+    service = StandingNetworkPreferencesService(store=store, clock=SystemClock())
+    real_resolve = StandingNetworkPreferencesService._resolve_staff_password_ref
+    resolve_calls = {"n": 0}
+
+    def patched_resolve(self, ref_id: str | None):
+        resolve_calls["n"] += 1
+        if resolve_calls["n"] == 1:
+            return False, None
+        return real_resolve(self, ref_id)
+
+    original_clear = store.clear_standing_staff_password_ref_if_matches
+
+    def clear_during_cas(expected_ref_id: str, *, now=None):
+        store.upsert_standing_network_preferences(
+            staff_password_credential_ref_id=new_id,
+            now=now,
+        )
+        return original_clear(expected_ref_id, now=now)
+
+    monkeypatch.setattr(
+        StandingNetworkPreferencesService,
+        "_resolve_staff_password_ref",
+        patched_resolve,
+    )
+    monkeypatch.setattr(
+        store,
+        "clear_standing_staff_password_ref_if_matches",
+        clear_during_cas,
+    )
+
+    prefs = service.get_preferences()
+    assert prefs["staff_password_configured"] is True
+    assert prefs["staff_password_credential_ref_id"] == new_id
+    row = store.get_standing_network_preferences()
+    assert row["staff_password_credential_ref_id"] == new_id
+    assert resolve_calls["n"] >= 2
+
+
 def test_standing_credential_ref_fk_set_null_on_router_delete(store: PersistenceStore) -> None:
     site_id = _seed_site(store)
     router_id = _seed_router(store, site_id)

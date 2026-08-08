@@ -168,15 +168,25 @@ class StandingNetworkPreferencesService:
 
         if stored_ref and not configured:
 
-            self.store.upsert_standing_network_preferences(
+            self.store.clear_standing_staff_password_ref_if_matches(
 
-                staff_password_credential_ref_id=None,
+                str(stored_ref),
 
                 now=self.clock.now(),
 
             )
 
-            effective_ref = None
+            row = self.store.get_standing_network_preferences()
+
+            configured, effective_ref = self._resolve_staff_password_ref(
+
+                str(row["staff_password_credential_ref_id"])
+
+                if row.get("staff_password_credential_ref_id")
+
+                else None
+
+            )
 
         return {
 

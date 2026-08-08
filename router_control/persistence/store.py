@@ -7126,6 +7126,22 @@ class PersistenceStore:
         )
         return self.get_standing_network_preferences()
 
+    def clear_standing_staff_password_ref_if_matches(
+        self,
+        expected_ref_id: str,
+        *,
+        now: datetime | None = None,
+    ) -> bool:
+        """Clear staff password ref only when it still equals *expected_ref_id*."""
+        ts = _utc_now_iso(now)
+        cursor = self._conn.execute(
+            "UPDATE standing_network_preferences SET "
+            "staff_password_credential_ref_id = NULL, updated_at = ? "
+            "WHERE preferences_id = ? AND staff_password_credential_ref_id = ?",
+            (ts, self._STANDING_PREFS_ID, expected_ref_id),
+        )
+        return cursor.rowcount > 0
+
     # --- remembered uplink (migration 15) ---
 
     _REMEMBERED_UPLINK_ID = "default"
