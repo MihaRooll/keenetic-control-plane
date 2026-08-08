@@ -3646,9 +3646,10 @@ def test_overview_connectivity_offline_invalidates_overview_mutations() -> None:
 
 
 def test_overview_mutations_use_dedicated_mutate_abort() -> None:
-    """domain-connection-offline-invalidate: VPN/network mutations use mutateAbort, skip toasts when offline."""
+    """domain-connection-offline-invalidate: networks/VPN use separate abort controllers."""
     source = _read(OVERVIEW_JS)
-    assert "let mutateAbort = null" in source
+    assert "let networkMutateAbort = null" in source
+    assert "let vpnMutateAbort = null" in source
     assert "let publishAbort = null" in source
     assert "function ensureMutateAbort()" in source
     assert "function invalidateOverviewMutations()" in source
@@ -3662,6 +3663,11 @@ def test_overview_mutations_use_dedicated_mutate_abort() -> None:
     assert "publishAbort = new AbortController()" in publish_body
     assert "ensureMutateAbort()" not in publish_body
 
+    invalidate_body = _extract_function_body(source, "function invalidateOverviewMutations(")
+    assert invalidate_body is not None
+    assert "networkMutateAbort?.abort()" in invalidate_body
+    assert "vpnMutateAbort?.abort()" in invalidate_body
+
     abort_body = _extract_function_body(source, "function abortAllOperations(")
     assert abort_body is not None
     assert "invalidateOverviewMutations()" in abort_body
@@ -3672,8 +3678,9 @@ def test_overview_mutations_use_dedicated_mutate_abort() -> None:
     ):
         body = _extract_function_body(source, fn_sig)
         assert body is not None
-        assert "mutateAbort = new AbortController()" in body
+        assert "vpnMutateAbort = new AbortController()" in body
         assert "signal: mutationSignal" in body
+        assert "vpnMutateAbort === myVpnController" in body
         response_guard = body.split("await ", 1)[1]
         toast_idx = response_guard.find("ctx.showToast(")
         assert toast_idx != -1
@@ -3694,6 +3701,7 @@ def test_overview_vpn_activate_deactivate_finally_repaints_readiness() -> None:
         finally_start = body.rfind("} finally {")
         assert finally_start != -1
         finally_block = body[finally_start:]
+        assert "vpnMutateAbort === myVpnController" in finally_block
         assert "renderVpnSlot()" in finally_block
         assert "renderReadinessHeader()" in finally_block
         assert "renderStatusStrip()" in finally_block
@@ -3768,8 +3776,8 @@ def test_overview_vpn_refresh_uses_mutate_abort_not_enrichment() -> None:
         body = _extract_function_body(source, fn_sig)
         assert body is not None
         assert "enrichmentAbort?.signal" not in body
-        assert "refreshVpnCatalogAndLiveStatus(mutationSignal)" in body
-        refresh_region = body.split("refreshVpnCatalogAndLiveStatus(mutationSignal)", 1)[0]
+        assert "refreshVpnCatalogAndLiveStatus(mutationSignal, mutationGen)" in body
+        refresh_region = body.split("refreshVpnCatalogAndLiveStatus(mutationSignal, mutationGen)", 1)[0]
         assert "!offline" in refresh_region
         assert "!mutationSignal.aborted" in refresh_region
 

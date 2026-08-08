@@ -258,6 +258,8 @@ export function render(container, ctx) {
   /** @type {AbortController|null} */
   let mutateAbort = null;
   /** @type {AbortController|null} */
+  let catalogAuxAbort = null;
+  /** @type {AbortController|null} */
   let parseAbort = null;
   /** @type {AbortController|null} */
   let importAbort = null;
@@ -1022,8 +1024,11 @@ export function render(container, ctx) {
     catalogEnrichAbort?.abort();
     catalogLiveStatusAbort?.abort();
     mutateAbort?.abort();
+    catalogAuxAbort?.abort();
     parseAbort?.abort();
     importAbort?.abort();
+    mutateAbort = null;
+    catalogAuxAbort = null;
     catalogLoading = false;
     catalogRefreshing = false;
     catalogLoadGeneration = null;
@@ -1687,9 +1692,9 @@ export function render(container, ctx) {
     pendingFocus = { kind: 'element-id', id: 'hub-vpn-recheck-btn' };
     renderStatusSlot();
     renderFooter();
-    mutateAbort?.abort();
-    mutateAbort = new AbortController();
-    const myController = mutateAbort;
+    catalogAuxAbort?.abort();
+    catalogAuxAbort = new AbortController();
+    const myController = catalogAuxAbort;
     const gen = ++observeGeneration;
     observeLoadGeneration = gen;
     try {
@@ -1719,8 +1724,8 @@ export function render(container, ctx) {
         longOpKind = 'idle';
         observeLoadGeneration = null;
       }
-      if (mutateAbort === myController) {
-        mutateAbort = null;
+      if (catalogAuxAbort === myController) {
+        catalogAuxAbort = null;
       }
       if (!disposed && gen === observeGeneration) {
         pendingFocus = { kind: 'element-id', id: 'hub-vpn-recheck-btn' };
@@ -2385,7 +2390,8 @@ export function render(container, ctx) {
     renderFooter();
     mutateAbort?.abort();
     mutateAbort = new AbortController();
-    const mutationSignal = mutateAbort.signal;
+    const myController = mutateAbort;
+    const mutationSignal = myController.signal;
     try {
       const wgId = resolveVpnProfileWgId(catalogItems, profileId);
       if (!wgId) {
@@ -2448,9 +2454,12 @@ export function render(container, ctx) {
       const next = { ...activatingProfileIds };
       delete next[profileId];
       activatingProfileIds = next;
-      mutating = false;
-      longOpKind = 'idle';
-      mutationPhase = null;
+      if (mutateAbort === myController) {
+        mutating = false;
+        longOpKind = 'idle';
+        mutationPhase = null;
+        mutateAbort = null;
+      }
       if (!disposed) {
         pendingFocus = { kind: 'element-id', id: `hub-vpn-activate-${profileId}` };
         renderStatusSlot();
@@ -2473,7 +2482,8 @@ export function render(container, ctx) {
     renderFooter();
     mutateAbort?.abort();
     mutateAbort = new AbortController();
-    const mutationSignal = mutateAbort.signal;
+    const myController = mutateAbort;
+    const mutationSignal = myController.signal;
     try {
       const wgId = resolveVpnProfileWgId(catalogItems, profileId);
       if (!wgId) {
@@ -2522,9 +2532,12 @@ export function render(container, ctx) {
       const next = { ...deactivatingProfileIds };
       delete next[profileId];
       deactivatingProfileIds = next;
-      mutating = false;
-      longOpKind = 'idle';
-      mutationPhase = null;
+      if (mutateAbort === myController) {
+        mutating = false;
+        longOpKind = 'idle';
+        mutationPhase = null;
+        mutateAbort = null;
+      }
       if (!disposed) {
         pendingFocus = { kind: 'element-id', id: `hub-vpn-deactivate-${profileId}` };
         renderStatusSlot();
@@ -2600,9 +2613,9 @@ export function render(container, ctx) {
     }
     removingProfileIds = { ...removingProfileIds, [profileId]: '1' };
     renderCatalogSlot();
-    mutateAbort?.abort();
-    mutateAbort = new AbortController();
-    const mutationSignal = mutateAbort.signal;
+    catalogAuxAbort?.abort();
+    catalogAuxAbort = new AbortController();
+    const mutationSignal = catalogAuxAbort.signal;
     try {
       await removeVpnProfileFromCatalog({ profileId, signal: mutationSignal });
       if (disposed || offline || mutationSignal.aborted) {
@@ -2646,9 +2659,9 @@ export function render(container, ctx) {
     longOpKind = 'validate';
     renderCatalogSlot();
     renderFooter();
-    mutateAbort?.abort();
-    mutateAbort = new AbortController();
-    const mutationSignal = mutateAbort.signal;
+    catalogAuxAbort?.abort();
+    catalogAuxAbort = new AbortController();
+    const mutationSignal = catalogAuxAbort.signal;
     try {
       const response = await validateVpnProfile({
         profileId,

@@ -373,7 +373,9 @@ export function render(container, ctx) {
   /** @type {AbortController|null} */
   let enrichmentAbort = null;
   /** @type {AbortController|null} */
-  let mutateAbort = null;
+  let networkMutateAbort = null;
+  /** @type {AbortController|null} */
+  let vpnMutateAbort = null;
   /** @type {AbortController|null} */
   let publishAbort = null;
   /** @type {import('../features/uplink-wifi-model.js').RememberedUplinkPref|null} */
@@ -1227,6 +1229,13 @@ export function render(container, ctx) {
     try {
       const session = getSession();
       const listResponse = await listVpnProfiles({ signal });
+      if (
+        disposed
+        || signal?.aborted
+        || (expectedGeneration != null && expectedGeneration !== generation)
+      ) {
+        return;
+      }
       const payload = /** @type {Record<string, unknown>} */ (listResponse ?? {});
       vpnCatalogItems = Array.isArray(payload.items)
         ? payload.items.filter((item) => item && typeof item === 'object')
@@ -1235,7 +1244,11 @@ export function render(container, ctx) {
       if (vpnCatalogItems.length > 0) {
         try {
           const statusResponse = await fetchVpnCatalogLiveStatus({ session, signal });
-          if (disposed || signal?.aborted) {
+          if (
+            disposed
+            || signal?.aborted
+            || (expectedGeneration != null && expectedGeneration !== generation)
+          ) {
             return;
           }
           const statusPayload = /** @type {Record<string, unknown>} */ (statusResponse ?? {});
@@ -1336,9 +1349,11 @@ export function render(container, ctx) {
     vpnActivatingProfileIds = { ...vpnActivatingProfileIds, [profileId]: '1' };
     lastVpnSignature = null;
     renderVpnSlot();
-    mutateAbort?.abort();
-    mutateAbort = new AbortController();
-    const mutationSignal = mutateAbort.signal;
+    vpnMutateAbort?.abort();
+    vpnMutateAbort = new AbortController();
+    const myVpnController = vpnMutateAbort;
+    const mutationSignal = myVpnController.signal;
+    const mutationGen = generation;
     try {
       const wgId = resolveOverviewVpnProfileWgId(profileId);
       if (!wgId) {
@@ -1388,7 +1403,7 @@ export function render(container, ctx) {
       lastVpnSignature = null;
       renderVpnSlot();
       if (!offline && !mutationSignal.aborted) {
-        await refreshVpnCatalogAndLiveStatus(mutationSignal);
+        await refreshVpnCatalogAndLiveStatus(mutationSignal, mutationGen);
       }
       if (disposed) {
         return;
@@ -1410,7 +1425,10 @@ export function render(container, ctx) {
       const nextChecking = { ...vpnCheckingProfileIds };
       delete nextChecking[profileId];
       vpnCheckingProfileIds = nextChecking;
-      vpnMutating = false;
+      if (vpnMutateAbort === myVpnController) {
+        vpnMutating = false;
+        vpnMutateAbort = null;
+      }
       lastVpnSignature = null;
       if (!disposed) {
         renderVpnSlot();
@@ -1438,9 +1456,11 @@ export function render(container, ctx) {
     vpnDeactivatingProfileIds = { ...vpnDeactivatingProfileIds, [profileId]: '1' };
     lastVpnSignature = null;
     renderVpnSlot();
-    mutateAbort?.abort();
-    mutateAbort = new AbortController();
-    const mutationSignal = mutateAbort.signal;
+    vpnMutateAbort?.abort();
+    vpnMutateAbort = new AbortController();
+    const myVpnController = vpnMutateAbort;
+    const mutationSignal = myVpnController.signal;
+    const mutationGen = generation;
     try {
       const wgId = resolveOverviewVpnProfileWgId(profileId);
       if (!wgId) {
@@ -1476,7 +1496,7 @@ export function render(container, ctx) {
       lastVpnSignature = null;
       renderVpnSlot();
       if (!offline && !mutationSignal.aborted) {
-        await refreshVpnCatalogAndLiveStatus(mutationSignal);
+        await refreshVpnCatalogAndLiveStatus(mutationSignal, mutationGen);
       }
       if (disposed) {
         return;
@@ -1498,7 +1518,10 @@ export function render(container, ctx) {
       const nextChecking = { ...vpnCheckingProfileIds };
       delete nextChecking[profileId];
       vpnCheckingProfileIds = nextChecking;
-      vpnMutating = false;
+      if (vpnMutateAbort === myVpnController) {
+        vpnMutating = false;
+        vpnMutateAbort = null;
+      }
       lastVpnSignature = null;
       if (!disposed) {
         renderVpnSlot();
@@ -1810,15 +1833,17 @@ export function render(container, ctx) {
   }
 
   function ensureMutateAbort() {
-    if (!mutateAbort) {
-      mutateAbort = new AbortController();
+    if (!networkMutateAbort) {
+      networkMutateAbort = new AbortController();
     }
-    return mutateAbort.signal;
+    return networkMutateAbort.signal;
   }
 
   function invalidateOverviewMutations() {
-    mutateAbort?.abort();
-    mutateAbort = null;
+    networkMutateAbort?.abort();
+    networkMutateAbort = null;
+    vpnMutateAbort?.abort();
+    vpnMutateAbort = null;
     vpnMutating = false;
     vpnActivatingProfileIds = {};
     vpnDeactivatingProfileIds = {};

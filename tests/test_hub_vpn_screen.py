@@ -1174,18 +1174,51 @@ def test_vpn_invalidate_all_operations_clears_catalog_busy_maps() -> None:
 
 
 def test_vpn_catalog_mutations_pass_mutate_abort_signal() -> None:
-    """vpn-entry-overview-offline-settle: catalog runners pass mutateAbort signal to API."""
+    """vpn-entry-overview-offline-settle: activate/deactivate use mutateAbort; aux ops use catalogAuxAbort."""
     source = _read(VPN_SCREEN_JS)
     for fn_sig in (
         "async function runActivateProfile(",
         "async function runDeactivateProfile(",
-        "async function runRemoveCatalogProfile(",
-        "async function validateCatalogProfile(",
     ):
         body = _extract_function_body(source, fn_sig)
         assert body is not None
         assert "mutateAbort = new AbortController()" in body
         assert "signal: mutationSignal" in body
+        assert "mutateAbort === myController" in body
+    for fn_sig in (
+        "async function runRemoveCatalogProfile(",
+        "async function validateCatalogProfile(",
+    ):
+        body = _extract_function_body(source, fn_sig)
+        assert body is not None
+        assert "catalogAuxAbort = new AbortController()" in body
+        assert "signal: mutationSignal" in body
+        assert "mutateAbort?.abort()" not in body
+
+
+def test_vpn_observe_uses_catalog_aux_abort_not_profile_mutate() -> None:
+    """overview-vpn-mutate-abort-races: observe must not abort in-flight activate/deactivate."""
+    source = _read(VPN_SCREEN_JS)
+    body = _extract_function_body(source, "async function runObserveRecheck(")
+    assert body is not None
+    assert "catalogAuxAbort = new AbortController()" in body
+    assert "mutateAbort?.abort()" not in body
+    assert "catalogAuxAbort === myController" in body
+
+
+def test_vpn_activate_finally_clears_mutating_only_when_owner() -> None:
+    """overview-vpn-mutate-abort-races: activate/deactivate finally clears mutating only for owner."""
+    source = _read(VPN_SCREEN_JS)
+    for fn_sig in (
+        "async function runActivateProfile(",
+        "async function runDeactivateProfile(",
+    ):
+        body = _extract_function_body(source, fn_sig)
+        assert body is not None
+        finally_block = body.split("} finally {", 1)[1]
+        assert "if (mutateAbort === myController)" in finally_block
+        owner_block = finally_block.split("if (mutateAbort === myController)", 1)[1]
+        assert "mutating = false" in owner_block
 
 
 def test_vpn_catalog_mutations_skip_toast_when_offline_or_aborted() -> None:

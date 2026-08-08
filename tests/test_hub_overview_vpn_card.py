@@ -347,7 +347,17 @@ def test_refresh_vpn_catalog_finally_generation_guard(overview_source: str) -> N
     assert "refreshVpnCatalogAndLiveStatus(signal, gen)" in enrichment_fn
 
 
-def test_refresh_vpn_catalog_live_status_failure_does_not_block_settle(overview_source: str) -> None:
+def test_refresh_vpn_catalog_guards_before_assigning_items(overview_source: str) -> None:
+    """overview-vpn-mutate-abort-races: stale list responses must not overwrite vpnCatalogItems."""
+    fn_body = _extract_function_body(overview_source, "async function refreshVpnCatalogAndLiveStatus(")
+    assert fn_body is not None
+    list_await = fn_body.split("await listVpnProfiles({ signal })", 1)[1]
+    assign_idx = list_await.find("vpnCatalogItems =")
+    assert assign_idx != -1
+    guard_before_assign = list_await[:assign_idx]
+    assert "disposed" in guard_before_assign
+    assert "signal?.aborted" in guard_before_assign
+    assert "expectedGeneration !== generation" in guard_before_assign
     fn_body = _extract_function_body(overview_source, "async function refreshVpnCatalogAndLiveStatus(")
     assert fn_body is not None
     assert "catalogListed = true" in fn_body
