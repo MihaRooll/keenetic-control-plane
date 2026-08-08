@@ -67,13 +67,14 @@ class RememberedUplinkService:
         configured, effective_ref = self._resolve_credential_ref(
             str(stored_ref) if stored_ref else None
         )
-        if stored_ref and not configured:
+        if not configured and (bool(row.get("desired_active")) or stored_ref):
             row = self.store.upsert_remembered_uplink(
                 credential_ref_id=None,
                 desired_active=False,
                 now=self.clock.now(),
             )
             effective_ref = None
+            configured = False
         band = str(row["band"])
         station_id = row.get("station_id")
         if not station_id and band in _VALID_BANDS:

@@ -183,6 +183,69 @@ def test_unset_sentinel_leaves_credential_ref_unchanged(store: PersistenceStore)
     assert updated["credential_ref_id"] == cred_id
 
 
+def test_get_remembered_self_heal_desired_active_without_credential(tmp_path) -> None:
+    from router_control.application.remembered_uplink import RememberedUplinkService
+    from router_control.composition import FixedClock, create_offline_runtime
+
+    moment = datetime(2026, 8, 5, 10, 0, 0, tzinfo=UTC)
+    runtime = create_offline_runtime(
+        db_path=tmp_path / "self-heal-desired-no-cred.sqlite3",
+        clock=FixedClock(moment),
+    )
+    store = runtime.store
+    store.upsert_remembered_uplink(
+        credential_ref_id=None,
+        ssid="OrphanNet",
+        desired_active=True,
+        now=moment,
+    )
+    svc = RememberedUplinkService(store=store, clock=FixedClock(moment))
+    payload = svc.get_remembered()
+    assert payload["credential_ref_id"] is None
+    assert payload["credential_configured"] is False
+    assert payload["desired_active"] is False
+
+
+def test_get_remembered_self_heal_after_credential_fk_set_null(tmp_path) -> None:
+    from router_control.application.remembered_uplink import RememberedUplinkService
+    from router_control.composition import FixedClock, create_offline_runtime
+
+    moment = datetime(2026, 8, 5, 10, 0, 0, tzinfo=UTC)
+    runtime = create_offline_runtime(
+        db_path=tmp_path / "self-heal-fk-set-null.sqlite3",
+        clock=FixedClock(moment),
+    )
+    store = runtime.store
+    site_id = _seed_site(store)
+    router_id = _seed_router(store, site_id)
+    cred_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="WifiApPsk",
+        provider="memory",
+        provider_locator="fk-set-null-loc",
+        now=moment,
+    )
+    store.upsert_remembered_uplink(
+        credential_ref_id=cred_id,
+        ssid="Net",
+        desired_active=True,
+        now=moment,
+    )
+    store.conn.execute(
+        "DELETE FROM credential_refs WHERE credential_ref_id = ?", (cred_id,)
+    )
+    store.conn.commit()
+    row = store.get_remembered_uplink()
+    assert row["credential_ref_id"] is None
+    assert row["desired_active"] is True
+
+    svc = RememberedUplinkService(store=store, clock=FixedClock(moment))
+    payload = svc.get_remembered()
+    assert payload["credential_ref_id"] is None
+    assert payload["credential_configured"] is False
+    assert payload["desired_active"] is False
+
+
 def test_get_remembered_self_heal_returns_fresh_updated_at(tmp_path) -> None:
     from router_control.application.remembered_uplink import RememberedUplinkService
     from router_control.composition import FixedClock, create_offline_runtime
