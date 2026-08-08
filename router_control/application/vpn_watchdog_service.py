@@ -160,14 +160,14 @@ class VpnWatchdogHandle:
                 continue
             state.unhealthy_streak += 1
             if state.unhealthy_streak >= _UNHEALTHY_STREAK_THRESHOLD:
-                outcome = await asyncio.to_thread(
+                overall, tvs = await asyncio.to_thread(
                     self._reapply_locked,
                     router_id,
                     intent,
                     transport,
                     assignment,
                 )
-                if outcome == "applied":
+                if overall == "applied" and tvs == "tunnel_healthy":
                     state.unhealthy_streak = 0
                     state.backoff_seconds = _BACKOFF_BASE_SECONDS
                     state.next_poll_at = now + VPN_WATCHDOG_POLL_SECONDS
@@ -268,14 +268,14 @@ class VpnWatchdogHandle:
         intent: WireguardIntent,
         transport: WireguardApplyTransport,
         assignment: dict[str, Any],
-    ) -> str | None:
+    ) -> tuple[str | None, str | None]:
         credential_resolver = self._resolve_credentials()
         intent_redacted = {
             "router_id": router_id,
             "profile_id": assignment.get("profile_id"),
             "wg_id": intent.wg_id,
         }
-        outcome_holder: list[str | None] = [None]
+        outcome_holder: list[tuple[str | None, str | None]] = [(None, None)]
 
         def _audit_failure(
             *,
@@ -304,11 +304,11 @@ class VpnWatchdogHandle:
             )
             if fresh_assignment is None:
                 _audit_failure(error_message="active tunnel assignment missing under lock")
-                outcome_holder[0] = "failed"
+                outcome_holder[0] = ("failed", None)
                 return
             if str(fresh_assignment["profile_id"]) != str(expected_profile_id):
                 _audit_failure(error_message="tunnel assignment profile changed under lock")
-                outcome_holder[0] = "failed"
+                outcome_holder[0] = ("failed", None)
                 return
             apply_intent = self._intent_from_assignment(
                 fresh_assignment, self.host.runtime.store
@@ -317,7 +317,7 @@ class VpnWatchdogHandle:
                 _audit_failure(
                     error_message="cannot rebuild WireGuard intent from fresh assignment"
                 )
-                outcome_holder[0] = "failed"
+                outcome_holder[0] = ("failed", None)
                 return
             intent_redacted["wg_id"] = apply_intent.wg_id
             backup_cb: BackupCallback | None = None
@@ -325,7 +325,7 @@ class VpnWatchdogHandle:
                 backup_cb = self.backup_callback_factory(router_id)
             if backup_cb is None:
                 _audit_failure(error_message="startup-config backup unavailable")
-                outcome_holder[0] = "failed"
+                outcome_holder[0] = ("failed", None)
                 return
             try:
                 result = apply_wireguard_intent(
@@ -342,9 +342,9 @@ class VpnWatchdogHandle:
                     error_message="startup-config backup unavailable",
                     exception_type=type(exc).__name__,
                 )
-                outcome_holder[0] = "failed"
+                outcome_holder[0] = ("failed", None)
                 return
-            outcome_holder[0] = result.overall
+            outcome_holder[0] = (result.overall, result.tunnel_verification_status)
             self.host.runtime.store.try_append_sealed_apply_audit(
                 action="vpn_watchdog.reapply",
                 outcome=result.overall,
