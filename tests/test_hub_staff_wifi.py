@@ -3791,3 +3791,36 @@ def test_staff_wifi_standing_load_error_renders_inline_warning() -> None:
     assert "Не удалось загрузить обычные настройки" in extra_render
     assert "standingError && !isAborted(standingError)" in extra_render
     assert "Значения по умолчанию могут быть пустыми." in extra_render
+
+
+def _extract_subscribe_connectivity_callback(source: str) -> str:
+    marker = "subscribeConnectivity((online) => {"
+    start = source.find(marker)
+    assert start != -1, "subscribeConnectivity callback missing"
+    brace = source.find("{", start + len(marker) - 1)
+    depth = 0
+    j = brace
+    while j < len(source):
+        if source[j] == "{":
+            depth += 1
+        elif source[j] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[brace + 1 : j]
+        j += 1
+    raise AssertionError("subscribeConnectivity callback body not closed")
+
+
+def test_staff_wifi_connectivity_offline_invalidates_all_operations() -> None:
+    """hub-offline-abort-followups: offline connectivity invalidates in-flight staff Wi-Fi ops."""
+    source = STAFF_WIFI_SCREEN_JS.read_text(encoding="utf-8")
+    callback = _extract_subscribe_connectivity_callback(source)
+    offline_arm_start = callback.find("if (!online)")
+    assert offline_arm_start != -1
+    offline_arm = callback[offline_arm_start:]
+    offline_return = offline_arm.find("return")
+    offline_block = offline_arm[: offline_return + len("return")]
+    assert "invalidateAllOperations()" in offline_block
+    invalidate_idx = offline_block.find("invalidateAllOperations()")
+    render_idx = offline_block.find("renderAll()")
+    assert invalidate_idx != -1 and render_idx != -1 and invalidate_idx < render_idx

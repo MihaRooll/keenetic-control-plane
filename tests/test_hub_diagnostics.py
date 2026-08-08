@@ -1426,12 +1426,15 @@ def test_diagnostics_connectivity_offline_aborts_run_abort() -> None:
     marker = "subscribeConnectivity((online) => {"
     start = source.find(marker)
     assert start != -1
-    block = source[start : start + 400]
+    block = source[start : start + 500]
     offline_arm = block.split("if (!online)", 1)[1]
     assert "runAbort?.abort()" in offline_arm
     abort_idx = offline_arm.find("runAbort?.abort()")
+    gen_idx = offline_arm.find("runGeneration += 1")
+    running_idx = offline_arm.find("running = false")
     render_idx = offline_arm.find("renderAll()")
-    assert abort_idx != -1 and render_idx != -1 and abort_idx < render_idx
+    assert abort_idx != -1 and gen_idx != -1 and running_idx != -1 and render_idx != -1
+    assert abort_idx < gen_idx < running_idx < render_idx
 
 
 def test_diagnostics_rebuild_slot_preserves_scroll_and_focus() -> None:

@@ -1827,3 +1827,37 @@ console.log(JSON.stringify({
     assert result["refreshHasContent"] is True
     assert result["editorValue"] == "Сохранённый текст"
 
+
+def _extract_subscribe_connectivity_callback(source: str) -> str:
+    marker = "subscribeConnectivity((online) => {"
+    start = source.find(marker)
+    assert start != -1, "subscribeConnectivity callback missing"
+    brace = source.find("{", start + len(marker) - 1)
+    depth = 0
+    j = brace
+    while j < len(source):
+        if source[j] == "{":
+            depth += 1
+        elif source[j] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[brace + 1 : j]
+        j += 1
+    raise AssertionError("subscribeConnectivity callback body not closed")
+
+
+def test_entry_pages_connectivity_offline_aborts_inflight_controllers() -> None:
+    """hub-offline-abort-followups: offline aborts save/publish/selfCheck and clears busy flags."""
+    source = _read(ENTRY_SCREEN_JS)
+    callback = _extract_subscribe_connectivity_callback(source)
+    offline_arm_start = callback.find("if (!online)")
+    assert offline_arm_start != -1
+    offline_arm = callback[offline_arm_start:]
+    paint_idx = offline_arm.find("paint()")
+    offline_block = offline_arm[:paint_idx]
+    assert "saveAbort?.abort()" in offline_block
+    assert "publishAbort?.abort()" in offline_block
+    assert "selfCheckAbort?.abort()" in offline_block
+    assert "saving = false" in offline_block
+    assert "publishing = false" in offline_block
+    assert "selfChecking = false" in offline_block

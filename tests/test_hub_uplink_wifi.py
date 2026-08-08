@@ -816,3 +816,51 @@ def test_internet_uplink_teardown_persist_failure_shows_warning_with_retry() -> 
     assert "operationRetry = async () =>" in teardown_region
     assert "Не удалось отключить автоподключение" in teardown_region
     assert "Нажмите «Повторить»" in teardown_region
+
+
+def _extract_subscribe_connectivity_callback(source: str) -> str:
+    marker = "subscribeConnectivity((online) => {"
+    start = source.find(marker)
+    assert start != -1, "subscribeConnectivity callback missing"
+    brace = source.find("{", start + len(marker) - 1)
+    depth = 0
+    j = brace
+    while j < len(source):
+        if source[j] == "{":
+            depth += 1
+        elif source[j] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[brace + 1 : j]
+        j += 1
+    raise AssertionError("subscribeConnectivity callback body not closed")
+
+
+def test_uplink_risk_modal_cancel_offline_stale_revokes_prepared_credential() -> None:
+    """hub-offline-abort-followups: prepared credential revoked on cancel/offline/stale."""
+    source = UPLINK_SCREEN_JS.read_text(encoding="utf-8")
+    assert "function cancelPreparedMutation()" in source
+    assert "function cancelPreparedMutation() {\n    revokePendingCredential();\n  }" in source
+    risk_start = source.find("function openRiskModal(action, changeLines, onConfirm)")
+    assert risk_start != -1
+    risk_body = source[risk_start : risk_start + 3500]
+    assert "if (!confirmed) {" in risk_body
+    assert "cancelPreparedMutation();" in risk_body
+    offline_confirm = risk_body.split("if (offline)", 1)[1]
+    assert "cancelPreparedMutation();" in offline_confirm.split("await onConfirm", 1)[0]
+    stale_confirm = risk_body.split("if (!uplinkIntentMatchesCurrent(intentSnapshot, current))", 1)[1]
+    assert "cancelPreparedMutation();" in stale_confirm.split("await onConfirm", 1)[0]
+
+
+def test_uplink_connectivity_offline_aborts_and_revokes_prepared_credential() -> None:
+    """hub-offline-abort-followups: offline arm revokes prepared credential and aborts flows."""
+    source = UPLINK_SCREEN_JS.read_text(encoding="utf-8")
+    callback = _extract_subscribe_connectivity_callback(source)
+    offline_arm_start = callback.find("if (!online)")
+    assert offline_arm_start != -1
+    offline_arm = callback[offline_arm_start:]
+    offline_return = offline_arm.find("renderAll()")
+    offline_block = offline_arm[: offline_return]
+    assert "cancelPreparedMutation()" in offline_block
+    assert "prepareAbort?.abort()" in offline_block
+    assert "mutateAbort?.abort()" in offline_block

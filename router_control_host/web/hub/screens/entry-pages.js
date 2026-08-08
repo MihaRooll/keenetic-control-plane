@@ -1781,6 +1781,14 @@ export function render(container, ctx) {
 
   const unsubConnectivity = subscribeConnectivity((online) => {
     offline = !online;
+    if (!online) {
+      saveAbort?.abort();
+      publishAbort?.abort();
+      selfCheckAbort?.abort();
+      saving = false;
+      publishing = false;
+      selfChecking = false;
+    }
     paint();
   });
 

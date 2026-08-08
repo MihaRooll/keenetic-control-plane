@@ -700,6 +700,8 @@ export function render(container, ctx) {
     offline = !online;
     if (!online) {
       runAbort?.abort();
+      runGeneration += 1;
+      running = false;
     }
     renderAll();
   });

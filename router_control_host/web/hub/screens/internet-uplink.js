@@ -430,6 +430,10 @@ export function render(container, ctx) {
     }
   }
 
+  function cancelPreparedMutation() {
+    revokePendingCredential();
+  }
+
   function renderMutationVerdict() {
     const signature = buildVerdictSignature();
     if (signature === lastVerdictSignature && verdictSlot.firstChild) {
@@ -1008,6 +1012,7 @@ export function render(container, ctx) {
                     title: 'Нет связи с сервером управления',
                     message: 'Подтвердить действие сейчас нельзя.',
                   });
+                  cancelPreparedMutation();
                   return;
                 }
                 const current = buildUplinkIntentSnapshot({
@@ -1021,6 +1026,7 @@ export function render(container, ctx) {
                     title: 'Подтверждение устарело',
                     message: UPLINK_WIFI_INTENT_STALE_MESSAGE,
                   });
+                  cancelPreparedMutation();
                   return;
                 }
                 await onConfirm(intentSnapshot);
@@ -1031,6 +1037,9 @@ export function render(container, ctx) {
         onClose: () => {
           riskModalOpen = false;
           renderAll();
+          if (!confirmed) {
+            cancelPreparedMutation();
+          }
         },
       }),
     );
@@ -1315,6 +1324,17 @@ export function render(container, ctx) {
     if (disposed) return;
     offline = !online;
     recovering = online;
+    if (!online) {
+      cancelPreparedMutation();
+      scanAbort?.abort();
+      prepareAbort?.abort();
+      mutateAbort?.abort();
+      closeAllModals();
+      preparing = false;
+      mutating = false;
+      scanning = false;
+      generation += 1;
+    }
     renderAll();
     if (online) {
       recovering = false;
