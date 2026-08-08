@@ -54,6 +54,7 @@ import {
   fetchVpnCatalogLiveStatus,
   listVpnProfiles,
   listVpnTunnelInterfaceOptions,
+  VPN_POST_SETTLE_RECHECK_HINT,
 } from '../features/vpn-model.js';
 import {
   buildDomainStatusCard,
@@ -1340,11 +1341,24 @@ export function render(container, ctx) {
         return;
       }
       if (response?.activated === true) {
-        ctx.showToast({
-          tone: 'success',
-          title: 'Профиль активирован',
-          message: 'Запрос отправлен — «Работает» только при подтверждённой связи туннеля.',
-        });
+        const tunnelVerificationStatus =
+          typeof response.tunnel_verification_status === 'string'
+            ? response.tunnel_verification_status
+            : null;
+        const tunnelHealthy = tunnelVerificationStatus === 'tunnel_healthy';
+        if (tunnelVerificationStatus != null && !tunnelHealthy) {
+          ctx.showToast({
+            tone: 'warning',
+            title: 'Профиль активирован, ответ сервера не подтверждён',
+            message: VPN_POST_SETTLE_RECHECK_HINT,
+          });
+        } else {
+          ctx.showToast({
+            tone: 'success',
+            title: 'Профиль активирован',
+            message: 'Запрос отправлен — «Работает» только при подтверждённой связи туннеля.',
+          });
+        }
       } else {
         ctx.showToast({
           tone: 'warning',

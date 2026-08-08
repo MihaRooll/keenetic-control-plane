@@ -1944,16 +1944,29 @@ def test_overview_vpn_on_activate_wires_activate_profile_not_navigate() -> None:
 
 
 def test_overview_vpn_activate_toast_gated_on_activated_flag() -> None:
-    """AC-3/AC-4/AC-5: runOverviewVpnActivate success toast only when activated === true."""
+    """AC-3/AC-4/AC-5: activate toast honesty — success only when healthy or no status."""
     source = _read(OVERVIEW_JS)
     body = _extract_function_body(source, "async function runOverviewVpnActivate(")
     assert body is not None
     assert "const response = await activateVpnProfile(" in body
     assert "response?.activated === true" in body
-    success_branch = body.split("response?.activated === true", 1)[1].split("} else {", 1)[0]
-    assert "tone: 'success'" in success_branch
+    activated_branch = body.split("response?.activated === true", 1)[1].split(
+        "title: 'Не активирован'", 1,
+    )[0]
+    assert "tunnel_verification_status" in activated_branch
+    assert "tunnel_healthy" in activated_branch
+    unhealthy_idx = activated_branch.find("!tunnelHealthy")
+    success_idx = activated_branch.find("tone: 'success'")
+    assert unhealthy_idx != -1 and success_idx != -1
+    assert unhealthy_idx < success_idx
+    unhealthy_branch = activated_branch.split("!tunnelHealthy", 1)[1].split("} else {", 1)[0]
+    assert "tone: 'warning'" in unhealthy_branch
+    assert "Профиль активирован, ответ сервера не подтверждён" in unhealthy_branch
+    assert "tone: 'success'" not in unhealthy_branch
+    healthy_branch = activated_branch.split("} else {", 1)[1]
+    assert "tone: 'success'" in healthy_branch
+    assert "title: 'Профиль активирован'" in healthy_branch
     assert "title: 'Не активирован'" in body
-    assert "tone: 'warning'" in body
     assert "describeConfigurationOutcome" not in body
 
 
