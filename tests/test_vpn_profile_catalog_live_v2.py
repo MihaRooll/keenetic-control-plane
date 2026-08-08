@@ -842,6 +842,189 @@ def test_teardown_prior_profile_assignment_live_dispatch_failed_raises(
     assert str(active["profile_id"]) == prior_profile_id
 
 
+def test_activate_prior_teardown_success_clears_assignment_when_new_apply_fails(
+    authed_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """After successful prior teardown, stale assignment is cleared even if new apply fails."""
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
+    from types import SimpleNamespace
+
+    from router_control.application.wireguard_apply_service import WireguardApplyServiceError
+
+    store = authed_client.app.state.host.runtime.store
+    router_id = _seed_catalog_router(store)
+    prior_profile_id = _seed_catalog_profile(store, display_name="prior-active-clear")
+    next_profile_id = _seed_catalog_profile(store, display_name="next-target-clear", wg_id="Wireguard6")
+    store.upsert_tunnel_assignment(
+        router_id=router_id,
+        profile_id=prior_profile_id,
+        desired_active=True,
+        observed_vendor_locator="Wireguard5",
+    )
+
+    def _ok_teardown(*_args: object, **_kwargs: object) -> object:
+        return SimpleNamespace(overall="applied")
+
+    def _failed_apply(*_args: object, **_kwargs: object) -> object:
+        raise WireguardApplyServiceError("new profile apply failed")
+
+    monkeypatch.setattr(
+        wg_routes_mod,
+        "_validate_live_connection_fields",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(routes_mod, "teardown_wireguard", _ok_teardown)
+    monkeypatch.setattr(routes_mod, "apply_wireguard_intent", _failed_apply)
+
+    resp = authed_client.post(
+        f"/api/router-control/v1/vpn-profiles/{next_profile_id}/activate",
+        json={
+            "confirm_live_apply": True,
+            "router_id": router_id,
+            "wg_id": "Wireguard6",
+        },
+    )
+    assert resp.status_code == 422
+    body = resp.json()
+    assert body["error"]["code"] == "profile.activate_failed"
+    assert store.get_active_tunnel_assignment(router_id) is None
+
+
+def test_teardown_prior_profile_assignment_clears_assignment_on_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Successful prior teardown retires active assignment before new profile apply."""
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from router_control.persistence.connection import open_database
+    from router_control.persistence.store import PersistenceStore
+    from router_control_host.routes import (
+        VpnProfileActivateBody,
+        _teardown_prior_profile_assignment,
+    )
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
+
+    store = PersistenceStore(open_database(tmp_path / "prior-teardown-clear.sqlite3"))
+    router_id = _seed_catalog_router(store)
+    prior_profile_id = _seed_catalog_profile(store, display_name="prior-clear")
+    next_profile_id = _seed_catalog_profile(store, display_name="next-clear", wg_id="Wireguard6")
+    store.upsert_tunnel_assignment(
+        router_id=router_id,
+        profile_id=prior_profile_id,
+        desired_active=True,
+        observed_vendor_locator="Wireguard5",
+    )
+
+    host = MagicMock()
+    host.runtime.store = store
+    host.runtime.clock.now.return_value = datetime.now(UTC)
+    body = VpnProfileActivateBody(
+        confirm_live_apply=True,
+        router_id=router_id,
+        host="192.168.2.1",
+        username="admin",
+        router_credential_ref_id="cred_test",
+        ssh_host_key_sha256="SHA256:abc",
+        source_address="192.168.2.10",
+    )
+
+    monkeypatch.setattr(wg_routes_mod, "_should_use_live_path", lambda *_a, **_k: False)
+    monkeypatch.setattr(
+        routes_mod,
+        "teardown_wireguard",
+        lambda **_k: SimpleNamespace(overall="applied"),
+    )
+
+    _teardown_prior_profile_assignment(
+        host=host,
+        request=MagicMock(),
+        body=body,
+        wg_routes=wg_routes_mod,
+        router_id=router_id,
+        profile_id=next_profile_id,
+        logical_role="primary",
+        live_params=None,
+        trail_params=None,
+    )
+
+    assert store.get_active_tunnel_assignment(router_id) is None
+
+
+def test_teardown_prior_profile_assignment_fail_closed_when_assignment_clear_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Fail-closed when DB cannot retire assignment after successful prior teardown."""
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from router_control.application.wireguard_apply_service import WireguardApplyServiceError
+    from router_control.persistence.connection import open_database
+    from router_control.persistence.store import PersistenceStore
+    from router_control_host.routes import (
+        VpnProfileActivateBody,
+        _teardown_prior_profile_assignment,
+    )
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
+
+    store = PersistenceStore(open_database(tmp_path / "prior-teardown-clear-fail.sqlite3"))
+    router_id = _seed_catalog_router(store)
+    prior_profile_id = _seed_catalog_profile(store, display_name="prior-clear-fail")
+    next_profile_id = _seed_catalog_profile(
+        store, display_name="next-clear-fail", wg_id="Wireguard6"
+    )
+    store.upsert_tunnel_assignment(
+        router_id=router_id,
+        profile_id=prior_profile_id,
+        desired_active=True,
+        observed_vendor_locator="Wireguard5",
+    )
+
+    host = MagicMock()
+    host.runtime.store = store
+    host.runtime.clock.now.return_value = datetime.now(UTC)
+    body = VpnProfileActivateBody(
+        confirm_live_apply=True,
+        router_id=router_id,
+        host="192.168.2.1",
+        username="admin",
+        router_credential_ref_id="cred_test",
+        ssh_host_key_sha256="SHA256:abc",
+        source_address="192.168.2.10",
+    )
+
+    monkeypatch.setattr(wg_routes_mod, "_should_use_live_path", lambda *_a, **_k: False)
+    monkeypatch.setattr(
+        routes_mod,
+        "teardown_wireguard",
+        lambda **_k: SimpleNamespace(overall="applied"),
+    )
+    monkeypatch.setattr(
+        store,
+        "deactivate_tunnel_assignments",
+        lambda *_a, **_k: 0,
+    )
+
+    with pytest.raises(
+        WireguardApplyServiceError,
+        match="clearing tunnel assignment failed",
+    ):
+        _teardown_prior_profile_assignment(
+            host=host,
+            request=MagicMock(),
+            body=body,
+            wg_routes=wg_routes_mod,
+            router_id=router_id,
+            profile_id=next_profile_id,
+            logical_role="primary",
+            live_params=None,
+            trail_params=None,
+        )
+
+
 def test_vpn_activate_identity_mismatch_returns_422(
     authed_client, monkeypatch: pytest.MonkeyPatch
 ) -> None:

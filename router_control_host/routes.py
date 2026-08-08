@@ -825,6 +825,17 @@ def _teardown_prior_profile_assignment(
             "prior VPN profile teardown did not complete successfully "
             f"(overall={prior_teardown.overall})"
         )
+    # Fail-closed: router teardown already succeeded; catalog/DB must not keep
+    # the torn-down profile active (watchdog would otherwise revive stale A).
+    cleared = host.runtime.store.deactivate_tunnel_assignments(
+        router_id,
+        logical_role=logical_role,
+        now=host.runtime.clock.now(),
+    )
+    if cleared == 0:
+        raise WireguardApplyServiceError(
+            "prior VPN profile teardown succeeded but clearing tunnel assignment failed"
+        )
 
 
 def _write_gates_summary(host: HostState) -> dict[str, Any]:
