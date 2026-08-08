@@ -333,6 +333,9 @@ class VpnWatchdogHandle:
                     transport=transport,
                     credential_resolver=credential_resolver,
                     backup_callback=backup_cb,
+                    handshake_settle_seconds=clamp_handshake_settle_seconds(
+                        WG_HANDSHAKE_SETTLE_SECONDS_MIN
+                    ),
                 )
             except StartupBackupError as exc:
                 _audit_failure(
