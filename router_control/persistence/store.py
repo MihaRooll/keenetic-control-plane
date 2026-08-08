@@ -12,6 +12,7 @@ import json
 import logging
 import sqlite3
 import threading
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from functools import wraps
@@ -3285,6 +3286,22 @@ class PersistenceStore:
             refs = self.list_profile_secret_refs(profile_id)
             return [str(ref["credential_ref_id"]) for ref in refs]
 
+    def _commit_vpn_profile_catalog_remove_unlocked(
+        self,
+        profile_id: str,
+        *,
+        now: datetime | None = None,
+    ) -> None:
+        ts = _utc_now_iso(now)
+        cur = self._conn.execute(
+            "UPDATE vpn_profile_artifacts SET superseded_at = ? "
+            "WHERE profile_id = ? AND superseded_at IS NULL",
+            (ts, profile_id),
+        )
+        if cur.rowcount == 0:
+            raise AlreadyRetiredError(f"profile {profile_id} already retired")
+        self.delete_profile_secret_refs(profile_id)
+
     def commit_vpn_profile_catalog_remove(
         self,
         profile_id: str,
@@ -3294,15 +3311,21 @@ class PersistenceStore:
         """Supersede profile and unlink secret refs after exclusive revokes succeeded."""
         with transaction(self._conn, immediate=True):
             self._validate_vpn_profile_catalog_remove_gates(profile_id, now=now)
-            ts = _utc_now_iso(now)
-            cur = self._conn.execute(
-                "UPDATE vpn_profile_artifacts SET superseded_at = ? "
-                "WHERE profile_id = ? AND superseded_at IS NULL",
-                (ts, profile_id),
-            )
-            if cur.rowcount == 0:
-                raise AlreadyRetiredError(f"profile {profile_id} already retired")
-            self.delete_profile_secret_refs(profile_id)
+            self._commit_vpn_profile_catalog_remove_unlocked(profile_id, now=now)
+
+    def finalize_vpn_profile_catalog_remove(
+        self,
+        profile_id: str,
+        *,
+        exclusive_credential_ref_ids: Sequence[str],
+        now: datetime | None = None,
+    ) -> None:
+        """Mark exclusive refs revoked and supersede/unlink profile in one transaction."""
+        with transaction(self._conn, immediate=True):
+            self._validate_vpn_profile_catalog_remove_gates(profile_id, now=now)
+            for ref_id in exclusive_credential_ref_ids:
+                self.mark_credential_revoked(ref_id, now=now)
+            self._commit_vpn_profile_catalog_remove_unlocked(profile_id, now=now)
 
     def retire_vpn_profile_from_catalog(
         self,

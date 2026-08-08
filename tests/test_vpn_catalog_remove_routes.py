@@ -275,6 +275,48 @@ def test_multi_exclusive_mid_loop_vault_error_leaves_no_revoked_at(
     assert psk_cred["revoked_at"] is None
 
 
+def test_multi_exclusive_mid_finalize_mark_failure_rolls_back_all_marks(
+    remove_client,
+    monkeypatch,
+) -> None:
+    """Mid-finalize mark failure rolls back all revoked_at and supersede."""
+    profile_id, pk_id, psk_id = _seed_profile_with_two_exclusive_secrets(
+        remove_client,
+        display_name="multi-exclusive-finalize-rollback",
+    )
+    store = remove_client.store
+    real_mark = store.mark_credential_revoked
+    calls: list[str] = []
+
+    def _mark_first_ok_then_fail(ref_id: str, *, now: datetime | None = None) -> None:
+        calls.append(ref_id)
+        if len(calls) == 1:
+            real_mark(ref_id, now=now)
+            return
+        raise RuntimeError("simulated second mark failure")
+
+    monkeypatch.setattr(store, "mark_credential_revoked", _mark_first_ok_then_fail)
+
+    with pytest.raises(RuntimeError, match="simulated second mark failure"):
+        store.finalize_vpn_profile_catalog_remove(
+            profile_id,
+            exclusive_credential_ref_ids=[pk_id, psk_id],
+            now=_host_now(remove_client),
+        )
+
+    row = store.get_profile(profile_id)
+    assert row is not None
+    assert row["superseded_at"] is None
+    assert store.list_profiles()
+    assert store.list_profile_secret_refs(profile_id)
+    pk_cred = store.get_credential_ref(pk_id)
+    psk_cred = store.get_credential_ref(psk_id)
+    assert pk_cred is not None
+    assert psk_cred is not None
+    assert pk_cred["revoked_at"] is None
+    assert psk_cred["revoked_at"] is None
+
+
 def test_multi_exclusive_happy_path_revokes_both_and_retires_profile(
     remove_client,
 ) -> None:

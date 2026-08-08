@@ -92,9 +92,11 @@ def remove_vpn_profile_from_catalog(
             exclusive_ref_ids.append(ref_id)
         for ref_id in exclusive_ref_ids:
             host.runtime.vault.revoke(ref_id)
-        for ref_id in exclusive_ref_ids:
-            store.mark_credential_revoked(ref_id, now=now)
-        store.commit_vpn_profile_catalog_remove(profile_id, now=now)
+        store.finalize_vpn_profile_catalog_remove(
+            profile_id,
+            exclusive_credential_ref_ids=exclusive_ref_ids,
+            now=now,
+        )
         return len(exclusive_ref_ids)
 
     try:
