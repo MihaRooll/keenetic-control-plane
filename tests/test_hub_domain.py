@@ -1404,15 +1404,16 @@ def test_domain_screen_apply_keendns_booking_passes_operation_abort_signal() -> 
     assert "signal?.aborted" in apply_body
 
 
-def test_overview_apply_keendns_booking_passes_mutate_abort_signal() -> None:
-    """keendns-signal-overview-toast-guards: overview passes mutateAbort signal to apply."""
+def test_overview_apply_keendns_booking_passes_publish_abort_signal() -> None:
+    """overview-entry-abort-residuals: overview passes dedicated publishAbort signal to apply."""
     source = OVERVIEW_JS.read_text(encoding="utf-8")
     slots_body = _extract_function_body(source, "function mountOverviewActionSlots(")
     assert slots_body is not None
     publish_start = slots_body.find("onPublishApply:")
     assert publish_start != -1
     publish_body = slots_body[publish_start:]
-    assert "ensureMutateAbort()" in publish_body
+    assert "publishAbort = new AbortController()" in publish_body
+    assert "ensureMutateAbort()" not in publish_body
     assert "getSignal: () => applySignal" in publish_body
     assert "onConfirmApply: async (signal)" in publish_body
     assert "applyKeendnsBooking({" in publish_body

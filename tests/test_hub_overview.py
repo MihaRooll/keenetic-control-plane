@@ -3555,12 +3555,18 @@ def test_overview_mutations_use_dedicated_mutate_abort() -> None:
     """domain-connection-offline-invalidate: VPN/network mutations use mutateAbort, skip toasts when offline."""
     source = _read(OVERVIEW_JS)
     assert "let mutateAbort = null" in source
+    assert "let publishAbort = null" in source
     assert "function ensureMutateAbort()" in source
     assert "function invalidateOverviewMutations()" in source
 
     slots_body = _extract_function_body(source, "function mountOverviewActionSlots(")
     assert slots_body is not None
     assert "getSignal: () => ensureMutateAbort()" in slots_body
+    publish_start = slots_body.find("onPublishApply:")
+    assert publish_start != -1
+    publish_body = slots_body[publish_start:]
+    assert "publishAbort = new AbortController()" in publish_body
+    assert "ensureMutateAbort()" not in publish_body
 
     abort_body = _extract_function_body(source, "function abortAllOperations(")
     assert abort_body is not None
@@ -3672,6 +3678,26 @@ def test_overview_vpn_refresh_uses_mutate_abort_not_enrichment() -> None:
         refresh_region = body.split("refreshVpnCatalogAndLiveStatus(mutationSignal)", 1)[0]
         assert "!offline" in refresh_region
         assert "!mutationSignal.aborted" in refresh_region
+
+
+def test_overview_invalidate_mutations_does_not_abort_publish_abort() -> None:
+    """overview-entry-abort-residuals: VPN invalidate must not abort in-flight KeenDNS publish."""
+    source = _read(OVERVIEW_JS)
+    invalidate_body = _extract_function_body(source, "function invalidateOverviewMutations(")
+    assert invalidate_body is not None
+    assert "publishAbort" not in invalidate_body
+
+
+def test_overview_connectivity_offline_aborts_publish_abort() -> None:
+    """overview-entry-abort-residuals: offline arm aborts dedicated publishAbort."""
+    source = _read(OVERVIEW_JS)
+    callback = _extract_subscribe_connectivity_callback(source)
+    offline_arm_start = callback.find("if (!online)")
+    assert offline_arm_start != -1
+    offline_arm = callback[offline_arm_start:]
+    offline_return = offline_arm.find("return")
+    offline_block = offline_arm[: offline_return + len("return")]
+    assert "publishAbort?.abort()" in offline_block
 
 
 def test_overview_networks_mount_passes_get_offline() -> None:

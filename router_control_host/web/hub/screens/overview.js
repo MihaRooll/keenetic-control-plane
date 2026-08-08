@@ -371,6 +371,8 @@ export function render(container, ctx) {
   let enrichmentAbort = null;
   /** @type {AbortController|null} */
   let mutateAbort = null;
+  /** @type {AbortController|null} */
+  let publishAbort = null;
   /** @type {import('../features/uplink-wifi-model.js').RememberedUplinkPref|null} */
   let rememberedUplink = null;
   let internetEnrichmentBusy = false;
@@ -1002,7 +1004,9 @@ export function render(container, ctx) {
         if (offline) {
           return;
         }
-        const applySignal = ensureMutateAbort();
+        publishAbort?.abort();
+        publishAbort = new AbortController();
+        const applySignal = publishAbort.signal;
         openDomainPublishApplyConfirm({
           openModal,
           createButton,
@@ -1285,7 +1289,13 @@ export function render(container, ctx) {
       }
     } finally {
       const generationOk = expectedGeneration == null || expectedGeneration === generation;
-      if (catalogListed && generationOk && !disposed) {
+      if (
+        catalogListed
+        && generationOk
+        && !disposed
+        && !offline
+        && !signal?.aborted
+      ) {
         vpnCatalogSettled = true;
         lastVpnSignature = null;
         renderVpnSlot();
@@ -2282,6 +2292,8 @@ export function render(container, ctx) {
     loadAbort?.abort();
     systemCheckAbort?.abort();
     internetObserveAbort?.abort();
+    publishAbort?.abort();
+    publishAbort = null;
     abortEnrichment();
     invalidateOverviewMutations();
     const hadEnrichmentBusy = internetEnrichmentBusy || vpnEnrichmentBusy;
@@ -2644,6 +2656,8 @@ export function render(container, ctx) {
       loadAbort?.abort();
       systemCheckAbort?.abort();
       internetObserveAbort?.abort();
+      publishAbort?.abort();
+      publishAbort = null;
       abortEnrichment();
       invalidateOverviewMutations();
       internetEnrichmentBusy = false;

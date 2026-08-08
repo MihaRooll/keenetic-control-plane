@@ -337,9 +337,9 @@ def test_refresh_vpn_catalog_finally_generation_guard(overview_source: str) -> N
     assert "generationOk" in finally_block
     assert "expectedGeneration === generation" in finally_block
     assert re.search(
-        r"if\s*\(\s*catalogListed\s*&&\s*generationOk\s*&&\s*!disposed\s*\)",
+        r"if\s*\(\s*catalogListed\s*&&\s*generationOk\s*&&\s*!disposed\s*&&\s*!offline\s*&&\s*!signal\?\.aborted\s*\)",
         finally_block,
-    ), "finally settle/render must guard generation and disposed like enrichment paths"
+    ), "finally settle/render must guard generation, disposed, offline, and abort"
     enrichment_fn = overview_source.split("async function runOverviewEnrichment")[1].split(
         "function buildSummaryPanelOptions",
         1,
@@ -371,7 +371,13 @@ def test_empty_list_success_allows_empty_panel_after_settle(
     assert "Профиль VPN не добавлен" in render_vpn_body
 
 
-def test_soft_refresh_nonempty_catalog_skips_vpn_skeleton(overview_source: str) -> None:
+def test_refresh_vpn_catalog_finally_skips_settle_when_offline_or_aborted(overview_source: str) -> None:
+    """overview-entry-abort-residuals: catalog settle/render skipped when offline or signal aborted."""
+    fn_body = _extract_function_body(overview_source, "async function refreshVpnCatalogAndLiveStatus(")
+    assert fn_body is not None
+    finally_block = fn_body.split("} finally {", 1)[1]
+    assert "!offline" in finally_block
+    assert "!signal?.aborted" in finally_block
     fn_body = _extract_function_body(overview_source, "function shouldShowVpnCardSkeleton(")
     assert fn_body is not None
     assert "vpnCatalogItems.length > 0" in fn_body

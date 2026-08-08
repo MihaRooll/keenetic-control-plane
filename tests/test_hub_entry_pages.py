@@ -1861,3 +1861,25 @@ def test_entry_pages_connectivity_offline_aborts_inflight_controllers() -> None:
     assert "saving = false" in offline_block
     assert "publishing = false" in offline_block
     assert "selfChecking = false" in offline_block
+
+
+def test_entry_pages_save_publish_skip_success_on_abort_or_offline() -> None:
+    """overview-entry-abort-residuals: save/publish skip toast, baseline, loadList when offline/aborted."""
+    source = _read(ENTRY_SCREEN_JS)
+    save_body = _extract_function_body(source, "async function handleSave()")
+    publish_body = _extract_function_body(source, "async function handlePublicationToggle(")
+    assert save_body is not None
+    assert publish_body is not None
+    save_after_await = save_body.split("await saveEntryPageDraft(", 1)[1]
+    save_guard = save_after_await.split("savedBaseline", 1)[0]
+    assert "offline || saveAbort.signal.aborted" in save_guard
+    assert "return" in save_guard
+    assert "showToast" not in save_guard
+    assert "loadList" not in save_guard
+    publish_guard_start = publish_body.find("if (offline || publishAbort.signal.aborted)")
+    assert publish_guard_start != -1
+    publish_guard = publish_body[publish_guard_start : publish_guard_start + 120]
+    assert "return" in publish_guard
+    load_idx = publish_body.find("await loadList({ soft: true })")
+    guard_idx = publish_body.find("if (offline || publishAbort.signal.aborted)")
+    assert guard_idx != -1 and load_idx != -1 and guard_idx < load_idx

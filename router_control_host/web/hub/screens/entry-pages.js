@@ -953,6 +953,11 @@ export function render(container, ctx) {
       if (disposed) {
         return;
       }
+      if (offline || saveAbort.signal.aborted) {
+        saving = false;
+        paint();
+        return;
+      }
       saving = false;
       savedBaseline = cloneDraftDocument(draftDocument);
       audienceDraftCache.set(activeAudience, {
@@ -1000,6 +1005,11 @@ export function render(container, ctx) {
         await unpublishEntryPage(pageId, { signal: publishAbort.signal });
       }
       if (disposed) {
+        return;
+      }
+      if (offline || publishAbort.signal.aborted) {
+        publishing = false;
+        paint();
         return;
       }
       publishing = false;
