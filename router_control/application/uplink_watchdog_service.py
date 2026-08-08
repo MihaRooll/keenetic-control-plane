@@ -11,12 +11,12 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
+from router_control.adapters.netcraze.startup_backup import StartupBackupError
 from router_control.application.internet_status_observe import (
     InternetStatusTransport,
     run_internet_status_observe,
 )
 from router_control.application.router_apply_lock import run_with_router_apply_lock
-from router_control.adapters.netcraze.startup_backup import StartupBackupError
 from router_control.application.wifi_station_apply_service import (
     WifiStationApplyTransport,
     apply_wifi_station_intent,
@@ -350,6 +350,55 @@ class UplinkWatchdogHandle:
             )
 
         def _run() -> None:
+            expected_ssid = str(remembered.get("ssid") or "").strip()
+            expected_band = str(remembered.get("band") or "")
+            expected_cred_ref = remembered.get("credential_ref_id")
+            fresh = self.host.runtime.remembered_uplink.get_remembered()
+            if not fresh.get("desired_active"):
+                _audit_failure(error_message="remembered uplink desired cleared under lock")
+                outcome_holder[0] = "failed"
+                return
+            fresh_router_id = fresh.get("router_id")
+            if not fresh_router_id or str(fresh_router_id) != router_id:
+                _audit_failure(error_message="remembered uplink router mismatch under lock")
+                outcome_holder[0] = "failed"
+                return
+            if not fresh.get("credential_configured"):
+                _audit_failure(
+                    error_message="remembered uplink credential not configured under lock"
+                )
+                outcome_holder[0] = "failed"
+                return
+            fresh_ssid = str(fresh.get("ssid") or "").strip()
+            fresh_band_raw = fresh.get("band")
+            fresh_cred_ref = fresh.get("credential_ref_id")
+            if not fresh_ssid or not fresh_band_raw or not fresh_cred_ref:
+                _audit_failure(error_message="remembered uplink incomplete under lock")
+                outcome_holder[0] = "failed"
+                return
+            if (
+                fresh_ssid != expected_ssid
+                or str(fresh_band_raw) != expected_band
+                or str(fresh_cred_ref) != str(expected_cred_ref)
+            ):
+                _audit_failure(error_message="remembered uplink identity changed under lock")
+                outcome_holder[0] = "failed"
+                return
+            try:
+                fresh_band = WifiBand(str(fresh_band_raw))
+            except ValueError:
+                _audit_failure(error_message="remembered uplink incomplete under lock")
+                outcome_holder[0] = "failed"
+                return
+            apply_intent = UplinkIntent(
+                mode=UplinkMode.WIFI_WAN,
+                ssid=fresh_ssid,
+                band=fresh_band,
+                credential_ref_id=str(fresh_cred_ref),
+            )
+            intent_redacted["ssid"] = fresh.get("ssid")
+            intent_redacted["band"] = fresh.get("band")
+            intent_redacted["credential_ref_id"] = fresh.get("credential_ref_id")
             backup_cb: BackupCallback | None = None
             if self.backup_callback_factory is not None:
                 backup_cb = self.backup_callback_factory(router_id)
@@ -359,7 +408,7 @@ class UplinkWatchdogHandle:
                 return
             try:
                 result = apply_wifi_station_intent(
-                    intent=intent,
+                    intent=apply_intent,
                     transport=transport,
                     credential_resolver=credential_resolver,
                     live_dispatch=True,
