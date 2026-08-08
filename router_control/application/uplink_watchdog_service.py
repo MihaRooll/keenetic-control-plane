@@ -252,6 +252,9 @@ class UplinkWatchdogHandle:
             run_internet_status_observe,
             transport=observe_transport,
         )
+        if getattr(observation, "read_status", None) == "failed":
+            state.next_poll_at = now + UPLINK_WATCHDOG_POLL_SECONDS
+            return
         updated_at = _parse_updated_at_epoch(str(remembered.get("updated_at") or ""))
         suppress_until = (
             updated_at + 2.0 * UPLINK_WATCHDOG_POLL_SECONDS

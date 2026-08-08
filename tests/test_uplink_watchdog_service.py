@@ -367,6 +367,71 @@ async def test_poll_once_skips_when_desired_active_false(tmp_path, monkeypatch) 
 
 
 @pytest.mark.asyncio
+async def test_poll_once_skips_apply_when_observe_read_status_failed(
+    tmp_path, monkeypatch
+) -> None:
+    """Failed observe must not increment streak or trigger reapply."""
+    stale = datetime(2026, 8, 5, 10, 0, 0, tzinfo=UTC)
+    poll_now = stale + timedelta(seconds=UPLINK_WATCHDOG_POLL_SECONDS * 3)
+    runtime = create_offline_runtime(
+        db_path=tmp_path / "poll-observe-failed.sqlite3",
+        clock=FixedClock(stale),
+    )
+    router_id, _remembered = _seed_remembered_active(runtime, updated_at=stale)
+    host = type("Host", (), {"runtime": runtime})()
+    failed_observation = InternetStatusObservation(
+        internet=False,
+        reliable=None,
+        gateway_accessible=None,
+        dns_accessible=None,
+        captive_accessible=None,
+        gateway_interface=None,
+        gateway_ssid=None,
+        checked_at="2026-08-05T12:00:00Z",
+        read_status="failed",
+    )
+    apply_calls: list[str] = []
+    handle = _make_handle(host, observation=failed_observation, apply_calls=apply_calls)
+    monkeypatch.setattr(
+        uplink_watchdog_service,
+        "run_internet_status_observe",
+        lambda *, transport: failed_observation,
+    )
+    monkeypatch.setattr(
+        uplink_watchdog_service,
+        "datetime",
+        MagicMock(
+            now=lambda tz=None: poll_now,
+            fromisoformat=datetime.fromisoformat,
+        ),
+    )
+    from router_control.application.uplink_watchdog_service import _RouterWatchState
+
+    loop_now = 1000.0
+    handle._states[str(router_id)] = _RouterWatchState(  # noqa: SLF001
+        unhealthy_streak=1,
+        backoff_seconds=120.0,
+        next_poll_at=0.0,
+    )
+
+    class _FixedLoop:
+        def time(self) -> float:
+            return loop_now
+
+    monkeypatch.setattr(
+        uplink_watchdog_service.asyncio,
+        "get_running_loop",
+        lambda: _FixedLoop(),
+    )
+    await handle._poll_once()  # noqa: SLF001
+    assert apply_calls == []
+    state = handle._states[str(router_id)]  # noqa: SLF001
+    assert state.unhealthy_streak == 1
+    assert state.backoff_seconds == 120.0
+    assert state.next_poll_at == loop_now + UPLINK_WATCHDOG_POLL_SECONDS
+
+
+@pytest.mark.asyncio
 async def test_poll_once_skips_when_gateway_matches_despite_internet_false(
     tmp_path, monkeypatch
 ) -> None:
