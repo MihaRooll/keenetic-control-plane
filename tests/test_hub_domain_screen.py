@@ -499,6 +499,23 @@ def test_domain_apply_clears_operation_error_only_on_applied() -> None:
     assert "overall !== 'failed'" not in apply_body
 
 
+def test_domain_save_local_offline_guard_in_source() -> None:
+    """runSaveLocalAddress and save-local confirm must abort offline with warning toast."""
+    source = _read(DOMAIN_SCREEN_JS)
+    save_body = _extract_function_body(source, "async function runSaveLocalAddress(")
+    modal_body = _extract_function_body(source, "function openSaveLocalModal(")
+    assert save_body is not None
+    assert modal_body is not None
+    assert save_body.strip().startswith("if (offline)")
+    assert "showToast" in save_body.split("if (offline)", 1)[1].split("return", 1)[0]
+    assert "tone: 'warning'" in save_body
+    assert "Нет связи с сервером управления" in save_body
+    confirm_block = modal_body.split("Сохранить локальный адрес", 1)[1]
+    assert "if (offline)" in confirm_block
+    assert "showToast" in confirm_block.split("if (offline)", 1)[1].split("return", 1)[0]
+    assert "runSaveLocalAddress(idempotencyKey)" in confirm_block
+
+
 def test_domain_save_local_bounded_network_retry() -> None:
     """runSaveLocalAddress: bounded NETWORK/TIMEOUT retry, fail-closed без бесконечного continue."""
     source = _read(DOMAIN_SCREEN_JS)

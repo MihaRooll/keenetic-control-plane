@@ -3520,6 +3520,17 @@ def test_overview_vpn_activate_deactivate_finally_repaints_readiness() -> None:
         assert vpn_idx < readiness_idx < strip_idx
 
 
+def test_overview_networks_staff_enable_mutation_readiness_gated() -> None:
+    """Staff enable CTA gated by evaluateStaffWifiMutationReadiness (parity with guest toggle)."""
+    source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
+    staff_render_body = _extract_function_body(source, "function renderStaffSlot(")
+    assert staff_render_body is not None
+    assert "evaluateStaffWifiMutationReadiness" in staff_render_body
+    assert "staffMutationBlocked" in staff_render_body
+    staff_enable_region = staff_render_body.split("Включить рабочую сеть", 1)[1].split("staff-defaults", 1)[0]
+    assert "staffMutationBlocked" in staff_enable_region
+
+
 def test_overview_networks_run_mutation_resolve_disabled_guard() -> None:
     """AC-2: runMutation early-returns when resolveDisabled() is true."""
     source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
@@ -3533,6 +3544,31 @@ def test_overview_networks_run_mutation_resolve_disabled_guard() -> None:
     assert restore_check != -1 and disabled_check != -1 and show_progress != -1
     assert restore_check < disabled_check < show_progress
     assert "resolveDisabled() ? '1' : '0'" in source
-    assert "disabled: staffBusy || loading || resolveDisabled()" in source
+    assert "disabled: staffBusy || loading || resolveDisabled() || staffMutationBlocked" in source
     assert "disabled: guestBusy || loading || resolveDisabled()" in source
     assert "disabled: busy || resolveDisabled()" in source
+
+
+def test_overview_vpn_mutation_readiness_gated() -> None:
+    """Overview VPN activate/deactivate gated by evaluateVpnMutationReadiness for fake/incomplete."""
+    source = _read(OVERVIEW_JS)
+    assert "evaluateVpnMutationReadiness" in source
+    assert "function vpnMutationReadiness()" in source
+    assert "vpnMutationBlocked" in source
+
+    activate_body = _extract_function_body(source, "async function runOverviewVpnActivate(")
+    deactivate_body = _extract_function_body(source, "async function runOverviewVpnDeactivate(")
+    render_vpn_body = _extract_function_body(source, "function renderVpnSlot(")
+    assert activate_body is not None
+    assert deactivate_body is not None
+    assert render_vpn_body is not None
+    assert "!vpnMutationReadiness().allowed" in activate_body
+    assert "!vpnMutationReadiness().allowed" in deactivate_body
+    assert "vpnMutationBlocked" in render_vpn_body
+    cta_block = render_vpn_body.split("actionDisabled", 1)[1].split("ctaBtn = createButton", 1)[0]
+    assert "vpnMutationBlocked" in cta_block
+    picker_block = render_vpn_body.split("buildOverviewVpnProfilePicker", 1)[1].split("});", 1)[0]
+    assert "vpnMutationBlocked" in picker_block
+    signature_body = _extract_function_body(source, "function buildVpnSlotSignature(")
+    assert signature_body is not None
+    assert "vpnMutationReadiness().allowed" in signature_body

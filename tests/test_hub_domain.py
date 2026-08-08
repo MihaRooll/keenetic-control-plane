@@ -1253,8 +1253,12 @@ def test_domain_publish_apply_confirm_offline_guard_in_source() -> None:
     confirm_body = _extract_function_body(source, "export function openDomainPublishApplyConfirm(")
     assert confirm_body is not None
     assert "isPublishApplyOffline" in source
+    assert "showPublishApplyOfflineToast" in source
     assert "if (isPublishApplyOffline(params))" in confirm_body
     assert confirm_body.count("isPublishApplyOffline(params)") >= 2
+    assert confirm_body.count("showPublishApplyOfflineToast(params)") >= 2
+    assert "tone: 'warning'" in source
+    assert "Нет связи с сервером управления" in source
 
 
 def test_domain_screen_open_publish_apply_modal_offline_guard() -> None:
@@ -1315,22 +1319,24 @@ globalThis.window = {{ addEventListener() {{}}, removeEventListener() {{}} }};
 const mod = await import({simple_uri});
 
 let navigatorOfflineOpened = false;
+let navigatorOfflineToasted = false;
 mod.openDomainPublishApplyConfirm({{
   offline: false,
   openModal: () => {{ navigatorOfflineOpened = true; return {{ close: () => {{}} }}; }},
   createButton: () => sampleBtn,
-  showToast: () => {{}},
+  showToast: () => {{ navigatorOfflineToasted = true; }},
   name: 'promo',
   domain: 'keenetic.pro',
   onConfirmApply: async () => ({{ overall: 'applied' }}),
 }});
 
 let paramOfflineOpened = false;
+let paramOfflineToasted = false;
 mod.openDomainPublishApplyConfirm({{
   offline: true,
   openModal: () => {{ paramOfflineOpened = true; return {{ close: () => {{}} }}; }},
   createButton: () => sampleBtn,
-  showToast: () => {{}},
+  showToast: () => {{ paramOfflineToasted = true; }},
   name: 'promo',
   domain: 'keenetic.pro',
   onConfirmApply: async () => ({{ overall: 'applied' }}),
@@ -1349,11 +1355,15 @@ mod.openDomainPublishApplyConfirm({{
 
 console.log(JSON.stringify({{
   navigatorOfflineOpened,
+  navigatorOfflineToasted,
   paramOfflineOpened,
+  paramOfflineToasted,
   onlineOpened,
 }}));
 """
     result = _run_node_harness(script, tmp_path, "publish-confirm-offline")
     assert result["navigatorOfflineOpened"] is False
+    assert result["navigatorOfflineToasted"] is True
     assert result["paramOfflineOpened"] is False
+    assert result["paramOfflineToasted"] is True
     assert result["onlineOpened"] is True

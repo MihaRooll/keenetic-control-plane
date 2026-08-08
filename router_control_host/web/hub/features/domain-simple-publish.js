@@ -312,8 +312,23 @@ function isPublishApplyOffline(params) {
   return typeof navigator !== 'undefined' && navigator.onLine === false;
 }
 
+/**
+ * @param {DomainPublishApplyConfirmParams} params
+ */
+function showPublishApplyOfflineToast(params) {
+  if (typeof params.showToast === 'function') {
+    params.showToast({
+      tone: 'warning',
+      title: 'Нет связи с сервером управления',
+      message:
+        'Отправить команду публикации сейчас нельзя — дождитесь восстановления связи.',
+    });
+  }
+}
+
 export function openDomainPublishApplyConfirm(params) {
   if (isPublishApplyOffline(params)) {
+    showPublishApplyOfflineToast(params);
     return { close: () => {} };
   }
 
@@ -361,6 +376,7 @@ export function openDomainPublishApplyConfirm(params) {
           void (async () => {
             if (isPublishApplyOffline(params)) {
               modalRef?.close();
+              showPublishApplyOfflineToast(params);
               return;
             }
             try {

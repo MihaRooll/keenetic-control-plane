@@ -952,6 +952,8 @@ export function mountOverviewSimpleNetworks(options) {
       );
     } else if (selectedStaffApId && staffObserved?.readable) {
       staffBody.appendChild(renderApRoleSelect('staff', selectedStaffApId, staffBusy));
+      const readiness = evaluateStaffWifiMutationReadiness(options.getSession(), adapterMode);
+      const staffMutationBlocked = !readiness.allowed;
 
       const statusRow = document.createElement('div');
       statusRow.className = 'hub-overview-networks__status-row';
@@ -975,7 +977,7 @@ export function mountOverviewSimpleNetworks(options) {
         );
         const enableBtn = createButton({
           label: 'Включить рабочую сеть',
-          disabled: staffBusy || loading || resolveDisabled(),
+          disabled: staffBusy || loading || resolveDisabled() || staffMutationBlocked,
           busy: staffBusy,
           onActivate: () => {
             void runMutation('staff-enable');
@@ -985,7 +987,6 @@ export function mountOverviewSimpleNetworks(options) {
         staffBody.appendChild(enableBtn);
       }
 
-      const readiness = evaluateStaffWifiMutationReadiness(options.getSession(), adapterMode);
       if (canApplyStaffStandingDefaults({
         selectedApId: selectedStaffApId,
         standing,

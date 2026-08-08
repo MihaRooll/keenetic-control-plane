@@ -50,6 +50,7 @@ import {
 import {
   activateVpnProfile,
   deactivateVpnProfile,
+  evaluateVpnMutationReadiness,
   fetchVpnCatalogLiveStatus,
   listVpnProfiles,
   listVpnTunnelInterfaceOptions,
@@ -1286,6 +1287,10 @@ export function render(container, ctx) {
   /**
    * @param {string} profileId
    */
+  function vpnMutationReadiness() {
+    return evaluateVpnMutationReadiness(getSession(), ctx.runtime?.adapterMode ?? null);
+  }
+
   async function runOverviewVpnActivate(profileId) {
     if (
       !profileId
@@ -1293,6 +1298,7 @@ export function render(container, ctx) {
       || vpnActivatingProfileIds[profileId]
       || isConnectionRestorePending(getSession())
       || offline
+      || !vpnMutationReadiness().allowed
     ) {
       return;
     }
@@ -1368,6 +1374,7 @@ export function render(container, ctx) {
       || vpnDeactivatingProfileIds[profileId]
       || isConnectionRestorePending(getSession())
       || offline
+      || !vpnMutationReadiness().allowed
     ) {
       return;
     }
@@ -1532,6 +1539,7 @@ export function render(container, ctx) {
         })
         .join('|'),
       vpnSelectedProfileId ?? '',
+      vpnMutationReadiness().allowed ? '1' : '0',
     ].join('::');
   }
 
@@ -1613,12 +1621,19 @@ export function render(container, ctx) {
       );
       contentSlot.appendChild(statusWrap);
 
+      const mutationReadiness = vpnMutationReadiness();
+      const vpnMutationBlocked = !mutationReadiness.allowed;
+
       const profilesWrap = document.createElement('div');
       profilesWrap.className = 'hub-vpn-card__profiles';
       const pickerEl = buildOverviewVpnProfilePicker({
         items: projectedItems,
         selectedProfileId: vpnSelectedProfileId,
-        disabled: offline || vpnMutating || isConnectionRestorePending(getSession()),
+        disabled:
+          offline
+          || vpnMutating
+          || isConnectionRestorePending(getSession())
+          || vpnMutationBlocked,
         busyProfileIds: vpnActivatingProfileIds,
         deactivatingProfileIds: vpnDeactivatingProfileIds,
         checkingProfileIds: vpnCheckingProfileIds,
@@ -1653,6 +1668,7 @@ export function render(container, ctx) {
         offline ||
         vpnMutating ||
         isConnectionRestorePending(getSession()) ||
+        vpnMutationBlocked ||
         Object.keys(vpnActivatingProfileIds).length > 0 ||
         Object.keys(vpnDeactivatingProfileIds).length > 0;
       const activeProfileId =

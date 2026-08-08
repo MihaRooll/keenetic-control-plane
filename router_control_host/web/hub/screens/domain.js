@@ -1082,6 +1082,15 @@ export function render(container, ctx) {
    * @param {string} idempotencyKey
    */
   async function runSaveLocalAddress(idempotencyKey) {
+    if (offline) {
+      ctx.showToast({
+        tone: 'warning',
+        title: 'Нет связи с сервером управления',
+        message:
+          'Сохранить локальный адрес сейчас нельзя — дождитесь восстановления связи.',
+      });
+      return;
+    }
     const readiness = presetReadiness();
     const presetId = getSession()?.eventPresetId;
     if (!readiness.allowed || !presetId || !presetDocument || savingLocal) {
@@ -1244,6 +1253,15 @@ export function render(container, ctx) {
               confirmed = true;
               pendingFocus = { kind: 'element-id', id: 'hub-domain-save-local-btn' };
               modalRef?.close();
+              if (offline) {
+                ctx.showToast({
+                  tone: 'warning',
+                  title: 'Нет связи с сервером управления',
+                  message:
+                    'Сохранить локальный адрес сейчас нельзя — дождитесь восстановления связи.',
+                });
+                return;
+              }
               void runSaveLocalAddress(idempotencyKey);
             },
           }),
