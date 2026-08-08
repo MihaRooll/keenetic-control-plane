@@ -141,38 +141,59 @@ export function mountDomainSimplePublishAffordance(container, options) {
   /** @type {HTMLSelectElement|null} */
   let suffixSelect = null;
 
-  const starterRow = document.createElement('div');
-  starterRow.className = 'hub-domain__btn-row hub-domain__simple-starter-row';
-  const starterBtn = createButton({
-    label: 'Подставить стартовое имя',
-    variant: 'secondary',
-    disabled: resolveDisabled(),
-    onActivate: () => {
-      setName(resolveDomainSimpleDefaultName());
-      if (nameInput instanceof HTMLInputElement) {
-        nameInput.value = getName();
-      }
-      update();
-    },
-  });
-  starterBtn.id = `${idPrefix}-starter-btn`;
-  starterRow.appendChild(starterBtn);
-  body.appendChild(starterRow);
+  /** @type {HTMLDivElement|null} */
+  let starterRow = null;
+  /** @type {HTMLButtonElement|null} */
+  let starterBtn = null;
+  /** @type {HTMLParagraphElement|null} */
+  let starterHonesty = null;
+  /** @type {HTMLParagraphElement|null} */
+  let availabilityLine = null;
+  /** @type {HTMLDivElement|null} */
+  let draftBlock = null;
+  /** @type {HTMLParagraphElement|null} */
+  let draftUrlEl = null;
+  /** @type {HTMLParagraphElement|null} */
+  let draftNoteEl = null;
 
-  const starterHonesty = document.createElement('p');
-  starterHonesty.className = 'hub-domain__note hub-domain__simple-starter-honesty';
-  starterHonesty.textContent = DOMAIN_SIMPLE_DEFAULT_NAME_HONESTY;
-  body.appendChild(starterHonesty);
+  // Overview: do not mount starter/draft chrome at all — CSS `display:flex` on
+  // `.hub-domain__btn-row` overrides HTML `hidden` and kept the starter visible.
+  if (!isOverview) {
+    starterRow = document.createElement('div');
+    starterRow.className = 'hub-domain__btn-row hub-domain__simple-starter-row';
+    starterBtn = createButton({
+      label: 'Подставить стартовое имя',
+      variant: 'secondary',
+      disabled: resolveDisabled(),
+      onActivate: () => {
+        setName(resolveDomainSimpleDefaultName());
+        if (nameInput instanceof HTMLInputElement) {
+          nameInput.value = getName();
+        }
+        update();
+      },
+    });
+    starterBtn.id = `${idPrefix}-starter-btn`;
+    starterRow.appendChild(starterBtn);
+    body.appendChild(starterRow);
+
+    starterHonesty = document.createElement('p');
+    starterHonesty.className = 'hub-domain__note hub-domain__simple-starter-honesty';
+    starterHonesty.textContent = DOMAIN_SIMPLE_DEFAULT_NAME_HONESTY;
+    body.appendChild(starterHonesty);
+  }
 
   const formatLine = document.createElement('p');
   formatLine.className = 'hub-domain__note hub-domain__simple-format';
   formatLine.id = `${idPrefix}-format-line`;
   body.appendChild(formatLine);
 
-  const availabilityLine = document.createElement('p');
-  availabilityLine.className = 'hub-domain__note hub-domain__simple-availability';
-  availabilityLine.id = `${idPrefix}-availability-line`;
-  body.appendChild(availabilityLine);
+  if (!isOverview) {
+    availabilityLine = document.createElement('p');
+    availabilityLine.className = 'hub-domain__note hub-domain__simple-availability';
+    availabilityLine.id = `${idPrefix}-availability-line`;
+    body.appendChild(availabilityLine);
+  }
 
   const fqdnPreview = document.createElement('p');
   fqdnPreview.className = 'hub-domain__compact-fqdn';
@@ -180,17 +201,19 @@ export function mountDomainSimplePublishAffordance(container, options) {
   fqdnPreview.hidden = true;
   body.appendChild(fqdnPreview);
 
-  const draftBlock = document.createElement('div');
-  draftBlock.className = 'hub-domain__simple-draft';
-  const draftUrlEl = document.createElement('p');
-  draftUrlEl.className = 'hub-domain__simple-draft-url';
-  draftUrlEl.id = `${idPrefix}-draft-url`;
-  draftBlock.appendChild(draftUrlEl);
-  const draftNoteEl = document.createElement('p');
-  draftNoteEl.className = 'hub-domain__note hub-domain__simple-draft-note';
-  draftNoteEl.textContent = DOMAIN_DRAFT_LINK_NOTE;
-  draftBlock.appendChild(draftNoteEl);
-  body.appendChild(draftBlock);
+  if (!isOverview) {
+    draftBlock = document.createElement('div');
+    draftBlock.className = 'hub-domain__simple-draft';
+    draftUrlEl = document.createElement('p');
+    draftUrlEl.className = 'hub-domain__simple-draft-url';
+    draftUrlEl.id = `${idPrefix}-draft-url`;
+    draftBlock.appendChild(draftUrlEl);
+    draftNoteEl = document.createElement('p');
+    draftNoteEl.className = 'hub-domain__note hub-domain__simple-draft-note';
+    draftNoteEl.textContent = DOMAIN_DRAFT_LINK_NOTE;
+    draftBlock.appendChild(draftNoteEl);
+    body.appendChild(draftBlock);
+  }
 
   const ctaRow = document.createElement('div');
   ctaRow.className = 'hub-domain__btn-row hub-domain__simple-cta-row';
@@ -221,13 +244,6 @@ export function mountDomainSimplePublishAffordance(container, options) {
     });
     quietLinkMeta.appendChild(quietLink);
     root.appendChild(quietLinkMeta);
-  }
-
-  if (isOverview) {
-    starterRow.hidden = true;
-    starterHonesty.hidden = true;
-    availabilityLine.hidden = true;
-    draftBlock.hidden = true;
   }
 
   function rebuildNameField() {
@@ -303,15 +319,12 @@ export function mountDomainSimplePublishAffordance(container, options) {
     syncFieldValuesWithoutFocusLoss();
 
     const isDisabled = resolveDisabled();
-    starterBtn.disabled = isDisabled;
+    if (starterBtn) {
+      starterBtn.disabled = isDisabled;
+    }
     publishBtn.disabled = isDisabled || !state.valid;
 
     if (isOverview) {
-      starterRow.hidden = true;
-      starterHonesty.hidden = true;
-      availabilityLine.hidden = true;
-      draftBlock.hidden = true;
-
       if (state.valid && state.draftUrl) {
         const fqdn = `${getName().trim().toLowerCase()}.${getDomain().trim()}`;
         fqdnPreview.textContent = fqdn;
@@ -339,18 +352,22 @@ export function mountDomainSimplePublishAffordance(container, options) {
       formatLine.hidden = true;
     }
 
-    availabilityLine.textContent = state.availabilityMessage;
-    availabilityLine.hidden = false;
-
-    if (state.draftUrl) {
-      draftUrlEl.textContent = state.draftUrl;
-      draftUrlEl.hidden = false;
-    } else {
-      draftUrlEl.textContent = 'Черновая ссылка появится после корректного имени.';
-      draftUrlEl.hidden = false;
+    if (availabilityLine) {
+      availabilityLine.textContent = state.availabilityMessage;
+      availabilityLine.hidden = false;
     }
-    draftNoteEl.textContent = DOMAIN_DRAFT_LINK_NOTE;
-    draftNoteEl.hidden = false;
+
+    if (draftUrlEl && draftNoteEl) {
+      if (state.draftUrl) {
+        draftUrlEl.textContent = state.draftUrl;
+        draftUrlEl.hidden = false;
+      } else {
+        draftUrlEl.textContent = 'Черновая ссылка появится после корректного имени.';
+        draftUrlEl.hidden = false;
+      }
+      draftNoteEl.textContent = DOMAIN_DRAFT_LINK_NOTE;
+      draftNoteEl.hidden = false;
+    }
   }
 
   function destroy() {

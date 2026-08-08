@@ -254,9 +254,10 @@ def test_overview_compact_publish_surface(overview_compact_block: str) -> None:
 
 
 def test_overview_compact_hides_legacy_chrome(overview_compact_block: str) -> None:
-    assert "starterRow.hidden = true" in overview_compact_block
-    assert "draftBlock.hidden = true" in overview_compact_block
-    assert "availabilityLine.hidden = true" in overview_compact_block
+    # Overview must not mount starter/draft chrome (CSS display:flex overrides HTML hidden).
+    assert "if (!isOverview)" in overview_compact_block
+    assert "Подставить стартовое имя" in overview_compact_block  # full variant only
+    assert overview_compact_block.count("if (!isOverview)") >= 2
     assert "Проверить домен" not in overview_compact_block
     assert "Открыть черновик" not in overview_compact_block
     assert "Облако не проверяется" not in overview_compact_block
