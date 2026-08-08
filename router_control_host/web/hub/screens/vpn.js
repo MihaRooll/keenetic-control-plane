@@ -1700,6 +1700,7 @@ export function render(container, ctx) {
       }
       if (!disposed && gen === catalogGeneration) {
         renderCatalogSlot();
+        renderSideSlot();
       }
     }
     if (!disposed && gen === catalogGeneration && listSucceeded) {
@@ -2496,6 +2497,7 @@ export function render(container, ctx) {
         pendingFocus = { kind: 'element-id', id: `hub-vpn-activate-${profileId}` };
         renderStatusSlot();
         renderCatalogSlot();
+        renderSideSlot();
         renderFooter();
         restorePendingFocus();
       }
@@ -2574,6 +2576,7 @@ export function render(container, ctx) {
         pendingFocus = { kind: 'element-id', id: `hub-vpn-deactivate-${profileId}` };
         renderStatusSlot();
         renderCatalogSlot();
+        renderSideSlot();
         renderFooter();
         restorePendingFocus();
       }

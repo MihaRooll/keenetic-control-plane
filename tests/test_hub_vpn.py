@@ -15,6 +15,7 @@ from router_control.adapters.netcraze.allowlist import validate_wireguard_id
 REPO_ROOT = Path(__file__).resolve().parents[1]
 HUB = REPO_ROOT / "router_control_host" / "web" / "hub"
 VPN_MODEL_JS = HUB / "features" / "vpn-model.js"
+VPN_SCREEN_JS = HUB / "screens" / "vpn.js"
 WIREGUARD_SERVICE_PY = (
     REPO_ROOT / "router_control" / "application" / "wireguard_apply_service.py"
 )
@@ -945,6 +946,27 @@ console.log(JSON.stringify(mod.describeVpnAutoReconnectNote({
     )
     assert "повтор при сбое без ручного подтверждения" in result
     assert "работа на роутере не подтверждена" in result
+
+
+def test_vpn_screen_load_catalog_flow_finally_rerenders_side_slot() -> None:
+    """loadCatalogFlow finally must refresh side slot when is_active may change."""
+    source = VPN_SCREEN_JS.read_text(encoding="utf-8")
+    load_flow = re.search(
+        r"async function loadCatalogFlow\(\) \{([\s\S]*?\n  \})",
+        source,
+    )
+    assert load_flow is not None
+    finally_block = re.search(
+        r"finally \{([\s\S]*?\n    \})",
+        load_flow.group(1),
+    )
+    assert finally_block is not None
+    body = finally_block.group(1)
+    assert "renderCatalogSlot()" in body
+    assert "renderSideSlot()" in body
+    catalog_idx = body.index("renderCatalogSlot()")
+    side_idx = body.index("renderSideSlot()")
+    assert side_idx > catalog_idx
 
 
 @pytest.mark.parametrize(
