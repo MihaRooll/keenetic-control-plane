@@ -2274,7 +2274,13 @@ export function render(container, ctx) {
         };
       }
       persistedMutationVerdict = lastVerdict;
-      if (lastVerdict) {
+      if (
+        lastVerdict
+        && !(
+          lastVerdict.success
+          && (disposed || offline || myController.signal.aborted)
+        )
+      ) {
         ctx.showToast({
           tone: lastVerdict.success
             ? 'success'

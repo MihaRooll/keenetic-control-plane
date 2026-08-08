@@ -42,6 +42,10 @@ class LiveIdentityTupleMismatchError(RuntimeError):
     """Live Gate A probe evidence does not match the recorded certified tuple."""
 
 
+class LiveGateARequiredError(RuntimeError):
+    """Gate A certification is closed or missing for a live mutation."""
+
+
 def _is_vault_error(exc: BaseException) -> bool:
     return exc.__class__.__name__ == "VaultError"
 
@@ -125,6 +129,13 @@ def map_wifi_live_transport_error(
             message=(
                 f"incomplete live connection params; missing: {exc.field}"
             ),
+        )
+
+    if isinstance(exc, LiveGateARequiredError):
+        return WifiLiveTransportErrorMapping(
+            status_code=503,
+            code=gate_a_required_code(prefix),
+            message=str(exc) or "Gate A certification required for live mutation",
         )
 
     return WifiLiveTransportErrorMapping(
@@ -480,6 +491,7 @@ def ensure_live_gate_a_tuple_match(
 
 
 __all__ = [
+    "LiveGateARequiredError",
     "LiveIdentityTupleMismatchError",
     "MissingLiveConnectionFieldError",
     "WifiLiveConnectionParams",

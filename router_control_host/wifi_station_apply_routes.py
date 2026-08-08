@@ -49,6 +49,7 @@ from router_control_host.errors import error_response, sealed_apply_trail_begin_
 from router_control_host.routes import API_PREFIX, _mutation_degraded, _ok_headers
 from router_control_host.state import HostState
 from router_control_host.wifi_live_transport import (
+    LiveGateARequiredError,
     LiveIdentityTupleMismatchError,
     WifiLiveConnectionParams,
     connection_params_from_fields,
@@ -214,7 +215,7 @@ class _EphemeralLiveInternetStatusTransport:
     def _ensure_tuple_match(self, session: Any) -> None:
         cert = self._host.gate_a_certification
         if cert is None or not cert.is_open:
-            raise LiveIdentityTupleMismatchError(
+            raise LiveGateARequiredError(
                 "Gate A certification required for live mutation"
             )
         ensure_live_gate_a_tuple_match(
@@ -250,7 +251,7 @@ class _EphemeralLiveStationApplyTransport:
     def _ensure_tuple_match(self, session: Any) -> None:
         cert = self._host.gate_a_certification
         if cert is None or not cert.is_open:
-            raise LiveIdentityTupleMismatchError(
+            raise LiveGateARequiredError(
                 "Gate A certification required for live mutation"
             )
         ensure_live_gate_a_tuple_match(

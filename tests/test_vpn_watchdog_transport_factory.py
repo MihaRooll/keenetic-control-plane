@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from router_control.adapters.netcraze.certification import GateACertification
-from router_control_host.wifi_live_transport import LiveIdentityTupleMismatchError
+from router_control_host.wifi_live_transport import LiveGateARequiredError
 from router_control.composition import create_offline_runtime
 from router_control_host.state import HostState
 from router_control_host.wifi_live_transport import WifiLiveSession
@@ -150,5 +150,5 @@ def test_transport_fail_closed_when_gate_a_closes_before_session(
     transport = factory(router_id)
     assert transport is not None
     host.gate_a_certification = None
-    with pytest.raises(LiveIdentityTupleMismatchError, match="Gate A certification required"):
+    with pytest.raises(LiveGateARequiredError, match="Gate A certification required"):
         transport.execute_rci_parse("show interface Wireguard5")

@@ -193,7 +193,7 @@ def test_observe_transport_fail_closed_when_gate_a_closes_before_session(
     tmp_path: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from router_control_host.wifi_live_transport import LiveIdentityTupleMismatchError
+    from router_control_host.wifi_live_transport import LiveGateARequiredError
 
     host, router_id = _live_host(tmp_path)
     _patch_live_session_mocks(monkeypatch)
@@ -202,7 +202,7 @@ def test_observe_transport_fail_closed_when_gate_a_closes_before_session(
     transport = factory(router_id)
     assert transport is not None
     host.gate_a_certification = None
-    with pytest.raises(LiveIdentityTupleMismatchError, match="Gate A certification required"):
+    with pytest.raises(LiveGateARequiredError, match="Gate A certification required"):
         transport.execute_rci_parse("show internet status")
 
 

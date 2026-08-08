@@ -792,10 +792,12 @@ export function mountOverviewSimpleNetworks(options) {
         standingPersistWarningKind = null;
       }
       if (verdict?.success) {
-        if (action.startsWith('staff')) {
-          staffFormDirty = false;
-        } else {
-          guestFormDirty = false;
+        if (!signal?.aborted && !resolveOffline()) {
+          if (action.startsWith('staff')) {
+            staffFormDirty = false;
+          } else {
+            guestFormDirty = false;
+          }
         }
       }
     } catch (error) {
