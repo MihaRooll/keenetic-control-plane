@@ -20,6 +20,10 @@ from router_control.adapters.netcraze.startup_backup import (
 )
 from router_control.adapters.netcraze.transport import SealedRciWriteRequest
 from router_control.application.recovery import SealedApplyTrailParams
+from router_control.application.router_apply_lock import (
+    resolve_router_apply_lock_key,
+    run_with_router_apply_lock,
+)
 from router_control.application.wifi_apply_service import (
     WifiApplyResult,
     WifiApplyServiceError,
@@ -234,6 +238,18 @@ def _live_params_from_body(
 
 def _should_use_live_path(body: WifiLiveConnectionFields, host: HostState) -> bool:
     return is_win32_live_capable() and _live_params_from_body(body, host) is not None
+
+
+def _router_apply_lock_key(
+    body: WifiLiveConnectionFields,
+    router_id: str | None,
+) -> str:
+    return resolve_router_apply_lock_key(
+        router_id,
+        live_host=body.host,
+        ssh_host_key_sha256=body.ssh_host_key_sha256,
+        source_address=body.source_address,
+    )
 
 
 def _connection_incomplete_error(
@@ -702,6 +718,7 @@ def wifi_apply(request: Request, body: WifiApplyBody) -> JSONResponse:
 
     intent_redacted = _wifi_apply_intent_redacted(body, ap_id=body.ap_id)
     router_id = body.router_id.strip() if body.router_id else None
+    lock_key = _router_apply_lock_key(body, router_id)
     trail_params = _sealed_apply_trail_params(
         request,
         route="wifi",
@@ -720,11 +737,14 @@ def wifi_apply(request: Request, body: WifiApplyBody) -> JSONResponse:
                 "Gate A certification required for live apply (startup-config backup)",
             )
         try:
-            result = _dispatch_apply_live(
-                host=host,
-                body=body,
-                params=params,
-                sealed_apply_params=trail_params,
+            result = run_with_router_apply_lock(
+                lock_key,
+                lambda: _dispatch_apply_live(
+                    host=host,
+                    body=body,
+                    params=params,
+                    sealed_apply_params=trail_params,
+                ),
             )
         except LiveIdentityTupleMismatchError:
             return _identity_mismatch_error(request)
@@ -788,15 +808,18 @@ def wifi_apply(request: Request, body: WifiApplyBody) -> JSONResponse:
     if isinstance(transport, JSONResponse):
         return transport
     try:
-        result = apply_wifi_intent(
-            intent=_intent_from_body(body),
-            ap_id=body.ap_id,
-            transport=transport,
-            credential_resolver=_credential_resolver(host),
-            compensate_on_failure=body.compensate_on_failure,
-            idempotent=body.idempotent,
-            store=host.runtime.store,
-            sealed_apply_params=trail_params,
+        result = run_with_router_apply_lock(
+            lock_key,
+            lambda: apply_wifi_intent(
+                intent=_intent_from_body(body),
+                ap_id=body.ap_id,
+                transport=transport,
+                credential_resolver=_credential_resolver(host),
+                compensate_on_failure=body.compensate_on_failure,
+                idempotent=body.idempotent,
+                store=host.runtime.store,
+                sealed_apply_params=trail_params,
+            ),
         )
     except SealedApplyTrailBeginError as exc:
         _record_wifi_sealed_audit(
@@ -871,6 +894,7 @@ def wifi_teardown(request: Request, body: WifiTeardownBody) -> JSONResponse:
 
     intent_redacted = _wifi_teardown_intent_redacted(body)
     router_id = body.router_id.strip() if body.router_id else None
+    lock_key = _router_apply_lock_key(body, router_id)
     trail_params = _sealed_apply_trail_params(
         request,
         route="wifi",
@@ -889,11 +913,14 @@ def wifi_teardown(request: Request, body: WifiTeardownBody) -> JSONResponse:
                 "Gate A certification required for live teardown (startup-config backup)",
             )
         try:
-            result = _dispatch_teardown_live(
-                host=host,
-                body=body,
-                params=params,
-                sealed_apply_params=trail_params,
+            result = run_with_router_apply_lock(
+                lock_key,
+                lambda: _dispatch_teardown_live(
+                    host=host,
+                    body=body,
+                    params=params,
+                    sealed_apply_params=trail_params,
+                ),
             )
         except LiveIdentityTupleMismatchError:
             return _identity_mismatch_error(request)
@@ -957,12 +984,15 @@ def wifi_teardown(request: Request, body: WifiTeardownBody) -> JSONResponse:
     if isinstance(transport, JSONResponse):
         return transport
     try:
-        result = teardown_wifi_ap(
-            ap_id=body.ap_id,
-            transport=transport,
-            wpa_mode=body.wpa_mode,
-            store=host.runtime.store,
-            sealed_apply_params=trail_params,
+        result = run_with_router_apply_lock(
+            lock_key,
+            lambda: teardown_wifi_ap(
+                ap_id=body.ap_id,
+                transport=transport,
+                wpa_mode=body.wpa_mode,
+                store=host.runtime.store,
+                sealed_apply_params=trail_params,
+            ),
         )
     except SealedApplyTrailBeginError as exc:
         _record_wifi_sealed_audit(

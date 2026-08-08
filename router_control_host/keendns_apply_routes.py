@@ -26,6 +26,10 @@ from router_control.application.keendns_apply_service import (
     apply_keendns_intent,
 )
 from router_control.application.recovery import SealedApplyTrailParams
+from router_control.application.router_apply_lock import (
+    resolve_router_apply_lock_key,
+    run_with_router_apply_lock,
+)
 from router_control.persistence.errors import SealedApplyTrailBeginError
 
 from router_control_host.apply_response_models import KeenDnsApplyResponse
@@ -136,6 +140,18 @@ def _live_params_from_body(
 
 def _should_use_live_path(body: KeenDnsLiveConnectionFields, host: HostState) -> bool:
     return is_win32_live_capable() and _live_params_from_body(body, host) is not None
+
+
+def _router_apply_lock_key(
+    body: KeenDnsLiveConnectionFields,
+    router_id: str | None,
+) -> str:
+    return resolve_router_apply_lock_key(
+        router_id,
+        live_host=body.host,
+        ssh_host_key_sha256=body.ssh_host_key_sha256,
+        source_address=body.source_address,
+    )
 
 
 def _connection_incomplete_error(
@@ -412,6 +428,7 @@ def keendns_apply(request: Request, body: KeenDnsApplyBody) -> JSONResponse:
     intent = _intent_from_body(body)
     intent_redacted = _intent_redacted(body)
     router_id = body.router_id.strip() if body.router_id else None
+    lock_key = _router_apply_lock_key(body, router_id)
     trail_params = _sealed_apply_trail_params(
         request,
         intent_redacted=intent_redacted,
@@ -429,12 +446,15 @@ def keendns_apply(request: Request, body: KeenDnsApplyBody) -> JSONResponse:
                 "Gate A certification required for live apply (startup-config backup)",
             )
         try:
-            result = _dispatch_apply_live(
-                host=host,
-                body=body,
-                params=params,
-                intent=intent,
-                sealed_apply_params=trail_params,
+            result = run_with_router_apply_lock(
+                lock_key,
+                lambda: _dispatch_apply_live(
+                    host=host,
+                    body=body,
+                    params=params,
+                    intent=intent,
+                    sealed_apply_params=trail_params,
+                ),
             )
         except LiveIdentityTupleMismatchError:
             return _identity_mismatch_error(request)
@@ -462,11 +482,14 @@ def keendns_apply(request: Request, body: KeenDnsApplyBody) -> JSONResponse:
     if isinstance(transport, JSONResponse):
         return transport
     try:
-        result = apply_keendns_intent(
-            intent=intent,
-            transport=transport,
-            store=host.runtime.store,
-            trail_params=trail_params,
+        result = run_with_router_apply_lock(
+            lock_key,
+            lambda: apply_keendns_intent(
+                intent=intent,
+                transport=transport,
+                store=host.runtime.store,
+                trail_params=trail_params,
+            ),
         )
     except SealedApplyTrailBeginError as exc:
         return sealed_apply_trail_begin_error_response(request, exc)

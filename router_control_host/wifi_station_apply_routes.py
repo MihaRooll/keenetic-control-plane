@@ -20,6 +20,10 @@ from router_control.adapters.netcraze.startup_backup import (
 from router_control.adapters.netcraze.transport import SealedRciWriteRequest
 from router_control.adapters.netcraze.wifi_station_rci import validate_wifi_station_id
 from router_control.application.recovery import SealedApplyTrailParams
+from router_control.application.router_apply_lock import (
+    resolve_router_apply_lock_key,
+    run_with_router_apply_lock,
+)
 from router_control.application.wifi_observation_helpers import (
     ERROR_CODE_STATION_PRIORITY_REQUIRES_IP_GLOBAL,
 )
@@ -227,6 +231,18 @@ def _live_params_from_body(
 
 def _should_use_live_path(body: WifiLiveConnectionFields, host: HostState) -> bool:
     return is_win32_live_capable() and _live_params_from_body(body, host) is not None
+
+
+def _router_apply_lock_key(
+    body: WifiLiveConnectionFields,
+    router_id: str | None,
+) -> str:
+    return resolve_router_apply_lock_key(
+        router_id,
+        live_host=body.host,
+        ssh_host_key_sha256=body.ssh_host_key_sha256,
+        source_address=body.source_address,
+    )
 
 
 def _connection_incomplete_error(
@@ -613,6 +629,7 @@ def wifi_station_apply(request: Request, body: WifiStationApplyBody) -> JSONResp
 
     intent_redacted = _wifi_station_intent_redacted(body)
     router_id = body.router_id.strip() if body.router_id else None
+    lock_key = _router_apply_lock_key(body, router_id)
     trail_params = _sealed_apply_trail_params(
         request,
         route="wifi.station",
@@ -631,13 +648,16 @@ def wifi_station_apply(request: Request, body: WifiStationApplyBody) -> JSONResp
                 "Gate A certification required for live apply (startup-config backup)",
             )
         try:
-            result = _dispatch_apply_live(
-                host=host,
-                body=body,
-                params=params,
-                intent=intent,
-                options=options,
-                sealed_apply_params=trail_params,
+            result = run_with_router_apply_lock(
+                lock_key,
+                lambda: _dispatch_apply_live(
+                    host=host,
+                    body=body,
+                    params=params,
+                    intent=intent,
+                    options=options,
+                    sealed_apply_params=trail_params,
+                ),
             )
         except LiveIdentityTupleMismatchError:
             return _identity_mismatch_error(request)
@@ -700,13 +720,16 @@ def wifi_station_apply(request: Request, body: WifiStationApplyBody) -> JSONResp
     if isinstance(transport, JSONResponse):
         return transport
     try:
-        result = apply_wifi_station_intent(
-            intent=intent,
-            transport=transport,
-            credential_resolver=_credential_resolver(host),
-            options=options,
-            store=host.runtime.store,
-            sealed_apply_params=trail_params,
+        result = run_with_router_apply_lock(
+            lock_key,
+            lambda: apply_wifi_station_intent(
+                intent=intent,
+                transport=transport,
+                credential_resolver=_credential_resolver(host),
+                options=options,
+                store=host.runtime.store,
+                sealed_apply_params=trail_params,
+            ),
         )
     except SealedApplyTrailBeginError as exc:
         _record_wifi_station_sealed_audit(
@@ -785,6 +808,7 @@ def wifi_station_teardown(request: Request, body: WifiStationTeardownBody) -> JS
 
     intent_redacted = _wifi_station_intent_redacted(body)
     router_id = body.router_id.strip() if body.router_id else None
+    lock_key = _router_apply_lock_key(body, router_id)
     trail_params = _sealed_apply_trail_params(
         request,
         route="wifi.station",
@@ -803,13 +827,16 @@ def wifi_station_teardown(request: Request, body: WifiStationTeardownBody) -> JS
                 "Gate A certification required for live teardown (startup-config backup)",
             )
         try:
-            result = _dispatch_teardown_live(
-                host=host,
-                params=params,
-                intent=intent,
-                options=options,
-                host_state=host,
-                sealed_apply_params=trail_params,
+            result = run_with_router_apply_lock(
+                lock_key,
+                lambda: _dispatch_teardown_live(
+                    host=host,
+                    params=params,
+                    intent=intent,
+                    options=options,
+                    host_state=host,
+                    sealed_apply_params=trail_params,
+                ),
             )
         except LiveIdentityTupleMismatchError:
             return _identity_mismatch_error(request)
@@ -872,13 +899,16 @@ def wifi_station_teardown(request: Request, body: WifiStationTeardownBody) -> JS
     if isinstance(transport, JSONResponse):
         return transport
     try:
-        result = teardown_wifi_station(
-            intent=intent,
-            transport=transport,
-            credential_resolver=_credential_resolver(host),
-            options=options,
-            store=host.runtime.store,
-            sealed_apply_params=trail_params,
+        result = run_with_router_apply_lock(
+            lock_key,
+            lambda: teardown_wifi_station(
+                intent=intent,
+                transport=transport,
+                credential_resolver=_credential_resolver(host),
+                options=options,
+                store=host.runtime.store,
+                sealed_apply_params=trail_params,
+            ),
         )
     except SealedApplyTrailBeginError as exc:
         _record_wifi_station_sealed_audit(
