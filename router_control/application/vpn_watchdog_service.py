@@ -10,20 +10,25 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-_LOGGER = logging.getLogger(__name__)
-
-from router_control.application.router_apply_lock import run_with_router_apply_lock
 from router_control.adapters.netcraze.startup_backup import StartupBackupError
-from router_control.application.wireguard_apply_service import (
-    WireguardApplyTransport,
-    apply_wireguard_intent,
-    observe_tunnel,
-)
+from router_control.application.router_apply_lock import run_with_router_apply_lock
 from router_control.application.vpn_assignment_helpers import (
     coerce_peer_rci_shape,
     resolve_assignment_wg_id,
 )
+from router_control.application.wireguard_apply_planner import (
+    WG_HANDSHAKE_SETTLE_SECONDS_MIN,
+    clamp_handshake_settle_seconds,
+)
+from router_control.application.wireguard_apply_service import (
+    WireguardApplyTransport,
+    _extract_show_interface_observed,
+    _observe_tunnel_with_optional_recheck,
+    apply_wireguard_intent,
+)
 from router_control.domain.network_intents import WireguardIntent
+
+_LOGGER = logging.getLogger(__name__)
 
 VPN_WATCHDOG_ENABLED = os.environ.get("VPN_WATCHDOG_ENABLED", "").strip().lower() in (
     "1",
@@ -191,16 +196,22 @@ class VpnWatchdogHandle:
         intent: WireguardIntent,
     ) -> bool:
         raw = transport.execute_rci_parse(f"show interface {intent.wg_id}")
-        from router_control.application.wireguard_apply_service import (
-            _extract_show_interface_observed,
-        )
-
         observed = _extract_show_interface_observed(
             raw,
             match_peer_public_key=intent.peer_public_key,
         )
-        observation = observe_tunnel(observed)
-        return observation.verdict == "tunnel_healthy"
+        tunnel_status, _final_observed, _explanation = _observe_tunnel_with_optional_recheck(
+            transport,
+            wg_id=intent.wg_id,
+            observed=observed,
+            handshake_settle_seconds=clamp_handshake_settle_seconds(
+                WG_HANDSHAKE_SETTLE_SECONDS_MIN
+            ),
+            logs=[],
+            match_peer_public_key=intent.peer_public_key,
+            trail=None,
+        )
+        return tunnel_status == "tunnel_healthy"
 
     def _intent_from_assignment(
         self,

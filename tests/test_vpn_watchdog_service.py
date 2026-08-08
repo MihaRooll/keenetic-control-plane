@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
-
 import router_control.application.vpn_watchdog_service as vpn_watchdog_service
 from router_control.application.vpn_watchdog_service import (
     VPN_WATCHDOG_POLL_SECONDS,
@@ -71,8 +70,8 @@ async def test_poll_once_clears_streak_only_when_reapply_applied(
 
     monkeypatch.setattr(
         vpn_watchdog_service,
-        "observe_tunnel",
-        lambda _observed: type("O", (), {"verdict": "tunnel_unhealthy"})(),
+        "_observe_tunnel_with_optional_recheck",
+        lambda *_args, **_kwargs: ("tunnel_unhealthy", {}, None),
     )
     monkeypatch.setattr(
         vpn_watchdog_service,
@@ -103,8 +102,8 @@ async def test_poll_once_keeps_streak_when_reapply_fails(
 
     monkeypatch.setattr(
         vpn_watchdog_service,
-        "observe_tunnel",
-        lambda _observed: type("O", (), {"verdict": "tunnel_unhealthy"})(),
+        "_observe_tunnel_with_optional_recheck",
+        lambda *_args, **_kwargs: ("tunnel_unhealthy", {}, None),
     )
     monkeypatch.setattr(
         vpn_watchdog_service,
@@ -135,8 +134,8 @@ async def test_poll_once_keeps_streak_when_backup_unavailable(
 
     monkeypatch.setattr(
         vpn_watchdog_service,
-        "observe_tunnel",
-        lambda _observed: type("O", (), {"verdict": "tunnel_unhealthy"})(),
+        "_observe_tunnel_with_optional_recheck",
+        lambda *_args, **_kwargs: ("tunnel_unhealthy", {}, None),
     )
     apply_calls: list[str] = []
 
