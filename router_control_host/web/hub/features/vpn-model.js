@@ -73,7 +73,7 @@ const INTERFACE_ABSENT_STATUS = 'interface_absent';
  * @returns {boolean}
  */
 function isConfigurationAccepted(status) {
-  return !status || status === CONFIGURATION_ACCEPTED_STATUS;
+  return status === CONFIGURATION_ACCEPTED_STATUS;
 }
 
 /**
@@ -82,7 +82,7 @@ function isConfigurationAccepted(status) {
  */
 function isInterfaceObservedOk(status) {
   if (!status) {
-    return true;
+    return false;
   }
   return (
     status.startsWith(INTERFACE_PRESENT_STATUS_PREFIX)
@@ -522,8 +522,12 @@ export function describeConfigurationOutcome(response) {
   }
 
   if (overall === 'applied') {
+    const configurationMissing = configurationStatus == null;
+    const interfaceMissing = interfaceStatus == null;
     const needsWarning =
-      !isConfigurationAccepted(configurationStatus)
+      configurationMissing
+      || interfaceMissing
+      || !isConfigurationAccepted(configurationStatus)
       || !isInterfaceObservedOk(interfaceStatus);
     return {
       hubState: HubState.WARNING,

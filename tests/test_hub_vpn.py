@@ -158,6 +158,8 @@ def test_vpn_parse_tunnel_verdict_applied_but_never_handshaked(tmp_path: Path) -
     """applied + never_handshaked: конфигурация принята, туннель без ответа."""
     response = {
         "overall": "applied",
+        "configuration_verification_status": "device_accepted_configuration",
+        "interface_verification_status": "interface_present_up",
         "tunnel_verification_status": "tunnel_never_handshaked",
         "verdict_explanation": {"signals_missing": [], "signals_rejected": []},
     }
@@ -705,6 +707,40 @@ console.log(JSON.stringify(mod.describeConfigurationOutcome({response_json}).mes
 """,
     )
     assert result == "Настройки туннеля приняты роутером"
+
+
+def test_vpn_configuration_outcome_applied_warns_when_verification_missing(tmp_path: Path) -> None:
+    """applied без verification statuses → fail-closed warning, не «приняты»."""
+    for label, response in [
+        (
+            "both_missing",
+            {"overall": "applied"},
+        ),
+        (
+            "configuration_missing",
+            {
+                "overall": "applied",
+                "interface_verification_status": "interface_present_up",
+            },
+        ),
+        (
+            "interface_missing",
+            {
+                "overall": "applied",
+                "configuration_verification_status": "device_accepted_configuration",
+            },
+        ),
+    ]:
+        response_json = json.dumps(response, ensure_ascii=False)
+        result = _run_export(
+            tmp_path,
+            label=f"config-outcome-missing-{label}",
+            script_body=f"""
+console.log(JSON.stringify(mod.describeConfigurationOutcome({response_json}).message));
+""",
+        )
+        assert "не подтвердила" in result
+        assert "приняты роутером" not in result
 
 
 def test_vpn_build_intent_from_parse_preview_includes_peer_fields(tmp_path: Path) -> None:

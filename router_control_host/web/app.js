@@ -2814,7 +2814,11 @@ async function renderSimpleMode(root, renderOpts) {
       });
       surface.guest.renderResult(data);
       APPLY_TOAST_PATHS["P-wifi-apply"].toastFromResponse(data);
-      if (data && data.overall === "applied") {
+      if (
+        data
+        && data.overall === "applied"
+        && data.on_air_verification_status === "on_air_verified"
+      ) {
         markSimpleWizardStepDone(5);
         refreshSimpleWizardStepperIfMounted();
       }

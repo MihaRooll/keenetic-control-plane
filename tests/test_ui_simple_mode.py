@@ -570,6 +570,59 @@ console.log(JSON.stringify({{
     assert result["confirmed_marks_done"] is True
 
 
+def test_simple_wizard_guest_wifi_step5_honesty() -> None:
+    """Step 5 done only when overall=applied AND on_air_verified."""
+    script = f"""
+(async () => {{
+{_FLUSH_ASYNC}
+const manifestPath = process.argv[1].replace(/app\\.js$/, "ui-field-manifest.json");
+const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+uiExports.setFieldManifestForTest(manifest);
+async function applyAndCheck(applyData) {{
+  uiExports.setApiFetchStubForTest(async (path) => {{
+    if (path === "/routers") {{
+      return {{ data: {{ items: [] }}, status: 200 }};
+    }}
+    if (path === "/wifi/apply") {{
+      return {{ data: applyData, status: 200 }};
+    }}
+    return {{ data: {{}}, status: 200 }};
+  }});
+  const root = document.createElement("div");
+  document.body.appendChild(root);
+  await uiExports.renderSimpleMode(root);
+  uiExports.goSimpleWizardStep(5, {{ updateHash: false }});
+  document.getElementById("simple-guest-ssid").value = "GuestTest";
+  document.getElementById("simple-guest-psk-ref").value = "cred-ref-1";
+  document.getElementById("simple-guest-confirm").checked = true;
+  dom.queryByTestId("simple-guest-apply", root).click();
+  await flushUiAsync();
+  return uiExports.isSimpleWizardStepDone(5, null);
+}}
+const appliedUnverifiedDone = await applyAndCheck({{
+  overall: "applied",
+  on_air_verification_status: "on_air_unverified",
+}});
+document.body.innerHTML = "";
+const appliedNoOnAirDone = await applyAndCheck({{ overall: "applied" }});
+document.body.innerHTML = "";
+const verifiedDone = await applyAndCheck({{
+  overall: "applied",
+  on_air_verification_status: "on_air_verified",
+}});
+console.log(JSON.stringify({{
+  applied_unverified_not_done: appliedUnverifiedDone === false,
+  applied_no_on_air_not_done: appliedNoOnAirDone === false,
+  verified_marks_done: verifiedDone === true,
+}}));
+}})().catch((err) => {{ console.error(err); process.exit(1); }});
+"""
+    result = _run_ui_dom_runtime(script)
+    assert result["applied_unverified_not_done"] is True
+    assert result["applied_no_on_air_not_done"] is True
+    assert result["verified_marks_done"] is True
+
+
 def test_simple_wizard_vpn_import_step4_honesty() -> None:
     """F-6: step 4 done only after catalog import returns profile_id."""
     script = f"""
