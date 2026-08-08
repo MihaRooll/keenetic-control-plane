@@ -273,6 +273,7 @@ export function mapInternetSourceKindToSegment(kind) {
  *     routing_probe_status?: string|null,
  *   }>|null,
  *   domainPublished?: boolean,
+ *   domainCloudVerified?: boolean,
  *   internetEnrichmentBusy?: boolean,
  *   vpnEnrichmentBusy?: boolean,
  *   systemCheckRunning?: boolean,
@@ -326,7 +327,8 @@ export function computeOverviewReadiness(model, context = {}) {
     }
   }
 
-  const domainReady = context.domainPublished === true;
+  // domainPublished (dispatch-only) does not count — only cloud registration verification.
+  const domainReady = context.domainCloudVerified === true;
 
   categories.router = routerReady;
   categories.internet = internetReady;

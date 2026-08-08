@@ -2941,7 +2941,7 @@ console.log(JSON.stringify({{
     assert payload["loadingReady"] is None
     assert payload["loadingLoaded"] is False
     assert payload["allReadyExceptDomainCount"] == 3
-    assert payload["allReadyCount"] == 4
+    assert payload["allReadyCount"] == 3  # domainPublished dispatch ≠ cloud registration
     assert payload["noneReadyCount"] == 0
     assert payload["pillLabels"] == ["Отвечает", "Доступ сохранён", "Совпадает: неизвестно"]
     assert payload["pillTones"] == ["success", "danger", "neutral"]
@@ -3408,6 +3408,45 @@ def test_overview_connectivity_both_arms_call_render_status_strip() -> None:
     assert "renderStatusStrip()" in before_reload
     online_render_idx = before_reload.find("renderStatusStrip()")
     assert online_render_idx != -1
+
+
+def test_overview_connectivity_offline_clears_stale_evidence() -> None:
+    """overview-offline-stale-evidence: offline arm clears routerInternetObserve and vpnLiveStatusById."""
+    source = _read(OVERVIEW_JS)
+    callback = _extract_subscribe_connectivity_callback(source)
+
+    offline_arm_start = callback.find("if (!online)")
+    assert offline_arm_start != -1
+    offline_arm = callback[offline_arm_start:]
+    offline_return = offline_arm.find("return")
+    offline_block = offline_arm[: offline_return + len("return")]
+    normalized = _normalize_whitespace(offline_block)
+    assert "routerInternetObserve = null" in normalized
+    assert "vpnLiveStatusById = {}" in normalized
+    observe_idx = normalized.find("routerInternetObserve = null")
+    vpn_idx = normalized.find("vpnLiveStatusById = {}")
+    render_readiness_idx = normalized.find("renderReadinessHeader()")
+    render_internet_idx = normalized.find("renderInternetCardSlot()")
+    render_vpn_idx = normalized.find("renderVpnSlot()")
+    return_idx = normalized.find("return")
+    assert observe_idx != -1 and vpn_idx != -1
+    assert observe_idx < render_readiness_idx < render_internet_idx < render_vpn_idx < return_idx
+
+
+def test_overview_vpn_live_status_catch_clears_stale_cache() -> None:
+    """overview-offline-stale-evidence: live-status probe failure clears vpnLiveStatusById fail-closed."""
+    source = _read(OVERVIEW_JS)
+    fn_body = _extract_function_body(source, "async function refreshVpnCatalogAndLiveStatus(")
+    assert fn_body is not None
+    catch_start = fn_body.find("} catch (liveError) {")
+    assert catch_start != -1
+    catch_block = fn_body[catch_start:]
+    assert "isAborted(liveError)" in catch_block
+    assert re.search(
+        r"vpnLiveStatusById\s*=\s*\{\};",
+        catch_block,
+    ), "live-status catch must clear stale vpnLiveStatusById fail-closed"
+    assert "optional live-status failure must not block catalog settle" in catch_block
 
 
 def test_overview_networks_run_mutation_resolve_disabled_guard() -> None:

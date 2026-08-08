@@ -1264,6 +1264,7 @@ export function render(container, ctx) {
           if (isAborted(liveError)) {
             throw liveError;
           }
+          vpnLiveStatusById = {};
           // List succeeded; optional live-status failure must not block catalog settle.
         }
       } else {
@@ -2577,10 +2578,21 @@ export function render(container, ctx) {
     if (!online) {
       offline = true;
       recovering = false;
+      internetObserveAbort?.abort();
+      abortEnrichment();
+      internetEnrichmentBusy = false;
+      vpnEnrichmentBusy = false;
+      routerInternetObserve = null;
+      vpnLiveStatusById = {};
+      lastReadinessSignature = null;
+      lastInternetCardSignature = null;
+      lastVpnSignature = null;
       updateRefreshButton();
       renderSummary();
+      renderReadinessHeader();
       domainMount?.update();
       networksMount?.update();
+      renderInternetCardSlot();
       renderVpnSlot();
       renderStatusStrip();
       return;
