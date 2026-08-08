@@ -540,3 +540,15 @@ def test_planner_emits_set_tcp_mss_before_up() -> None:
     )
     compensate = compensate_ops_for_succeeded_wireguard_apply(plan.apply_ops, succeeded)
     assert WireguardRciOperation.CLEAR_TCP_MSS.value in [op.operation for op in compensate]
+
+
+def test_teardown_includes_clear_ip_global_when_priority_set() -> None:
+    plan = compile_wireguard_intent_to_ops(_intent(ip_global_priority=900))
+    teardown = [op.operation for op in plan.teardown_ops]
+    assert WireguardRciOperation.CLEAR_IP_GLOBAL.value in teardown
+
+
+def test_teardown_omits_clear_ip_global_without_ip_global() -> None:
+    plan = compile_wireguard_intent_to_ops(_intent())
+    teardown = [op.operation for op in plan.teardown_ops]
+    assert WireguardRciOperation.CLEAR_IP_GLOBAL.value not in teardown

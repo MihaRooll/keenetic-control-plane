@@ -134,7 +134,7 @@ Gate A ReadOnlyCertified expendable class (`NC-1812`, firmware **5.01.C.1.0-0**,
 | Binding via `ip hotspot policy <iface\|segment> <PolicyName>` | Device template is `policy {interface} ({access}\|{policy})`; with zero policies Choose is only permit/deny — named PolicyName path **not demonstrated** |
 | `ip global` as internet source | Confirmed at **interface** level (`priority`\|`order`\|`auto`); config-level `ip global` help empty/useless in earlier capture |
 
-**Still unverified (honest):** whether a policy can be restricted to a single connection; whether a policy can be populated without `permit global`; what `ipv6` and `route` inside policy context actually do; kill-switch; named connection policy; **`CLEAR_IP_GLOBAL` on teardown** (not device-proven). **Device-verified (§M-24/M-27):** WireGuard `wireguard_ip_global` accepted; higher priority number wins; default-route via WG **reversible**.
+**Still unverified (honest):** whether a policy can be restricted to a single connection; whether a policy can be populated without `permit global`; what `ipv6` and `route` inside policy context actually do; kill-switch; named connection policy; **`CLEAR_IP_GLOBAL` on teardown** — emitted when intent has `ip_global_*`; teardown ACK observed §M-38; clear semantics **not separately WriteCertified**. **Device-verified (§M-24/M-27):** WireGuard `wireguard_ip_global` accepted; higher priority number wins; default-route via WG **reversible**.
 
 ---
 
@@ -192,7 +192,7 @@ Technician / preset workflows must follow this sequence — **do not** switch ro
 7. **Verify actual egress** — traffic path confirmation (external probe / traceroute / leak test) — **default-route via WG device-verified reversible** (§M-27); named kill-switch still open
 8. **Only then** declare online
 
-**Premature-success hazard:** `/wireguard/apply` `overall=applied` when interface is present+up verifies **configuration accepted + interface admin state only** (`configuration_verification_status`, `interface_verification_status`) — tunnel status uses 4-state honesty (`tunnel_no_peer` / `tunnel_never_handshaked` / `tunnel_healthy` / `tunnel_unverified`); **`tunnel_healthy` DEVICE-CONFIRMED** on observe path (2026-07-31; first real handshake 2026-08-05 §M-24) — **`overall=applied` + `tunnel_healthy` still NOT kill-switch / named policy**; **`CLEAR_IP_GLOBAL` on teardown NOT device-proven** (teardown omits it). See [`OPERATOR_AWG_APPLY.md`](OPERATOR_AWG_APPLY.md).
+**Premature-success hazard:** `/wireguard/apply` `overall=applied` when interface is present+up verifies **configuration accepted + interface admin state only** (`configuration_verification_status`, `interface_verification_status`) — tunnel status uses 4-state honesty (`tunnel_no_peer` / `tunnel_never_handshaked` / `tunnel_healthy` / `tunnel_unverified`); **`tunnel_healthy` DEVICE-CONFIRMED** on observe path (2026-07-31; first real handshake 2026-08-05 §M-24) — **`overall=applied` + `tunnel_healthy` still NOT kill-switch / named policy**; **`CLEAR_IP_GLOBAL` on teardown** — emitted when intent has `ip_global_*`; teardown ACK observed §M-38; clear semantics **not separately WriteCertified**. See [`OPERATOR_AWG_APPLY.md`](OPERATOR_AWG_APPLY.md).
 
 ---
 
@@ -201,7 +201,7 @@ Technician / preset workflows must follow this sequence — **do not** switch ro
 1. How (or whether) a policy can be restricted to a **single connection** on this firmware
 2. Whether a policy can be populated **without** `permit global`
 3. What **`ipv6`** and **`route`** inside a policy context actually do
-4. ~~How a **WireGuard** interface expresses `ip global`~~ — **RESOLVED device-verified (§M-24/M-27):** `wireguard_ip_global` accepted; higher priority number wins; reversible via product activate/deactivate. **Still open:** named connection policy, hotspot binding, kill-switch `permit global`; **`CLEAR_IP_GLOBAL` not emitted on teardown** (not device-proven)
+4. ~~How a **WireGuard** interface expresses `ip global`~~ — **RESOLVED device-verified (§M-24/M-27):** `wireguard_ip_global` accepted; higher priority number wins; reversible via product activate/deactivate. **Still open:** named connection policy, hotspot binding, kill-switch `permit global`; **`CLEAR_IP_GLOBAL` on teardown** — emitted when intent has `ip_global_*`; teardown ACK observed §M-38; clear semantics **not separately WriteCertified**
 
 Offline `help_verified_grammar_unapplied` builders (`vpn_policy_rci`, routing planner) and read allowlist entries may compile intent without device apply; **no device-verified writes** for named policy and **no WriteCertified** claims until §5 items 1–3 are resolved with bounded evidence.
 

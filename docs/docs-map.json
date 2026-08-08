@@ -660,7 +660,7 @@
         "wg-rollback-offline-20260801",
         "catalog-keepalive-20260805"
       ],
-      "lastReviewed": "2026-08-05"
+      "lastReviewed": "2026-08-08"
     },
     {
       "path": "docs/OPERATOR_AWG_DISCOVERY.md",
@@ -1110,7 +1110,7 @@
         "traffic-via-tunnel-0805",
         "clear-ip-global-not-proven"
       ],
-      "lastReviewed": "2026-08-05"
+      "lastReviewed": "2026-08-08"
     },
     {
       "path": "docs/OPERATOR_WEB_UI_FULL_COVERAGE_PLAN.md",
@@ -1298,7 +1298,7 @@
         "traffic-via-tunnel-0805",
         "clear-ip-global-not-proven"
       ],
-      "lastReviewed": "2026-08-05"
+      "lastReviewed": "2026-08-08"
     },
     {
       "path": "docs/SESSION_HANDOFF_REAL_ROUTER_2026-07-23.md",
