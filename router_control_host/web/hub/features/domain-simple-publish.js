@@ -8,7 +8,7 @@ import {
   createSelectField,
   createTextField,
 } from '../components/index.js';
-import { describeError } from '../core/errors.js';
+import { HubApiError, describeError } from '../core/errors.js';
 import { HubState } from '../core/states.js';
 import {
   DOMAIN_DRAFT_LINK_NOTE,
@@ -290,6 +290,30 @@ export function mountDomainSimplePublishAffordance(container, options) {
 }
 
 /**
+ * @param {unknown} err
+ * @returns {boolean}
+ */
+function isClientAborted(err) {
+  return err instanceof HubApiError && err.code === 'client.aborted';
+}
+
+/**
+ * @param {unknown} err
+ * @returns {boolean}
+ */
+function isAbortError(err) {
+  return err instanceof DOMException && err.name === 'AbortError';
+}
+
+/**
+ * @param {unknown} err
+ * @returns {boolean}
+ */
+function isAborted(err) {
+  return isClientAborted(err) || isAbortError(err);
+}
+
+/**
  * @typedef {object} DomainPublishApplyConfirmParams
  * @property {(options: object) => { close: () => void }} openModal
  * @property {(options: object) => HTMLButtonElement} createButton
@@ -298,7 +322,8 @@ export function mountDomainSimplePublishAffordance(container, options) {
  * @property {string|null|undefined} [domain]
  * @property {string|null|undefined} [mode]
  * @property {boolean} [offline]
- * @property {() => Promise<unknown>} onConfirmApply
+ * @property {() => AbortSignal|undefined} [getSignal]
+ * @property {(signal: AbortSignal|undefined) => Promise<unknown>} onConfirmApply
  * @property {() => void} [onClose]
  */
 
@@ -380,8 +405,12 @@ export function openDomainPublishApplyConfirm(params) {
               showPublishApplyOfflineToast(params);
               return;
             }
+            const signal = typeof params.getSignal === 'function' ? params.getSignal() : undefined;
             try {
-              const response = await params.onConfirmApply();
+              const response = await params.onConfirmApply(signal);
+              if (signal?.aborted) {
+                return;
+              }
               const outcome = describeKeendnsApplyOutcome(response);
               if (outcome.hubState === HubState.ERROR) {
                 params.showToast({
@@ -397,6 +426,9 @@ export function openDomainPublishApplyConfirm(params) {
                 });
               }
             } catch (error) {
+              if (isAborted(error) || signal?.aborted) {
+                return;
+              }
               const described = describeError(error);
               params.showToast({
                 tone: 'danger',

@@ -1379,3 +1379,43 @@ console.log(JSON.stringify({{
     assert result["paramOfflineOpened"] is False
     assert result["paramOfflineToasted"] is True
     assert result["onlineOpened"] is True
+
+
+def test_domain_publish_apply_confirm_passes_signal_to_on_confirm_apply() -> None:
+    """keendns-signal-overview-toast-guards: onConfirmApply receives AbortSignal from getSignal."""
+    source = DOMAIN_SIMPLE_PUBLISH_JS.read_text(encoding="utf-8")
+    confirm_body = _extract_function_body(source, "export function openDomainPublishApplyConfirm(")
+    assert confirm_body is not None
+    assert "params.onConfirmApply(signal)" in confirm_body
+    assert "signal?.aborted" in confirm_body
+    assert "isAborted(error)" in confirm_body
+
+
+def test_domain_screen_apply_keendns_booking_passes_operation_abort_signal() -> None:
+    """keendns-signal-overview-toast-guards: domain screen passes operationAbort signal to apply."""
+    source = DOMAIN_SCREEN_JS.read_text(encoding="utf-8")
+    apply_body = _extract_function_body(source, "function openPublishApplyModal(")
+    assert apply_body is not None
+    assert "operationAbort = new AbortController()" in apply_body
+    assert "getSignal: () => applySignal" in apply_body
+    assert "onConfirmApply: async (signal)" in apply_body
+    assert "signal," in apply_body
+    assert "applyKeendnsBooking({" in apply_body
+    assert "signal?.aborted" in apply_body
+
+
+def test_overview_apply_keendns_booking_passes_mutate_abort_signal() -> None:
+    """keendns-signal-overview-toast-guards: overview passes mutateAbort signal to apply."""
+    source = OVERVIEW_JS.read_text(encoding="utf-8")
+    slots_body = _extract_function_body(source, "function mountOverviewActionSlots(")
+    assert slots_body is not None
+    publish_start = slots_body.find("onPublishApply:")
+    assert publish_start != -1
+    publish_body = slots_body[publish_start:]
+    assert "ensureMutateAbort()" in publish_body
+    assert "getSignal: () => applySignal" in publish_body
+    assert "onConfirmApply: async (signal)" in publish_body
+    assert "applyKeendnsBooking({" in publish_body
+    assert "signal," in publish_body
+    assert "signal?.aborted" in publish_body
+    assert "domainPublishedSession = true" in publish_body

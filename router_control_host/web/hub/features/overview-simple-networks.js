@@ -102,6 +102,7 @@ export const OVERVIEW_NETWORKS_UNASSIGNED_NOTE = 'Настройка и сост
  * @property {(opts: object) => void} [showToast]
  * @property {() => boolean} isRestorePending
  * @property {() => boolean} [getDisabled]
+ * @property {() => boolean} [getOffline]
  * @property {() => AbortSignal|undefined} [getSignal]
  * @property {string} [idPrefix]
  */
@@ -146,12 +147,17 @@ export function mountOverviewSimpleNetworks(options) {
     navigate,
     isRestorePending,
     getDisabled,
+    getOffline,
     getSignal,
     idPrefix = 'hub-overview-networks',
   } = options;
 
   function resolveDisabled() {
     return typeof getDisabled === 'function' && getDisabled();
+  }
+
+  function resolveOffline() {
+    return typeof getOffline === 'function' && getOffline();
   }
 
   /**
@@ -757,7 +763,12 @@ export function mountOverviewSimpleNetworks(options) {
           message: WIFI_PASSWORD_REGISTERED_APPLY_FAILED_MESSAGE,
         };
       }
-      if (verdict && typeof options.showToast === 'function') {
+      if (
+        verdict
+        && typeof options.showToast === 'function'
+        && !signal?.aborted
+        && !resolveOffline()
+      ) {
         options.showToast({
           tone: verdict.success
             ? 'success'
@@ -772,6 +783,8 @@ export function mountOverviewSimpleNetworks(options) {
         verdict?.success
         && standingPersistWarningKind
         && typeof options.showToast === 'function'
+        && !signal?.aborted
+        && !resolveOffline()
       ) {
         showStandingPersistWarningToast(standingPersistWarningKind, options.showToast);
         standingPersistWarningKind = null;

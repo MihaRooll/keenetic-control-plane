@@ -2134,7 +2134,11 @@ def test_overview_networks_run_mutation_toast_from_verdict() -> None:
     assert "verdict = await runStaffEnable(signal)" in run_mutation_body
     assert "verdict = await runStaffApplyDefaults(signal)" in run_mutation_body
     assert "verdict = await runGuestApply(targetEnabled, signal)" in run_mutation_body
-    assert "if (verdict && typeof options.showToast === 'function')" in run_mutation_body
+    toast_region = run_mutation_body.split("options.showToast({", 1)[0]
+    assert "verdict" in toast_region
+    assert "typeof options.showToast === 'function'" in toast_region
+    assert "!signal?.aborted" in toast_region
+    assert "resolveOffline()" in toast_region
     assert "getStateDescriptor" in source
     assert "getStateDescriptor(verdict.hubState).tone" in run_mutation_body
     assert "Object.values(HubState).includes(verdict.hubState)" in run_mutation_body
@@ -3652,3 +3656,38 @@ def test_overview_vpn_mutation_readiness_gated() -> None:
     signature_body = _extract_function_body(source, "function buildVpnSlotSignature(")
     assert signature_body is not None
     assert "vpnMutationReadiness().allowed" in signature_body
+
+
+def test_overview_vpn_refresh_uses_mutate_abort_not_enrichment() -> None:
+    """keendns-signal-overview-toast-guards: VPN refresh uses mutationSignal, not enrichmentAbort."""
+    source = _read(OVERVIEW_JS)
+    for fn_sig in (
+        "async function runOverviewVpnActivate(",
+        "async function runOverviewVpnDeactivate(",
+    ):
+        body = _extract_function_body(source, fn_sig)
+        assert body is not None
+        assert "enrichmentAbort?.signal" not in body
+        assert "refreshVpnCatalogAndLiveStatus(mutationSignal)" in body
+        refresh_region = body.split("refreshVpnCatalogAndLiveStatus(mutationSignal)", 1)[0]
+        assert "!offline" in refresh_region
+        assert "!mutationSignal.aborted" in refresh_region
+
+
+def test_overview_networks_mount_passes_get_offline() -> None:
+    """keendns-signal-overview-toast-guards: overview passes getOffline to simple-networks mount."""
+    source = _read(OVERVIEW_JS)
+    slots_body = _extract_function_body(source, "function mountOverviewActionSlots(")
+    assert slots_body is not None
+    assert "getOffline: () => offline" in slots_body
+
+
+def test_overview_networks_run_mutation_skips_toast_when_aborted_or_offline() -> None:
+    """keendns-signal-overview-toast-guards: runMutation skips success toast on abort/offline."""
+    source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
+    assert "function resolveOffline()" in source
+    run_mutation_body = _extract_function_body(source, "async function runMutation(")
+    assert run_mutation_body is not None
+    toast_region = run_mutation_body.split("options.showToast({", 1)[0]
+    assert "!signal?.aborted" in toast_region
+    assert "resolveOffline()" in toast_region

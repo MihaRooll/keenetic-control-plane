@@ -1288,6 +1288,9 @@ export function render(container, ctx) {
       return;
     }
     publishModalOpen = true;
+    operationAbort?.abort();
+    operationAbort = new AbortController();
+    const applySignal = operationAbort.signal;
     openDomainPublishApplyConfirm({
       openModal: (modalOptions) => registerModal(openModal(modalOptions)),
       createButton,
@@ -1296,13 +1299,18 @@ export function render(container, ctx) {
       domain: domainSuffix,
       mode: resolvePreviewMode() || KEENDNS_DEFAULT_ACCESS_MODE,
       offline,
-      onConfirmApply: async () => {
+      getSignal: () => applySignal,
+      onConfirmApply: async (signal) => {
         const result = await applyKeendnsBooking({
           name: domainName,
           domain: domainSuffix,
           mode: resolvePreviewMode() || KEENDNS_DEFAULT_ACCESS_MODE,
           session: getSession(),
+          signal,
         });
+        if (signal?.aborted) {
+          return result;
+        }
         const overall =
           result && typeof result === 'object' && 'overall' in result
             ? /** @type {{ overall?: string }} */ (result).overall

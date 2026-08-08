@@ -982,6 +982,7 @@ export function render(container, ctx) {
       showToast: ctx.showToast,
       isRestorePending: () => isConnectionRestorePending(getSession()),
       getDisabled: () => offline,
+      getOffline: () => offline,
       getSignal: () => ensureMutateAbort(),
       idPrefix: 'hub-overview-networks',
     });
@@ -1001,6 +1002,7 @@ export function render(container, ctx) {
         if (offline) {
           return;
         }
+        const applySignal = ensureMutateAbort();
         openDomainPublishApplyConfirm({
           openModal,
           createButton,
@@ -1009,13 +1011,18 @@ export function render(container, ctx) {
           domain: domainDraftSuffix,
           mode: KEENDNS_DEFAULT_ACCESS_MODE,
           offline,
-          onConfirmApply: async () => {
+          getSignal: () => applySignal,
+          onConfirmApply: async (signal) => {
             const response = await applyKeendnsBooking({
               name: domainDraftName,
               domain: domainDraftSuffix,
               mode: KEENDNS_DEFAULT_ACCESS_MODE,
               session: getSession(),
+              signal,
             });
+            if (signal?.aborted) {
+              return response;
+            }
             const payload = /** @type {Record<string, unknown>} */ (response ?? {});
             const overall = typeof payload.overall === 'string' ? payload.overall : 'failed';
             if (overall === 'applied') {
@@ -1338,7 +1345,9 @@ export function render(container, ctx) {
       vpnCheckingProfileIds = { ...vpnCheckingProfileIds, [profileId]: '1' };
       lastVpnSignature = null;
       renderVpnSlot();
-      await refreshVpnCatalogAndLiveStatus(enrichmentAbort?.signal);
+      if (!offline && !mutationSignal.aborted) {
+        await refreshVpnCatalogAndLiveStatus(mutationSignal);
+      }
       if (disposed) {
         return;
       }
@@ -1416,7 +1425,9 @@ export function render(container, ctx) {
       vpnCheckingProfileIds = { ...vpnCheckingProfileIds, [profileId]: '1' };
       lastVpnSignature = null;
       renderVpnSlot();
-      await refreshVpnCatalogAndLiveStatus(enrichmentAbort?.signal);
+      if (!offline && !mutationSignal.aborted) {
+        await refreshVpnCatalogAndLiveStatus(mutationSignal);
+      }
       if (disposed) {
         return;
       }
