@@ -56,6 +56,8 @@ class MockHttpClient:
         connect_timeout: float,
         read_timeout: float,
         ssl_context: object | None,
+        connect_host: str | None = None,
+        server_hostname: str | None = None,
     ) -> HttpExchange:
         if self.fail_with is not None:
             raise self.fail_with
@@ -95,6 +97,8 @@ class MockHttpClient:
         read_timeout: float,
         ssl_context: object | None,
         max_bytes: int,
+        connect_host: str | None = None,
+        server_hostname: str | None = None,
     ) -> HttpExchange:
         exchange = self.request(
             host=host,

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import socket
 from dataclasses import dataclass, field
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from router_control.adapters.netcraze.allowlist import (
@@ -63,6 +65,8 @@ def _load(name: str) -> object:
 class MockHttpClient:
     responses: list[HttpExchange] = field(default_factory=list)
     calls: list[tuple[str, str]] = field(default_factory=list)
+    dial_hosts: list[str] = field(default_factory=list)
+    host_headers: list[str | None] = field(default_factory=list)
 
     def request(
         self,
@@ -76,8 +80,12 @@ class MockHttpClient:
         connect_timeout: float,
         read_timeout: float,
         ssl_context: object | None,
+        connect_host: str | None = None,
+        server_hostname: str | None = None,
     ) -> HttpExchange:
         self.calls.append((method, path))
+        self.dial_hosts.append(connect_host or host)
+        self.host_headers.append(headers.get("Host", headers.get("host")))
         if not self.responses:
             raise TransportError("no mock responses left")
         return self.responses.pop(0)
@@ -95,6 +103,8 @@ class MockHttpClient:
         read_timeout: float,
         ssl_context: object | None,
         max_bytes: int,
+        connect_host: str | None = None,
+        server_hostname: str | None = None,
     ) -> HttpExchange:
         return self.request(
             host=host,
@@ -106,6 +116,8 @@ class MockHttpClient:
             connect_timeout=connect_timeout,
             read_timeout=read_timeout,
             ssl_context=ssl_context,
+            connect_host=connect_host,
+            server_hostname=server_hostname,
         )
 
 
@@ -355,6 +367,79 @@ def test_policy_refuses_non_private_host(expendable_lab: None) -> None:
             allow_insecure_http=True,
             http_client=_bootstrap_client(),
         )
+
+
+def test_bootstrap_http_dial_pins_private_ip_toctou_closed(
+    expendable_lab: None,
+) -> None:
+    """TOCTOU: second getaddrinfo would return public; dial must use pinned private IP."""
+    private_ip = "192.168.1.50"
+    public_ip = "8.8.8.8"
+    resolve_calls = 0
+
+    def fake_getaddrinfo(
+        host: str,
+        port: int,
+        **kwargs: object,
+    ) -> list[tuple[int, int, int, str, tuple[str, int]]]:
+        nonlocal resolve_calls
+        resolve_calls += 1
+        if resolve_calls == 1:
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (private_ip, 0))]
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (public_ip, 0))]
+
+    client = _bootstrap_client()
+    vault = MemoryVault()
+    handle = vault.create(kind="RouterManagementPassword", secret="lab-password")
+
+    with patch(
+        "router_control.adapters.netcraze.ssh_tunnel.socket.getaddrinfo",
+        side_effect=fake_getaddrinfo,
+    ):
+        run_bootstrap_discovery(
+            host="http://router.local",
+            username="admin",
+            credential_ref_id=handle.credential_ref_id,
+            vault=vault,
+            allow_insecure_http=True,
+            http_client=client,
+        )
+
+    assert resolve_calls == 1
+    assert client.dial_hosts
+    assert all(dial_host == private_ip for dial_host in client.dial_hosts)
+    assert client.host_headers
+    assert all(host_header == "router.local" for host_header in client.host_headers)
+    assert private_ip != public_ip
+
+
+def test_bootstrap_resolve_failure_fails_closed_without_dial(
+    expendable_lab: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = _bootstrap_client()
+    vault = MemoryVault()
+    handle = vault.create(kind="RouterManagementPassword", secret="lab-password")
+
+    def fail_getaddrinfo(*_args: object, **_kwargs: object) -> list[object]:
+        return []
+
+    monkeypatch.setattr(
+        "router_control.adapters.netcraze.ssh_tunnel.socket.getaddrinfo",
+        fail_getaddrinfo,
+    )
+
+    with pytest.raises(BootstrapDiscoveryError, match="private management host"):
+        run_bootstrap_discovery(
+            host="http://unresolvable-router.local",
+            username="admin",
+            credential_ref_id=handle.credential_ref_id,
+            vault=vault,
+            allow_insecure_http=True,
+            http_client=client,
+        )
+
+    assert client.dial_hosts == []
 
 
 def test_verified_baseline_constant_matches_gate_a_ssot() -> None:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import ipaddress
 import json
 import re
 from dataclasses import dataclass
@@ -33,7 +32,12 @@ from router_control.adapters.netcraze.sanitize import (
     sanitize_value,
 )
 from router_control.adapters.netcraze.transport import NetcrazeTransport, parse_transport_target
-from router_control.adapters.netcraze.ssh_tunnel import host_is_private
+from router_control.adapters.netcraze.ssh_tunnel import (
+    SshHostNotPrivate,
+    pinned_tcp_connect_host,
+    resolve_private_connect_targets,
+    strip_host_brackets,
+)
 from router_control.application.wifi_observation_helpers import (
     resolve_device_connected,
     resolve_link_up,
@@ -630,7 +634,8 @@ def _validate_bootstrap_policy(
     host: str,
     *,
     allow_insecure_http: bool,
-) -> None:
+) -> tuple[str, str]:
+    """Validate policy and resolve private connect pin once (fail-closed for all paths)."""
     if not allow_insecure_http:
         raise BootstrapDiscoveryError("allow_insecure_http must be true for bootstrap discovery")
     if not is_expendable_lab_class():
@@ -639,10 +644,29 @@ def _validate_bootstrap_policy(
         target = parse_transport_target(host)
     except ValueError as exc:
         raise BootstrapDiscoveryError(str(exc)) from exc
-    if not host_is_private(target.hostname):
-        raise BootstrapDiscoveryError("bootstrap discovery requires private management host")
     if target.scheme == "http" and not allow_insecure_http:
         raise BootstrapDiscoveryError("plain HTTP requires allow_insecure_http")
+    return _resolve_bootstrap_connect_pin(target.hostname)
+
+
+def _resolve_bootstrap_connect_pin(hostname: str) -> tuple[str, str]:
+    """Resolve once and return pinned dial target plus optional Host/SNI hostname."""
+    try:
+        pinned_targets = resolve_private_connect_targets(hostname)
+    except SshHostNotPrivate as exc:
+        raise BootstrapDiscoveryError(
+            "bootstrap discovery requires private management host"
+        ) from exc
+    connect_host = pinned_tcp_connect_host(
+        pinned_targets,
+        canonical_host=hostname,
+        config_ssh_host=hostname,
+    )
+    management_host_header = ""
+    if strip_host_brackets(connect_host) != strip_host_brackets(hostname):
+        # TCP dials pinned private IP; HTTP Host and HTTPS SNI keep logical hostname.
+        management_host_header = hostname
+    return connect_host, management_host_header
 
 
 def _build_transport(
@@ -652,10 +676,17 @@ def _build_transport(
     password: str,
     allow_insecure_http: bool,
     http_client: Any | None = None,
+    connect_pin: tuple[str, str] | None = None,
 ) -> NetcrazeTransport:
     target = parse_transport_target(host)
+    if connect_pin is None:
+        connect_host, management_host_header = _resolve_bootstrap_connect_pin(target.hostname)
+    else:
+        connect_host, management_host_header = connect_pin
     kwargs: dict[str, Any] = {
-        "host": target.hostname,
+        "host": connect_host,
+        "pinned_connect_host": connect_host,
+        "management_host_header": management_host_header,
         "port": target.port,
         "username": username,
         "password": password,
@@ -708,7 +739,7 @@ def run_bootstrap_discovery(
     http_client: Any | None = None,
 ) -> dict[str, Any]:
     """Collect sanitized bootstrap discovery report; never logs or returns secrets."""
-    _validate_bootstrap_policy(host, allow_insecure_http=allow_insecure_http)
+    connect_pin = _validate_bootstrap_policy(host, allow_insecure_http=allow_insecure_http)
     try:
         password = vault.use(credential_ref_id)
     except Exception as exc:
@@ -724,6 +755,7 @@ def run_bootstrap_discovery(
             password=password,
             allow_insecure_http=allow_insecure_http,
             http_client=http_client,
+            connect_pin=connect_pin,
         )
 
     interface_fetch_failed = False

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import ssl
 from dataclasses import dataclass, field
+from unittest.mock import patch
 
 import pytest
 from router_control.adapters.netcraze.allowlist import (
@@ -29,6 +31,7 @@ from router_control.adapters.netcraze.transport import HttpExchange, NetcrazeTra
 class MockHttpClient:
     responses: list[HttpExchange] = field(default_factory=list)
     calls: list[tuple[str, str]] = field(default_factory=list)
+    request_details: list[dict[str, object]] = field(default_factory=list)
 
     def request(
         self,
@@ -42,8 +45,18 @@ class MockHttpClient:
         connect_timeout: float,
         read_timeout: float,
         ssl_context: object | None,
+        connect_host: str | None = None,
+        server_hostname: str | None = None,
     ) -> HttpExchange:
         self.calls.append((method, path))
+        self.request_details.append(
+            {
+                "host": host,
+                "connect_host": connect_host,
+                "server_hostname": server_hostname,
+                "host_header": headers.get("Host", headers.get("host")),
+            }
+        )
         if not self.responses:
             raise TransportError("no mock responses left")
         return self.responses.pop(0)
@@ -61,6 +74,8 @@ class MockHttpClient:
         read_timeout: float,
         ssl_context: object | None,
         max_bytes: int,
+        connect_host: str | None = None,
+        server_hostname: str | None = None,
     ) -> HttpExchange:
         return self.request(
             host=host,
@@ -72,6 +87,8 @@ class MockHttpClient:
             connect_timeout=connect_timeout,
             read_timeout=read_timeout,
             ssl_context=ssl_context,
+            connect_host=connect_host,
+            server_hostname=server_hostname,
         )
 
 
@@ -358,3 +375,91 @@ def test_bootstrap_get_transport_failure_stays_hard(
     )
     with pytest.raises(TransportError, match="connection refused"):
         transport.fetch_discovery_read(SHOW_IP_SSH)
+
+
+def test_pinned_bootstrap_https_keeps_host_and_sni_on_logical_hostname(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ROUTER_CONTROL_LAB_CLASS", "expendable_development_router")
+    pinned_ip = "192.168.1.50"
+    logical_host = "router.local"
+    client = MockHttpClient(responses=[_json_exchange({"hostname": logical_host})])
+    transport = NetcrazeTransport(
+        host=pinned_ip,
+        pinned_connect_host=pinned_ip,
+        management_host_header=logical_host,
+        username="admin",
+        password="lab-password",
+        use_tls=True,
+        allow_insecure_http=True,
+        ssl_context=ssl.create_default_context(),
+        http_client=client,
+    )
+    transport.fetch_discovery_read(SHOW_SYSTEM)
+    detail = client.request_details[0]
+    assert detail["host"] == pinned_ip
+    assert detail["connect_host"] == pinned_ip
+    assert detail["server_hostname"] == logical_host
+    assert detail["host_header"] == logical_host
+
+
+def test_stdlib_pinned_https_uses_sni_connection() -> None:
+    captured: dict[str, object] = {}
+
+    class RecordingSniConnection:
+        def __init__(
+            self,
+            pinned_ip: str,
+            port: int,
+            *,
+            server_hostname: str,
+            timeout: float,
+            context: ssl.SSLContext,
+        ) -> None:
+            captured["connect_host"] = pinned_ip
+            captured["server_hostname"] = server_hostname
+            captured["port"] = port
+
+        def request(
+            self,
+            method: str,
+            path: str,
+            body: bytes | None,
+            headers: dict[str, str],
+        ) -> None:
+            captured["host_header"] = headers.get("Host")
+
+        def getresponse(self) -> object:
+            class Response:
+                status = 200
+
+                def getheaders(self) -> list[tuple[str, str]]:
+                    return [("Content-Type", "application/json")]
+
+                def read(self) -> bytes:
+                    return b"{}"
+
+            return Response()
+
+        def close(self) -> None:
+            return None
+
+    with patch(
+        "router_control.adapters.netcraze.transport._SniHttpsConnection",
+        RecordingSniConnection,
+    ):
+        transport = NetcrazeTransport(
+            host="192.168.1.50",
+            pinned_connect_host="192.168.1.50",
+            management_host_header="router.local",
+            username="admin",
+            password="lab-password",
+            use_tls=True,
+            allow_insecure_http=True,
+            ssl_context=ssl.create_default_context(),
+        )
+        transport._send("GET", "/rci/show/system", {"Accept": "application/json"}, None)
+
+    assert captured["connect_host"] == "192.168.1.50"
+    assert captured["server_hostname"] == "router.local"
+    assert captured["host_header"] == "router.local"

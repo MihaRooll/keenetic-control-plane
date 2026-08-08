@@ -8,11 +8,12 @@ import ipaddress
 import json
 import re
 import secrets
+import socket
 import ssl
 import time
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 from urllib.parse import urlparse
 
 from router_control.adapters.netcraze.allowlist import (
@@ -103,6 +104,8 @@ class HttpClient(Protocol):
         connect_timeout: float,
         read_timeout: float,
         ssl_context: ssl.SSLContext | None,
+        connect_host: str | None = None,
+        server_hostname: str | None = None,
     ) -> HttpExchange: ...
 
     def request_limited(
@@ -118,7 +121,64 @@ class HttpClient(Protocol):
         read_timeout: float,
         ssl_context: ssl.SSLContext | None,
         max_bytes: int,
+        connect_host: str | None = None,
+        server_hostname: str | None = None,
     ) -> HttpExchange: ...
+
+
+class _SniHttpsConnection(http.client.HTTPSConnection):
+    """Dial pinned IP while preserving TLS SNI for the logical management hostname."""
+
+    def __init__(
+        self,
+        pinned_ip: str,
+        port: int,
+        *,
+        server_hostname: str,
+        timeout: float,
+        context: ssl.SSLContext,
+    ) -> None:
+        super().__init__(pinned_ip, port, timeout=timeout, context=context)
+        self._server_hostname = server_hostname
+
+    def connect(self) -> None:
+        inner = cast(Any, self)
+        self.sock = socket.create_connection(
+            (self.host, self.port),
+            self.timeout,
+            inner.source_address,
+        )
+        if inner._tunnel_host:
+            inner._tunnel()
+        self.sock = inner._context.wrap_socket(self.sock, server_hostname=self._server_hostname)
+
+
+def _stdlib_http_connection(
+    *,
+    connect_host: str,
+    port: int,
+    connect_timeout: float,
+    read_timeout: float,
+    ssl_context: ssl.SSLContext | None,
+    server_hostname: str | None = None,
+) -> http.client.HTTPConnection | http.client.HTTPSConnection:
+    timeout = max(connect_timeout, read_timeout)
+    if ssl_context is not None:
+        if server_hostname and server_hostname != connect_host:
+            return _SniHttpsConnection(
+                connect_host,
+                port,
+                server_hostname=server_hostname,
+                timeout=timeout,
+                context=ssl_context,
+            )
+        return http.client.HTTPSConnection(
+            connect_host,
+            port,
+            timeout=timeout,
+            context=ssl_context,
+        )
+    return http.client.HTTPConnection(connect_host, port, timeout=timeout)
 
 
 @dataclass
@@ -137,22 +197,19 @@ class StdlibHttpClient:
         connect_timeout: float,
         read_timeout: float,
         ssl_context: ssl.SSLContext | None,
+        connect_host: str | None = None,
+        server_hostname: str | None = None,
     ) -> HttpExchange:
 
-        conn: http.client.HTTPConnection | http.client.HTTPSConnection
-
-        if ssl_context is not None:
-            conn = http.client.HTTPSConnection(
-                host,
-                port,
-                timeout=max(connect_timeout, read_timeout),
-                context=ssl_context,
-            )
-
-        else:
-            conn = http.client.HTTPConnection(
-                host, port, timeout=max(connect_timeout, read_timeout)
-            )
+        dial_host = connect_host or host
+        conn = _stdlib_http_connection(
+            connect_host=dial_host,
+            port=port,
+            connect_timeout=connect_timeout,
+            read_timeout=read_timeout,
+            ssl_context=ssl_context,
+            server_hostname=server_hostname,
+        )
 
         try:
             conn.request(method, path, body=body, headers=headers)
@@ -199,20 +256,19 @@ class StdlibHttpClient:
         read_timeout: float,
         ssl_context: ssl.SSLContext | None,
         max_bytes: int,
+        connect_host: str | None = None,
+        server_hostname: str | None = None,
     ) -> HttpExchange:
         """Read at most max_bytes + 1 so callers can detect oversize responses."""
-        conn: http.client.HTTPConnection | http.client.HTTPSConnection
-        if ssl_context is not None:
-            conn = http.client.HTTPSConnection(
-                host,
-                port,
-                timeout=max(connect_timeout, read_timeout),
-                context=ssl_context,
-            )
-        else:
-            conn = http.client.HTTPConnection(
-                host, port, timeout=max(connect_timeout, read_timeout)
-            )
+        dial_host = connect_host or host
+        conn = _stdlib_http_connection(
+            connect_host=dial_host,
+            port=port,
+            connect_timeout=connect_timeout,
+            read_timeout=read_timeout,
+            ssl_context=ssl_context,
+            server_hostname=server_hostname,
+        )
         try:
             conn.request(method, path, body=body, headers=headers)
             response = conn.getresponse()
@@ -246,6 +302,10 @@ class NetcrazeTransport:
     use_tls: bool = True
 
     allow_insecure_http: bool = False
+
+    pinned_connect_host: str | None = None
+
+    management_host_header: str = ""
 
     connect_timeout: float = 5.0
 
@@ -710,7 +770,44 @@ class NetcrazeTransport:
 
     def _management_host_header_value(self) -> str | None:
 
-        return None
+        header = self.management_host_header.strip()
+
+        return header or None
+
+    def _tcp_dial_host(self) -> str:
+
+        if self.pinned_connect_host:
+            return self.pinned_connect_host
+
+        return self.host
+
+    def _tls_server_hostname(self) -> str | None:
+        """When TCP dials a pinned IP, TLS SNI may still use the logical hostname."""
+        if not self.use_tls or self.pinned_connect_host is None:
+            return None
+
+        return self._management_host_header_value()
+
+    def _http_client_kwargs(self) -> dict[str, Any]:
+        dial_host = self._tcp_dial_host()
+
+        kwargs: dict[str, Any] = {
+            "host": dial_host,
+            "port": self.port,
+            "connect_timeout": self.connect_timeout,
+            "read_timeout": self.read_timeout,
+            "ssl_context": self.ssl_context,
+        }
+
+        if self.pinned_connect_host is not None:
+            kwargs["connect_host"] = dial_host
+
+        server_hostname = self._tls_server_hostname()
+
+        if server_hostname is not None:
+            kwargs["server_hostname"] = server_hostname
+
+        return kwargs
 
     def _send(
         self,
@@ -729,15 +826,11 @@ class NetcrazeTransport:
 
         try:
             return self.http_client.request(
-                host=self.host,
-                port=self.port,
                 method=method,
                 path=path,
                 headers=outbound_headers,
                 body=body,
-                connect_timeout=self.connect_timeout,
-                read_timeout=self.read_timeout,
-                ssl_context=self.ssl_context,
+                **self._http_client_kwargs(),
             )
 
         except TransportTimeout:
@@ -770,16 +863,12 @@ class NetcrazeTransport:
             outbound_headers["Host"] = management_host
         try:
             return self.http_client.request_limited(
-                host=self.host,
-                port=self.port,
                 method=method,
                 path=path,
                 headers=outbound_headers,
                 body=body,
-                connect_timeout=self.connect_timeout,
-                read_timeout=self.read_timeout,
-                ssl_context=self.ssl_context,
                 max_bytes=max_bytes,
+                **self._http_client_kwargs(),
             )
         except (TransportTimeout, AllowlistViolation, AuthFailed, TransportError):
             raise
@@ -852,7 +941,6 @@ class NetcrazeTransport:
 class SshTunnelNetcrazeTransport(NetcrazeTransport):
     """RCI transport over pinned SSH local forward; labels certify authenticated encryption."""
 
-    management_host_header: str = ""
     ssh_host_key_algorithm: str = ""
     ssh_host_key_fingerprint_sha256: str = ""
     source_address: str = ""
