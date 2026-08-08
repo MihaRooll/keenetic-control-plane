@@ -1420,6 +1420,20 @@ def test_diagnostics_subscribe_connectivity_inverts_online_flag() -> None:
     assert "offline = nextOffline" not in source
 
 
+def test_diagnostics_connectivity_offline_aborts_run_abort() -> None:
+    """hub-password-honesty: offline connectivity aborts in-flight diagnostics run."""
+    source = _read(DIAG_SCREEN_JS)
+    marker = "subscribeConnectivity((online) => {"
+    start = source.find(marker)
+    assert start != -1
+    block = source[start : start + 400]
+    offline_arm = block.split("if (!online)", 1)[1]
+    assert "runAbort?.abort()" in offline_arm
+    abort_idx = offline_arm.find("runAbort?.abort()")
+    render_idx = offline_arm.find("renderAll()")
+    assert abort_idx != -1 and render_idx != -1 and abort_idx < render_idx
+
+
 def test_diagnostics_rebuild_slot_preserves_scroll_and_focus() -> None:
     """F-5: rebuildSlot сохраняет scroll/focus как на vpn/entry экранах."""
     source = _read(DIAG_SCREEN_JS)

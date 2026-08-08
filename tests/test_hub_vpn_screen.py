@@ -1077,3 +1077,38 @@ def test_vpn_screen_parse_clears_textarea_only_after_success() -> None:
     assert clear_idx != -1
     assert clear_idx > parse_call
     assert "textareaEl.value = ''" not in body[:parse_call]
+
+
+def _extract_subscribe_connectivity_callback(source: str) -> str:
+    """Извлекает тело subscribeConnectivity((online) => { ... })."""
+    marker = "subscribeConnectivity((online) => {"
+    start = source.find(marker)
+    assert start != -1, "subscribeConnectivity callback missing"
+    brace = source.find("{", start + len(marker) - 1)
+    depth = 0
+    j = brace
+    while j < len(source):
+        char = source[j]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return source[brace + 1 : j]
+        j += 1
+    raise AssertionError("subscribeConnectivity callback body not closed")
+
+
+def test_vpn_connectivity_offline_invalidates_all_operations() -> None:
+    """hub-password-honesty: offline connectivity invalidates in-flight VPN operations."""
+    source = _read(VPN_SCREEN_JS)
+    callback = _extract_subscribe_connectivity_callback(source)
+    offline_arm_start = callback.find("if (!online)")
+    assert offline_arm_start != -1
+    offline_arm = callback[offline_arm_start:]
+    offline_return = offline_arm.find("return")
+    offline_block = offline_arm[: offline_return + len("return")]
+    assert "invalidateAllOperations()" in offline_block
+    invalidate_idx = offline_block.find("invalidateAllOperations()")
+    render_idx = offline_block.find("renderAll()")
+    assert invalidate_idx != -1 and render_idx != -1 and invalidate_idx < render_idx

@@ -941,6 +941,18 @@ console.log(JSON.stringify({{
     assert result["gate"] == "function"
 
 
+def test_domain_simple_publish_apply_confirm_catch_uses_describe_error() -> None:
+    """hub-password-honesty: apply confirm catch routes errors through describeError."""
+    source = DOMAIN_SIMPLE_PUBLISH_JS.read_text(encoding="utf-8")
+    assert "describeError" in source.split("from '../core/errors.js';", 1)[0]
+    catch_region = source.split("} catch (error) {", 1)[1].split("} finally {", 1)[0]
+    assert "const described = describeError(error);" in catch_region
+    assert "title: described.title" in catch_region
+    assert "message: described.message" in catch_region
+    assert "error.message" not in catch_region
+    assert "error instanceof Error" not in catch_region
+
+
 def test_domain_simple_default_name_and_honesty(tmp_path: Path) -> None:
     """R-8 AC-5: starter name promo + honesty constant; not host-persisted claim."""
     result = _run_export(

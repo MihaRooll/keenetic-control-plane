@@ -698,6 +698,9 @@ export function render(container, ctx) {
 
   const unsubConnectivity = subscribeConnectivity((online) => {
     offline = !online;
+    if (!online) {
+      runAbort?.abort();
+    }
     renderAll();
   });
 

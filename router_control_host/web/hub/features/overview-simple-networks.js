@@ -63,9 +63,11 @@ import {
   buildWifiPreviewBody,
   deriveWifiPreviewEnabled,
   ensureWifiCredentialRef,
+  isWifiConfigurationApplied,
   listWifiApOptions,
   parseWifiApplyVerdict,
   shouldRefreshWifiObservedAfterMutation,
+  WIFI_PASSWORD_REGISTERED_APPLY_FAILED_MESSAGE,
 } from './wifi-ap-model.js';
 import {
   createOverviewStepCardActions,
@@ -278,6 +280,7 @@ export function mountOverviewSimpleNetworks(options) {
   let guestCredentialRef = null;
   /** @type {HTMLElement & { update: (opts: object) => void }|null} */
   let activeProgressPanel = null;
+  let mutationPasswordRegistered = false;
 
   /**
    * @param {HTMLElement} slot
@@ -472,6 +475,7 @@ export function mountOverviewSimpleNetworks(options) {
       staffCredentialRef = ensured.cache;
       credentialRefId = ensured.credentialRefId;
       staffDraft = { ...staffDraft, password: '' };
+      mutationPasswordRegistered = true;
     } else if (credIntent.kind === 'ref') {
       credentialRefId = credIntent.credentialRefId;
     } else if (credIntent.kind === 'missing') {
@@ -659,6 +663,7 @@ export function mountOverviewSimpleNetworks(options) {
       guestCredentialRef = ensured.cache;
       credentialRefId = ensured.credentialRefId;
       guestDraft = { ...guestDraft, password: '' };
+      mutationPasswordRegistered = true;
     } else if (
       guestCredentialRef?.refId
       && guestCredentialRef.apId === selectedGuestApId
@@ -714,6 +719,7 @@ export function mountOverviewSimpleNetworks(options) {
       return;
     }
     standingPersistWarningKind = null;
+    mutationPasswordRegistered = false;
     const signal = typeof getSignal === 'function' ? getSignal() : undefined;
     const slot = action.startsWith('staff') ? staffBody : guestBody;
     if (action.startsWith('staff')) {
@@ -739,6 +745,17 @@ export function mountOverviewSimpleNetworks(options) {
         verdict = await runStaffApplyDefaults(signal);
       } else {
         verdict = await runGuestApply(targetEnabled, signal);
+      }
+      if (
+        mutationPasswordRegistered
+        && verdict
+        && !verdict.success
+        && !isWifiConfigurationApplied(verdict)
+      ) {
+        verdict = {
+          ...verdict,
+          message: WIFI_PASSWORD_REGISTERED_APPLY_FAILED_MESSAGE,
+        };
       }
       if (verdict && typeof options.showToast === 'function') {
         options.showToast({

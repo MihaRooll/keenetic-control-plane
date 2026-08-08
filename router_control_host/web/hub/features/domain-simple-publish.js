@@ -8,6 +8,7 @@ import {
   createSelectField,
   createTextField,
 } from '../components/index.js';
+import { describeError } from '../core/errors.js';
 import { HubState } from '../core/states.js';
 import {
   DOMAIN_DRAFT_LINK_NOTE,
@@ -396,10 +397,11 @@ export function openDomainPublishApplyConfirm(params) {
                 });
               }
             } catch (error) {
+              const described = describeError(error);
               params.showToast({
                 tone: 'danger',
-                title: 'Не удалось отправить команду',
-                message: error instanceof Error ? error.message : 'Повторите позже.',
+                title: described.title,
+                message: described.message,
               });
             } finally {
               modalRef?.close();

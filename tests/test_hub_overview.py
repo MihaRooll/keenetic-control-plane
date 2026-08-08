@@ -2145,6 +2145,40 @@ def test_overview_networks_run_mutation_toast_from_verdict() -> None:
     assert "Настройки отправлены на роутер" not in run_mutation_body
 
 
+def test_overview_networks_password_registered_apply_failed_message_honesty() -> None:
+    """hub-password-honesty: registered password + failed apply rewrites toast message."""
+    source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
+    wifi_import = source.split("from './wifi-ap-model.js';", 1)[0]
+    assert "WIFI_PASSWORD_REGISTERED_APPLY_FAILED_MESSAGE" in wifi_import
+    assert "isWifiConfigurationApplied" in wifi_import
+
+    run_mutation_body = _extract_function_body(source, "async function runMutation(")
+    assert run_mutation_body is not None
+    assert "mutationPasswordRegistered = false" in run_mutation_body
+    honesty_start = run_mutation_body.find(
+        "mutationPasswordRegistered\n        && verdict",
+    )
+    assert honesty_start != -1
+    honesty_region = run_mutation_body[honesty_start : honesty_start + 400]
+    assert "!verdict.success" in honesty_region
+    assert "!isWifiConfigurationApplied(verdict)" in honesty_region
+    assert "message: WIFI_PASSWORD_REGISTERED_APPLY_FAILED_MESSAGE" in honesty_region
+
+    staff_enable_body = _extract_function_body(source, "async function runStaffEnable(")
+    assert staff_enable_body is not None
+    assert "mutationPasswordRegistered = true" in staff_enable_body
+    register_idx = staff_enable_body.find("ensureWifiCredentialRef(")
+    set_flag_idx = staff_enable_body.find("mutationPasswordRegistered = true")
+    assert register_idx != -1 and set_flag_idx != -1 and register_idx < set_flag_idx
+
+    guest_apply_body = _extract_function_body(source, "async function runGuestApply(")
+    assert guest_apply_body is not None
+    assert "mutationPasswordRegistered = true" in guest_apply_body
+    register_idx = guest_apply_body.find("ensureWifiCredentialRef(")
+    set_flag_idx = guest_apply_body.find("mutationPasswordRegistered = true")
+    assert register_idx != -1 and set_flag_idx != -1 and register_idx < set_flag_idx
+
+
 def test_overview_networks_form_dirty_and_standing_gated_on_verdict_success() -> None:
     """AC-5: formDirty clear and standing PUT require verdict.success."""
     source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
