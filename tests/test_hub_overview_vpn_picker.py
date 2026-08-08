@@ -314,4 +314,5 @@ def test_overview_imports_shared_resolve_vpn_profile_wg_id(overview_source: str)
     assert "resolveVpnProfileWgId" in overview_source
     assert "from '../features/vpn-model.js'" in overview_source
     assert "resolveOverviewVpnProfileWgId(profileId)" in overview_source
-    assert "resolveVpnProfileWgId(vpnCatalogItems, profileId, fallbackWgId)" in overview_source
+    assert "resolveVpnProfileWgId(vpnCatalogItems, profileId)" in overview_source
+    assert "VPN_PROFILE_WG_ID_MISSING_MESSAGE" in overview_source

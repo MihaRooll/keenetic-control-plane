@@ -1265,25 +1265,22 @@ def test_vpn_tile_grid_remove_disabled_when_active() -> None:
 
 
 @pytest.mark.parametrize(
-    ("catalog_items", "profile_id", "fallback", "expected"),
+    ("catalog_items", "profile_id", "expected"),
     [
         (
             [{"profile_id": "p1", "assigned_wg_id": "Wireguard6"}],
             "p1",
-            "Wireguard5",
             "Wireguard6",
         ),
         (
             [{"profile_id": "p1", "wg_id": "Wireguard7"}],
             "p1",
-            "Wireguard5",
             "Wireguard7",
         ),
         (
             [{"profile_id": "p1"}],
             "p1",
-            "Wireguard8",
-            "Wireguard8",
+            None,
         ),
     ],
 )
@@ -1291,17 +1288,16 @@ def test_resolve_vpn_profile_wg_id_priority(
     tmp_path: Path,
     catalog_items: list[dict[str, str]],
     profile_id: str,
-    fallback: str,
-    expected: str,
+    expected: str | None,
 ) -> None:
-    """resolveVpnProfileWgId: assigned_wg_id → metadata wg_id → fallback."""
+    """resolveVpnProfileWgId: assigned_wg_id → metadata wg_id; null when both absent."""
     items_json = json.dumps(catalog_items, ensure_ascii=False)
     result = _run_export(
         tmp_path,
         label=f"resolve-wg-{profile_id}-{expected}",
         script_body=f"""
 const items = {items_json};
-console.log(JSON.stringify(mod.resolveVpnProfileWgId(items, {json.dumps(profile_id)}, {json.dumps(fallback)})));
+console.log(JSON.stringify(mod.resolveVpnProfileWgId(items, {json.dumps(profile_id)})));
 """,
     )
     assert result == expected

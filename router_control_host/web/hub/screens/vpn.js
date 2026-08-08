@@ -75,6 +75,7 @@ import {
   listVpnProfiles,
   listVpnTunnelInterfaceOptions,
   resolveVpnProfileWgId,
+  VPN_PROFILE_WG_ID_MISSING_MESSAGE,
   observeVpnTunnel,
   parseTunnelVerdict,
   parseVpnProfileText,
@@ -2386,7 +2387,15 @@ export function render(container, ctx) {
     mutateAbort = new AbortController();
     const mutationSignal = mutateAbort.signal;
     try {
-      const wgId = resolveVpnProfileWgId(catalogItems, profileId, selectedWgId);
+      const wgId = resolveVpnProfileWgId(catalogItems, profileId);
+      if (!wgId) {
+        ctx.showToast({
+          tone: 'warning',
+          title: 'Не удалось подключить',
+          message: VPN_PROFILE_WG_ID_MISSING_MESSAGE,
+        });
+        return;
+      }
       const response = await activateVpnProfile({
         profileId,
         session: getSession(),
@@ -2466,7 +2475,15 @@ export function render(container, ctx) {
     mutateAbort = new AbortController();
     const mutationSignal = mutateAbort.signal;
     try {
-      const wgId = resolveVpnProfileWgId(catalogItems, profileId, selectedWgId);
+      const wgId = resolveVpnProfileWgId(catalogItems, profileId);
+      if (!wgId) {
+        ctx.showToast({
+          tone: 'warning',
+          title: 'Не удалось отключить',
+          message: VPN_PROFILE_WG_ID_MISSING_MESSAGE,
+        });
+        return;
+      }
       const response = await deactivateVpnProfile({
         wgId,
         session: getSession(),

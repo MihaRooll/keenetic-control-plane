@@ -775,6 +775,58 @@ def _assignment_policy_metadata(assignment: dict[str, Any]) -> dict[str, Any]:
     return parsed if isinstance(parsed, dict) else {}
 
 
+def _resolve_assignment_wg_id(
+    assignment: dict[str, Any],
+    *,
+    profile_metadata: dict[str, Any] | None = None,
+) -> str | None:
+    """Resolve wg_id: observed_vendor_locator → policy_metadata.wg_id → profile metadata.wg_id."""
+    observed = assignment.get("observed_vendor_locator")
+    if observed:
+        observed_wg = str(observed).strip()
+        if observed_wg:
+            return observed_wg
+    policy = _assignment_policy_metadata(assignment)
+    policy_wg = policy.get("wg_id")
+    if policy_wg and str(policy_wg).strip():
+        return str(policy_wg).strip()
+    if profile_metadata is not None:
+        meta_wg = profile_metadata.get("wg_id")
+        if meta_wg is not None and str(meta_wg).strip():
+            return str(meta_wg).strip()
+    return None
+
+
+def _policy_metadata_from_intent(
+    intent: WireguardIntent,
+    *,
+    tunnel_verification_status: str | None,
+) -> dict[str, Any]:
+    """Redacted policy metadata for orphan teardown — no secrets/keys."""
+    payload: dict[str, Any] = {"wg_id": intent.wg_id}
+    if tunnel_verification_status:
+        payload["tunnel_verification_status"] = tunnel_verification_status
+    if intent.asc_args is not None:
+        payload["asc9_args"] = list(intent.asc_args)
+    if intent.peer_public_key is not None:
+        payload["peer_public_key"] = intent.peer_public_key
+    if intent.peer_endpoint is not None:
+        payload["peer_endpoint"] = intent.peer_endpoint
+    if intent.peer_allow_ips is not None:
+        payload["peer_allow_ips"] = intent.peer_allow_ips
+    if intent.peer_keepalive_interval is not None:
+        payload["peer_keepalive_interval"] = intent.peer_keepalive_interval
+    if intent.peer_rci_shape is not None:
+        payload["peer_rci_shape"] = intent.peer_rci_shape.value
+    if intent.interface_address is not None:
+        payload["interface_address"] = intent.interface_address
+    payload["ip_global_auto"] = intent.ip_global_auto
+    if intent.ip_global_priority is not None:
+        payload["ip_global_priority"] = intent.ip_global_priority
+    payload["tcp_mss_pmtu"] = intent.tcp_mss_pmtu
+    return payload
+
+
 def _wireguard_intent_from_metadata_dict(
     *,
     wg_id: str,
@@ -833,23 +885,35 @@ def _profile_apply_success(result: WireguardApplyResult) -> bool:
     return result.overall == "applied"
 
 
+def _deactivate_wg_id_mismatch_message(*, expected_wg_id: str, request_wg_id: str) -> str:
+    return (
+        "wg_id does not match active tunnel assignment "
+        f"(expected={expected_wg_id}, requested={request_wg_id})"
+    )
+
+
 def _validate_deactivate_assignment_under_lock(
     *,
     fresh_assignment: dict[str, Any] | None,
     outside_assignment: dict[str, Any] | None,
     request_wg_id: str,
+    profile_metadata: dict[str, Any] | None = None,
 ) -> None:
     """Fail-closed before teardown if assignment changed under apply lock."""
     if fresh_assignment is None:
         return
-    observed = fresh_assignment.get("observed_vendor_locator")
-    if observed:
-        observed_wg = str(observed).strip()
+    expected_wg_id = _resolve_assignment_wg_id(
+        fresh_assignment,
+        profile_metadata=profile_metadata,
+    )
+    if expected_wg_id:
         request_wg = request_wg_id.strip()
-        if observed_wg and observed_wg != request_wg:
+        if expected_wg_id != request_wg:
             raise VpnProfileDeactivateWgMismatchError(
-                "wg_id does not match active tunnel assignment "
-                f"(observed={observed_wg}, requested={request_wg})"
+                _deactivate_wg_id_mismatch_message(
+                    expected_wg_id=expected_wg_id,
+                    request_wg_id=request_wg,
+                )
             )
     if outside_assignment is not None:
         outside_profile_id = str(outside_assignment["profile_id"])
@@ -2222,23 +2286,16 @@ def list_profiles(request: Request) -> JSONResponse:
         active_assignment: dict[str, Any] | None = active_by_profile.get(profile_id)
         is_active = active_assignment is not None
         assigned_wg_id: str | None = None
-        tunnel_verification_status: str | None = None
+        last_apply_tunnel_verification_status: str | None = None
         if is_active and active_assignment is not None:
-            assigned_wg_id = None
-            if active_assignment.get("observed_vendor_locator"):
-                assigned_wg_id = str(active_assignment["observed_vendor_locator"])
-            policy_raw = active_assignment.get("policy_metadata_json")
-            if policy_raw:
-                policy = json.loads(policy_raw)
-                if not assigned_wg_id and policy.get("wg_id"):
-                    assigned_wg_id = str(policy["wg_id"])
-                tvs = policy.get("tunnel_verification_status")
-                if isinstance(tvs, str) and tvs:
-                    tunnel_verification_status = tvs
-            if not assigned_wg_id:
-                meta_wg = metadata.get("wg_id")
-                if meta_wg is not None:
-                    assigned_wg_id = str(meta_wg)
+            assigned_wg_id = _resolve_assignment_wg_id(
+                active_assignment,
+                profile_metadata=metadata,
+            )
+            policy = _assignment_policy_metadata(active_assignment)
+            tvs = policy.get("tunnel_verification_status")
+            if isinstance(tvs, str) and tvs:
+                last_apply_tunnel_verification_status = tvs
         meta_wg_raw = metadata.get("wg_id")
         profile_wg_id = str(meta_wg_raw) if meta_wg_raw is not None else None
         item: dict[str, Any] = {
@@ -2252,8 +2309,10 @@ def list_profiles(request: Request) -> JSONResponse:
             "assigned_wg_id": assigned_wg_id,
             "wg_id": profile_wg_id,
         }
-        if tunnel_verification_status is not None:
-            item["tunnel_verification_status"] = tunnel_verification_status
+        if last_apply_tunnel_verification_status is not None:
+            item["last_apply_tunnel_verification_status"] = (
+                last_apply_tunnel_verification_status
+            )
         items.append(item)
     return JSONResponse(
         {"items": items, "next_cursor": None, "limit": 50},
@@ -2762,10 +2821,12 @@ def activate_vpn_profile(
                     desired_active=True,
                     observed_vendor_locator=intent.wg_id,
                     policy_metadata_json=json.dumps(
-                        {
-                            "wg_id": intent.wg_id,
-                            "tunnel_verification_status": apply_result.tunnel_verification_status,
-                        },
+                        _policy_metadata_from_intent(
+                            intent,
+                            tunnel_verification_status=(
+                                apply_result.tunnel_verification_status
+                            ),
+                        ),
                         sort_keys=True,
                     ),
                     now=host.runtime.clock.now(),
@@ -2982,27 +3043,34 @@ def deactivate_vpn_profile(
         if router_id
         else None
     )
+    assignment_profile_metadata: dict[str, Any] | None = None
+    assignment_row = None
     if assignment is not None:
-        observed = assignment.get("observed_vendor_locator")
-        if observed:
-            observed_wg = str(observed).strip()
+        assignment_row = host.runtime.store.get_profile(str(assignment["profile_id"]))
+        if assignment_row is not None:
+            assignment_profile_metadata = json.loads(assignment_row["metadata_json"] or "{}")
+        expected_wg_id = _resolve_assignment_wg_id(
+            assignment,
+            profile_metadata=assignment_profile_metadata,
+        )
+        if expected_wg_id:
             request_wg = body.wg_id.strip()
-            if observed_wg and observed_wg != request_wg:
+            if expected_wg_id != request_wg:
                 return error_response(
                     request,
                     status_code=422,
                     code="profile.deactivate_wg_mismatch",
-                    message=(
-                        "wg_id does not match active tunnel assignment "
-                        f"(observed={observed_wg}, requested={request_wg})"
+                    message=_deactivate_wg_id_mismatch_message(
+                        expected_wg_id=expected_wg_id,
+                        request_wg_id=request_wg,
                     ),
                 )
     intent = WireguardIntent(wg_id=body.wg_id, enabled=False, asc_args=None)
     profile_id = str(assignment["profile_id"]) if assignment is not None else None
-    if assignment is not None:
-        row = host.runtime.store.get_profile(str(assignment["profile_id"]))
-        if row is not None:
-            intent = _wireguard_intent_from_profile_row(host, row, wg_id=body.wg_id, enabled=False)
+    if assignment_row is not None:
+        intent = _wireguard_intent_from_profile_row(
+            host, assignment_row, wg_id=body.wg_id, enabled=False
+        )
 
     intent_redacted = _profile_mutation_intent_redacted(
         profile_id or "unknown",
@@ -3026,6 +3094,7 @@ def deactivate_vpn_profile(
                 fresh_assignment=fresh_assignment,
                 outside_assignment=assignment,
                 request_wg_id=body.wg_id,
+                profile_metadata=assignment_profile_metadata,
             )
         if wg_routes._should_use_live_path(
             cast(wg_routes.WireguardLiveConnectionFields, body), host
@@ -3059,14 +3128,18 @@ def deactivate_vpn_profile(
                     raise VpnProfileDeactivateWgMismatchError(
                         "active tunnel assignment changed during deactivate teardown"
                     )
-                observed = still_active.get("observed_vendor_locator")
-                if observed:
-                    observed_wg = str(observed).strip()
+                expected_wg_id = _resolve_assignment_wg_id(
+                    still_active,
+                    profile_metadata=assignment_profile_metadata,
+                )
+                if expected_wg_id:
                     request_wg = body.wg_id.strip()
-                    if observed_wg and observed_wg != request_wg:
+                    if expected_wg_id != request_wg:
                         raise VpnProfileDeactivateWgMismatchError(
-                            "wg_id does not match active tunnel assignment "
-                            f"(observed={observed_wg}, requested={request_wg})"
+                            _deactivate_wg_id_mismatch_message(
+                                expected_wg_id=expected_wg_id,
+                                request_wg_id=request_wg,
+                            )
                         )
                 cleared = host.runtime.store.deactivate_tunnel_assignments(
                     router_id,

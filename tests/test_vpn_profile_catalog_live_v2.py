@@ -2034,3 +2034,96 @@ def test_deactivate_aborts_when_assignment_replaced_under_lock(
     assert active is not None
     assert str(active["profile_id"]) == fresh_profile_id
 
+
+def test_activate_persists_policy_metadata_intent_fields(
+    authed_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Successful activate upserts policy_metadata with orphan-teardown intent fields."""
+    from types import SimpleNamespace
+
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
+
+    store = authed_client.app.state.host.runtime.store
+    router_id = _seed_catalog_router(store)
+    profile_id = _seed_catalog_profile(store, display_name="policy-meta-rich", wg_id="Wireguard5")
+
+    monkeypatch.setattr(wg_routes_mod, "_validate_live_connection_fields", lambda *_a, **_k: None)
+    monkeypatch.setattr(
+        routes_mod,
+        "apply_wireguard_intent",
+        lambda **_k: SimpleNamespace(
+            overall="applied",
+            tunnel_verification_status="tunnel_healthy",
+            to_dict=lambda: {"overall": "applied"},
+        ),
+    )
+
+    resp = authed_client.post(
+        f"/api/router-control/v1/vpn-profiles/{profile_id}/activate",
+        json={
+            "confirm_live_apply": True,
+            "router_id": router_id,
+            "wg_id": "Wireguard5",
+            "ip_global_auto": True,
+            "ip_global_priority": 900,
+        },
+    )
+    assert resp.status_code == 200
+    active = store.get_active_tunnel_assignment(router_id)
+    assert active is not None
+    policy = json.loads(active["policy_metadata_json"] or "{}")
+    assert policy["wg_id"] == "Wireguard5"
+    assert policy["tunnel_verification_status"] == "tunnel_healthy"
+    assert policy["ip_global_auto"] is True
+    assert policy["ip_global_priority"] == 900
+    assert policy["peer_public_key"] == "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB="
+    assert policy["peer_endpoint"] == "example.com:51820"
+    assert policy["peer_allow_ips"] == "0.0.0.0/0"
+    assert policy["asc9_args"] == list(_ASC_9)
+    assert "private_key" not in policy
+    assert "private_key_credential_ref_id" not in policy
+
+
+def test_deactivate_wg_id_mismatch_resolves_policy_metadata_wg_id(
+    authed_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Deactivate mismatch uses policy_metadata.wg_id when observed_vendor_locator absent."""
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
+
+    store = authed_client.app.state.host.runtime.store
+    router_id = _seed_catalog_router(store)
+    profile_id = _seed_catalog_profile(store, display_name="deactivate-policy-wg")
+    store.upsert_tunnel_assignment(
+        router_id=router_id,
+        profile_id=profile_id,
+        desired_active=True,
+        observed_vendor_locator=None,
+        policy_metadata_json=json.dumps({"wg_id": "Wireguard5"}),
+    )
+
+    teardown_calls: list[str] = []
+
+    def _track_teardown(**kwargs: object) -> object:
+        teardown_calls.append(str(kwargs.get("wg_id")))
+        raise AssertionError("teardown must not run on wg_id mismatch")
+
+    monkeypatch.setattr(wg_routes_mod, "_should_use_live_path", lambda *_a, **_k: False)
+    monkeypatch.setattr(wg_routes_mod, "_validate_live_connection_fields", lambda *_a, **_k: None)
+    monkeypatch.setattr(routes_mod, "teardown_wireguard", _track_teardown)
+
+    resp = authed_client.post(
+        "/api/router-control/v1/vpn-profiles/deactivate",
+        json={
+            "confirm_live_apply": True,
+            "wg_id": "Wireguard6",
+            "router_id": router_id,
+        },
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "profile.deactivate_wg_mismatch"
+    assert teardown_calls == []
+    active = store.get_active_tunnel_assignment(router_id)
+    assert active is not None
+

@@ -53,8 +53,8 @@ import {
   evaluateVpnMutationReadiness,
   fetchVpnCatalogLiveStatus,
   listVpnProfiles,
-  listVpnTunnelInterfaceOptions,
   resolveVpnProfileWgId,
+  VPN_PROFILE_WG_ID_MISSING_MESSAGE,
   VPN_POST_SETTLE_RECHECK_HINT,
   VPN_TUNNEL_UNVERIFIED_MESSAGE,
 } from '../features/vpn-model.js';
@@ -1212,12 +1212,10 @@ export function render(container, ctx) {
 
   /**
    * @param {string} profileId
-   * @returns {string}
+   * @returns {string|null}
    */
   function resolveOverviewVpnProfileWgId(profileId) {
-    const options = listVpnTunnelInterfaceOptions();
-    const fallbackWgId = options[0]?.wgId ?? 'Wireguard5';
-    return resolveVpnProfileWgId(vpnCatalogItems, profileId, fallbackWgId);
+    return resolveVpnProfileWgId(vpnCatalogItems, profileId);
   }
 
   /**
@@ -1343,6 +1341,14 @@ export function render(container, ctx) {
     const mutationSignal = mutateAbort.signal;
     try {
       const wgId = resolveOverviewVpnProfileWgId(profileId);
+      if (!wgId) {
+        ctx.showToast({
+          tone: 'warning',
+          title: 'Не удалось подключить',
+          message: VPN_PROFILE_WG_ID_MISSING_MESSAGE,
+        });
+        return;
+      }
       const response = await activateVpnProfile({
         profileId,
         session: getSession(),
@@ -1437,6 +1443,14 @@ export function render(container, ctx) {
     const mutationSignal = mutateAbort.signal;
     try {
       const wgId = resolveOverviewVpnProfileWgId(profileId);
+      if (!wgId) {
+        ctx.showToast({
+          tone: 'warning',
+          title: 'Не удалось отключить',
+          message: VPN_PROFILE_WG_ID_MISSING_MESSAGE,
+        });
+        return;
+      }
       const response = await deactivateVpnProfile({
         wgId,
         session: getSession(),

@@ -207,6 +207,10 @@ export const VPN_CATALOG_REMOVE_CANCEL = 'Отмена';
 export const VPN_CATALOG_REMOVE_ACTIVE_REFUSE =
   'Этот VPN сейчас подключён. Сначала нажмите «Отключить», потом уберите профиль из списка.';
 
+/** Профиль без назначенного интерфейса туннеля — activate/deactivate недоступны. */
+export const VPN_PROFILE_WG_ID_MISSING_MESSAGE =
+  'У профиля не указан интерфейс туннеля — выберите туннель в разделе «Все настройки VPN» или импортируйте профиль заново с указанием интерфейса.';
+
 /** После клиентского таймаута apply — честное «не знаем». */
 export const VPN_APPLY_TIMEOUT_UNKNOWN_CONFIGURATION_MESSAGE =
   'Не удалось дождаться ответа сервера управления. Настройки могли уже примениться на роутере — проверьте состояние, не повторяйте подключение вслепую.';
@@ -859,14 +863,13 @@ export function listVpnTunnelInterfaceOptions() {
 
 /**
  * Resolve WireGuard interface for a catalog profile.
- * Priority: assigned_wg_id → profile metadata wg_id → fallbackWgId (UI tunnel selection).
- * Does not invent a default interface before those sources are exhausted.
+ * Priority: assigned_wg_id → profile metadata wg_id.
+ * Returns null when neither source provides wg_id — callers must fail-closed.
  * @param {ReadonlyArray<Record<string, unknown>>} catalogItems
  * @param {string} profileId
- * @param {string} [fallbackWgId] UI-selected tunnel when profile has no assignment/metadata wg_id
- * @returns {string}
+ * @returns {string|null}
  */
-export function resolveVpnProfileWgId(catalogItems, profileId, fallbackWgId = 'Wireguard5') {
+export function resolveVpnProfileWgId(catalogItems, profileId) {
   const item = catalogItems.find((row) => {
     const payload = /** @type {Record<string, unknown>} */ (row ?? {});
     return payload.profile_id === profileId;
@@ -881,9 +884,7 @@ export function resolveVpnProfileWgId(catalogItems, profileId, fallbackWgId = 'W
   if (metadataWg) {
     return metadataWg;
   }
-  const fallback =
-    typeof fallbackWgId === 'string' ? fallbackWgId.trim() : '';
-  return fallback || 'Wireguard5';
+  return null;
 }
 
 /**

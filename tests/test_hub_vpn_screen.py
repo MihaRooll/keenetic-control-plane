@@ -488,13 +488,14 @@ def test_vpn_screen_activate_toast_gated_on_activated_flag() -> None:
 
 
 def test_vpn_screen_deactivate_resolves_wg_id_from_profile() -> None:
-    """Catalog deactivate must use assigned_wg_id via resolveVpnProfileWgId, not selectedWgId alone."""
+    """Catalog deactivate must use resolveVpnProfileWgId without selectedWgId fallback."""
     source = _read(VPN_SCREEN_JS)
     body = _extract_function_body(source, "async function runDeactivateProfile(")
     assert body is not None
-    assert "const wgId = resolveVpnProfileWgId(catalogItems, profileId, selectedWgId)" in body
+    assert "const wgId = resolveVpnProfileWgId(catalogItems, profileId)" in body
+    assert "VPN_PROFILE_WG_ID_MISSING_MESSAGE" in body
     deactivate_section = body.split(
-        "const wgId = resolveVpnProfileWgId(catalogItems, profileId, selectedWgId)", 1
+        "const wgId = resolveVpnProfileWgId(catalogItems, profileId)", 1
     )[1]
     deactivate_call = deactivate_section.split("deactivateVpnProfile(", 1)[1].split("});", 1)[0]
     assert "wgId" in deactivate_call
@@ -503,13 +504,14 @@ def test_vpn_screen_deactivate_resolves_wg_id_from_profile() -> None:
 
 
 def test_vpn_screen_activate_resolves_wg_id_from_profile() -> None:
-    """Catalog activate must use resolveVpnProfileWgId like deactivate, not selectedWgId alone."""
+    """Catalog activate must use resolveVpnProfileWgId without selectedWgId fallback."""
     source = _read(VPN_SCREEN_JS)
     body = _extract_function_body(source, "async function runActivateProfile(")
     assert body is not None
-    assert "const wgId = resolveVpnProfileWgId(catalogItems, profileId, selectedWgId)" in body
+    assert "const wgId = resolveVpnProfileWgId(catalogItems, profileId)" in body
+    assert "VPN_PROFILE_WG_ID_MISSING_MESSAGE" in body
     activate_section = body.split(
-        "const wgId = resolveVpnProfileWgId(catalogItems, profileId, selectedWgId)", 1
+        "const wgId = resolveVpnProfileWgId(catalogItems, profileId)", 1
     )[1]
     activate_call = activate_section.split("activateVpnProfile(", 1)[1].split("});", 1)[0]
     assert "wgId" in activate_call

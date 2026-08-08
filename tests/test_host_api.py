@@ -148,7 +148,8 @@ def test_vpn_profiles_list_active_assignment_shape(client, app_env) -> None:
     active = by_id[profile_id]
     assert active["is_active"] is True
     assert active["assigned_wg_id"] == "Wireguard5"
-    assert active["tunnel_verification_status"] == "tunnel_healthy"
+    assert active["last_apply_tunnel_verification_status"] == "tunnel_healthy"
+    assert "tunnel_verification_status" not in active
     assert by_id[inactive_id]["is_active"] is False
     assert by_id[inactive_id]["assigned_wg_id"] is None
 
