@@ -83,17 +83,19 @@ def remove_vpn_profile_from_catalog(
 
     def _remove_under_lock() -> int:
         ref_ids = store.prepare_vpn_profile_catalog_remove(profile_id, now=now)
-        secrets_released = 0
+        exclusive_ref_ids: list[str] = []
         for ref_id in ref_ids:
             if store.count_credential_ref_profile_links(ref_id) != 1:
                 continue
             if store.credential_ref_has_non_vpn_live_links(ref_id):
                 continue
+            exclusive_ref_ids.append(ref_id)
+        for ref_id in exclusive_ref_ids:
             host.runtime.vault.revoke(ref_id)
+        for ref_id in exclusive_ref_ids:
             store.mark_credential_revoked(ref_id, now=now)
-            secrets_released += 1
         store.commit_vpn_profile_catalog_remove(profile_id, now=now)
-        return secrets_released
+        return len(exclusive_ref_ids)
 
     try:
         secrets_released = _run_with_sorted_apply_locks(store, _remove_under_lock)
@@ -125,12 +127,12 @@ def remove_vpn_profile_from_catalog(
             code="vpn_catalog.active_profile",
             message=_ACTIVE_REFUSE_MESSAGE,
         )
-    except VaultError as exc:
+    except VaultError:
         return error_response(
             request,
             status_code=502,
             code="vpn_catalog.secret_revoke_failed",
-            message=str(exc),
+            message="secret revoke failed",
         )
 
     return JSONResponse(

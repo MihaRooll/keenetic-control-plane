@@ -18,6 +18,7 @@ _ACTIVATE_PATH = "/api/router-control/v1/vpn-profiles/{profile_id}/activate"
 _LIST_PATH = "/api/router-control/v1/vpn-profiles"
 _TEST_WG = "Wireguard5"
 _SYNTHETIC_SECRET = "aGVsbG8tdGhpcy1pcy1ub3QtYS1yZWFsLWF3Zy1rZXktbWF0ZXJpYWw="
+_SYNTHETIC_PSK = "cHNrLXRlc3QtbWF0ZXJpYWwtbm90LXJlYWwtYXdjLXByZXNoYXJlZA=="
 _TEST_SEALED_APPLY_LEASE_OWNER = "vpn-catalog-remove-test-lease"
 _ACTIVATE_IN_PROGRESS_MESSAGE = (
     "Сейчас идёт подключение этого VPN — подождите и повторите."
@@ -87,6 +88,40 @@ def _seed_profile_with_secret(
         refs=[(cred_id, "PrivateKey")],
     )
     return profile_id, cred_id
+
+
+def _seed_profile_with_two_exclusive_secrets(
+    client: Any,
+    *,
+    display_name: str,
+) -> tuple[str, str, str]:
+    store = client.store
+    vault: MemoryVault = client.vault
+    router_id = _seed_router(store)
+    pk_handle = vault.create(kind="awg_private_key", secret=_SYNTHETIC_SECRET)
+    pk_id = pk_handle.credential_ref_id
+    store.insert_credential_ref(
+        router_id=router_id,
+        kind=pk_handle.kind,
+        provider=pk_handle.provider,
+        provider_locator=pk_handle.provider_locator,
+        credential_ref_id=pk_id,
+    )
+    psk_handle = vault.create(kind="awg_preshared_key", secret=_SYNTHETIC_PSK)
+    psk_id = psk_handle.credential_ref_id
+    store.insert_credential_ref(
+        router_id=router_id,
+        kind=psk_handle.kind,
+        provider=psk_handle.provider,
+        provider_locator=psk_handle.provider_locator,
+        credential_ref_id=psk_id,
+    )
+    profile_id = _seed_profile(store, display_name=display_name)
+    store.insert_profile_secret_refs(
+        profile_id=profile_id,
+        refs=[(pk_id, "PrivateKey"), (psk_id, "PresharedKey")],
+    )
+    return profile_id, pk_id, psk_id
 
 
 def _remove(client: Any, profile_id: str, *, confirm: bool = True) -> Any:
@@ -199,6 +234,75 @@ def test_exclusive_secret_ref_revoked(remove_client) -> None:
         vault.use(cred_id)
 
 
+def test_multi_exclusive_mid_loop_vault_error_leaves_no_revoked_at(
+    remove_client,
+    monkeypatch,
+) -> None:
+    """Mid-loop VaultError: vault may destroy first secret, but DB marks none."""
+    profile_id, pk_id, psk_id = _seed_profile_with_two_exclusive_secrets(
+        remove_client,
+        display_name="multi-exclusive-revoke-fail",
+    )
+    store = remove_client.store
+    vault: MemoryVault = remove_client.vault
+    real_revoke = vault.revoke
+    calls: list[str] = []
+
+    def _revoke_first_ok_then_fail(ref_id: str) -> None:
+        calls.append(ref_id)
+        if len(calls) == 1:
+            real_revoke(ref_id)
+            return
+        raise VaultError("simulated second revoke failure")
+
+    monkeypatch.setattr(vault, "revoke", _revoke_first_ok_then_fail)
+
+    resp = _remove(remove_client, profile_id)
+    assert resp.status_code // 100 != 2
+    assert resp.json()["error"]["code"] == "vpn_catalog.secret_revoke_failed"
+    assert resp.json()["error"]["message"] == "secret revoke failed"
+
+    row = store.get_profile(profile_id)
+    assert row is not None
+    assert row["superseded_at"] is None
+    assert store.list_profiles()
+    assert store.list_profile_secret_refs(profile_id)
+    pk_cred = store.get_credential_ref(pk_id)
+    psk_cred = store.get_credential_ref(psk_id)
+    assert pk_cred is not None
+    assert psk_cred is not None
+    assert pk_cred["revoked_at"] is None
+    assert psk_cred["revoked_at"] is None
+
+
+def test_multi_exclusive_happy_path_revokes_both_and_retires_profile(
+    remove_client,
+) -> None:
+    profile_id, pk_id, psk_id = _seed_profile_with_two_exclusive_secrets(
+        remove_client,
+        display_name="multi-exclusive-revoke-ok",
+    )
+    store = remove_client.store
+    vault: MemoryVault = remove_client.vault
+    resp = _remove(remove_client, profile_id)
+    assert resp.status_code == 200
+    assert resp.json()["secrets_released"] == 2
+    assert store.list_profiles() == []
+    retired = store.get_profile_including_superseded(profile_id)
+    assert retired is not None
+    assert retired["superseded_at"] is not None
+    pk_cred = store.get_credential_ref(pk_id)
+    psk_cred = store.get_credential_ref(psk_id)
+    assert pk_cred is not None
+    assert psk_cred is not None
+    assert pk_cred["revoked_at"] is not None
+    assert psk_cred["revoked_at"] is not None
+    with pytest.raises(VaultError):
+        vault.use(pk_id)
+    with pytest.raises(VaultError):
+        vault.use(psk_id)
+
+
 def test_exclusive_revoke_vault_error_aborts_remove(remove_client, monkeypatch) -> None:
     profile_id, cred_id = _seed_profile_with_secret(
         remove_client,
@@ -215,6 +319,7 @@ def test_exclusive_revoke_vault_error_aborts_remove(remove_client, monkeypatch) 
     resp = _remove(remove_client, profile_id)
     assert resp.status_code // 100 != 2
     assert resp.json()["error"]["code"] == "vpn_catalog.secret_revoke_failed"
+    assert resp.json()["error"]["message"] == "secret revoke failed"
 
     row = store.get_profile(profile_id)
     assert row is not None
