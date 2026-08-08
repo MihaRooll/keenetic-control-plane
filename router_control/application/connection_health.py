@@ -23,8 +23,18 @@ from router_control.ports.vault import CredentialVaultPort
 HealthStatus = Literal["green", "yellow", "red"]
 
 
+_HOST_NOT_PRIVATE_MESSAGE = "endpoint.host must be a private management address"
+
+
 class ConnectionHealthError(Exception):
     """Policy failure during connection health assessment."""
+
+
+class ConnectionHealthHostNotPrivateError(ConnectionHealthError):
+    """Host resolves outside private management address policy."""
+
+    def __init__(self) -> None:
+        super().__init__(_HOST_NOT_PRIVATE_MESSAGE)
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,7 +104,7 @@ def _resolve_target(
     if not resolved_host:
         raise ConnectionHealthError("host must be non-empty")
     if not host_is_private(resolved_host):
-        raise ConnectionHealthError("host must be a private management address")
+        raise ConnectionHealthHostNotPrivateError()
 
     for router_row in store.list_routers(limit=200):
         rid = str(router_row["router_id"])

@@ -74,6 +74,11 @@ export const ERROR_MESSAGES = Object.freeze({
     userAction: 'Проверьте поля формы и исправьте отмеченные ошибки.',
     kind: ERROR_KIND.VALIDATION,
   },
+  'endpoint.host_not_private': {
+    userMessage: 'Адрес роутера должен быть из частной (локальной) сети.',
+    userAction: 'Укажите локальный IP роутера (например 192.168.x.x), а не публичный адрес или интернет-имя.',
+    kind: ERROR_KIND.VALIDATION,
+  },
   'profile.validation_failed': {
     userMessage: 'Профиль роутера содержит недопустимые параметры.',
     userAction: 'Проверьте профиль и исправьте некорректные значения.',

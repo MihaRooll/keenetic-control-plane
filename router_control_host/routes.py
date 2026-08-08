@@ -72,6 +72,7 @@ from router_control_host.auth import (
     session_binding_from_cookie,
 )
 from router_control_host.errors import (
+    endpoint_host_not_private_response,
     error_body,
     error_response,
     operator_structured_error_response,
@@ -550,12 +551,7 @@ def _validate_live_enroll_endpoint(
             message=str(exc),
         )
     if not host_is_private(validated_host):
-        return error_response(
-            request,
-            status_code=400,
-            code="request.validation_failed",
-            message="endpoint.host must be a private management address",
-        )
+        return endpoint_host_not_private_response(request)
     return validated_host
 
 

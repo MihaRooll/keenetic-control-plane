@@ -64,6 +64,11 @@ _RCI_CODE_TO_REASON: dict[str, str] = {
     "invalid_value": "invalid_value",
 }
 
+ENDPOINT_HOST_NOT_PRIVATE_CODE = "endpoint.host_not_private"
+ENDPOINT_HOST_NOT_PRIVATE_MESSAGE = (
+    "endpoint.host must be a private management address"
+)
+
 _HTTP_STATUS_MESSAGES: dict[int, tuple[str, str]] = {
     400: ("request.validation_failed", "Bad request"),
     401: ("auth.required", "Authentication required"),
@@ -577,6 +582,15 @@ def error_body(
             "correlation_id": correlation_id,
         }
     }
+
+
+def endpoint_host_not_private_response(request: Request) -> JSONResponse:
+    return error_response(
+        request,
+        status_code=422,
+        code=ENDPOINT_HOST_NOT_PRIVATE_CODE,
+        message=ENDPOINT_HOST_NOT_PRIVATE_MESSAGE,
+    )
 
 
 def error_response(

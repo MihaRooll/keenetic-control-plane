@@ -513,3 +513,31 @@ def test_connection_health_host_api_yellow_without_probe(
     body = response.json()
     assert body["status"] == "yellow"
     assert body["reason_code"] == "reachability_unknown"
+
+
+def test_connection_health_host_api_rejects_non_private_host(
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("HUB_ADMIN_PASSWORD", "test-admin-password")
+    from router_control_host.app import create_app
+    from router_control_host.auth import mint_hub_admin_cookie
+
+    app = create_app(
+        db_path=tmp_path / "health-public-host.sqlite3",
+        enable_worker=False,
+        vault=MemoryVault(),
+    )
+
+    from fastapi.testclient import TestClient
+
+    with TestClient(app) as client:
+        client.cookies.set("hub_admin", mint_hub_admin_cookie())
+        response = client.post(
+            "/api/router-control/v1/lab/connection-health",
+            json={"host": "8.8.8.8", "probe": False},
+        )
+    assert response.status_code == 422
+    err = response.json()["error"]
+    assert err["code"] == "endpoint.host_not_private"
+    assert err["message"] == "endpoint.host must be a private management address"

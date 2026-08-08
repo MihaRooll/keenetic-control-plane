@@ -681,6 +681,78 @@ def test_live_enroll_accepts_valid_private_host(
     assert r.json()["certification_status"] == "ReadOnlyCertified"
 
 
+def test_live_enroll_rejects_non_private_literal_host(
+    live_open_client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Public literal management host → 422 endpoint.host_not_private, no side effects."""
+    vault = live_open_client.app.state.host.runtime.vault
+    store = live_open_client.app.state.host.runtime.store
+    probe_calls: list[str] = []
+
+    def counting_probe(target: LiveProbeTarget) -> dict[str, object]:
+        probe_calls.append("probe")
+        return dict(CERTIFIED_EVIDENCE)
+
+    live_open_client.app.state.host.read_only_probe_fn = counting_probe
+    _forbid_network(monkeypatch)
+    body = _enroll_body()
+    body["endpoint"] = {
+        "kind": "management_https",
+        "host": "8.8.8.8",
+        "port": 443,
+        "username": "lab-user",
+        "source_address": "192.168.2.10",
+    }
+    r = live_open_client.post(
+        "/api/router-control/v1/routers",
+        json=body,
+        headers={"Idempotency-Key": "live-enroll-public-literal"},
+    )
+    assert r.status_code == 422
+    err = r.json()["error"]
+    assert err["code"] == "endpoint.host_not_private"
+    assert err["message"] == "endpoint.host must be a private management address"
+    assert len(vault._secrets) == 0
+    assert len(store.list_routers()) == 0
+    assert len(probe_calls) == 0
+
+
+def test_live_enroll_rejects_public_hostname_resolve_fail_closed(
+    live_open_client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Hostname resolving to public addresses → 422 endpoint.host_not_private."""
+    vault = live_open_client.app.state.host.runtime.vault
+    store = live_open_client.app.state.host.runtime.store
+    _forbid_network(monkeypatch)
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda *args, **kwargs: [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 0)),
+        ],
+    )
+    body = _enroll_body()
+    body["endpoint"] = {
+        "kind": "management_https",
+        "host": "example.com",
+        "port": 443,
+        "username": "lab-user",
+        "source_address": "192.168.2.10",
+    }
+    r = live_open_client.post(
+        "/api/router-control/v1/routers",
+        json=body,
+        headers={"Idempotency-Key": "live-enroll-public-hostname"},
+    )
+    assert r.status_code == 422
+    err = r.json()["error"]
+    assert err["code"] == "endpoint.host_not_private"
+    assert len(vault._secrets) == 0
+    assert len(store.list_routers()) == 0
+
+
 def test_live_enroll_probe_failure_removes_orphan_credential_ref(
     live_open_client, monkeypatch: pytest.MonkeyPatch
 ) -> None:

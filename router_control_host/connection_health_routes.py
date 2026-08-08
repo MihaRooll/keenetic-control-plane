@@ -9,11 +9,12 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 from router_control.application.connection_health import (
     ConnectionHealthError,
+    ConnectionHealthHostNotPrivateError,
     assess_connection_health,
 )
 
 from router_control_host.apply_response_models import ConnectionHealthResponse
-from router_control_host.errors import error_response
+from router_control_host.errors import endpoint_host_not_private_response, error_response
 from router_control_host.routes import API_PREFIX, _ok_headers
 from router_control_host.state import HostState
 
@@ -55,6 +56,8 @@ def connection_health(request: Request, body: ConnectionHealthBody) -> JSONRespo
             gate_a=host.gate_a_certification,
             probe_port=host.connection_health_probe_port,
         )
+    except ConnectionHealthHostNotPrivateError:
+        return endpoint_host_not_private_response(request)
     except ConnectionHealthError as exc:
         return error_response(
             request,

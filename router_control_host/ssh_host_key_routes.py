@@ -7,7 +7,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
-from router_control.adapters.netcraze.errors import SshTunnelError
+from router_control.adapters.netcraze.errors import SshHostNotPrivate, SshTunnelError
 from router_control.application.ssh_host_key_pin import (
     SshHostKeyPinConflict,
     confirm_pin,
@@ -16,7 +16,7 @@ from router_control.application.ssh_host_key_pin import (
 )
 from router_control.persistence.errors import NotFoundError, PreconditionFailed
 
-from router_control_host.errors import error_response
+from router_control_host.errors import endpoint_host_not_private_response, error_response
 from router_control_host.routes import API_PREFIX, _ok_headers
 from router_control_host.state import HostState
 from router_control_host.wifi_live_transport import missing_connection_fields
@@ -286,6 +286,8 @@ def ssh_host_key_learn(
             port=body.port,
             source_address=resolved_source,
         )
+    except SshHostNotPrivate:
+        return endpoint_host_not_private_response(request)
     except SshTunnelError as exc:
         return error_response(
             request,

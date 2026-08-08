@@ -11,7 +11,7 @@ from unittest.mock import MagicMock, patch
 
 import paramiko
 import pytest
-from router_control.adapters.netcraze.errors import SshTunnelError
+from router_control.adapters.netcraze.errors import SshHostNotPrivate, SshTunnelError
 from router_control.application import ssh_host_key_pin as ssh_host_key_pin_module
 from router_control.application.ssh_host_key_pin import LearnCandidateResult
 from router_control_host.app import create_app
@@ -188,6 +188,27 @@ def test_ssh_host_key_learn_os_error_base_class_caught(
     body = response.json()
     assert body["error"]["code"] == "ssh_host_key.learn_failed"
     assert "connection refused" not in body["error"]["message"]
+
+
+@patch("router_control_host.ssh_host_key_routes.learn_candidate")
+def test_ssh_host_key_learn_non_private_host_returns_endpoint_host_not_private(
+    mock_learn, client, app_env
+) -> None:
+    """Public/non-private management host → 422 endpoint.host_not_private, not learn_failed."""
+    router_id = _enroll_router(app_env)
+    mock_learn.side_effect = SshHostNotPrivate(
+        "SSH host must be in a private address range"
+    )
+    response = client.post(
+        f"/api/router-control/v1/routers/{router_id}/ssh-host-key/learn",
+        json={"host": "8.8.8.8", "port": 22},
+    )
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error"]["code"] == "endpoint.host_not_private"
+    assert body["error"]["message"] == (
+        "endpoint.host must be a private management address"
+    )
 
 
 @patch("router_control_host.ssh_host_key_routes.learn_candidate")

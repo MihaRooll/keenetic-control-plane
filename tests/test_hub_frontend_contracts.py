@@ -731,6 +731,7 @@ SSH_HOST_KEY_ERROR_CODES = (
 CONNECTION_ROUTE_ERROR_CODES = (
     "router_discovery.failed",
     "connection_health.failed",
+    "endpoint.host_not_private",
     "router.not_found",
     "ssh_host_key.learn_failed",
     "ssh_host_key.invalid_pin",
