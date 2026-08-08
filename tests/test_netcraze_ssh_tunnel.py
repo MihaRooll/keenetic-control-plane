@@ -996,3 +996,78 @@ def test_pinned_ssh_transport_connect_retry_attempts_one_disables_retry() -> Non
     with pytest.raises(SshTransientConnectionError, match="banner reset"):
         transport_ctx.open()
     assert call_count == 1
+
+
+def test_ssh_dial_pins_first_vetted_private_ip_toctou_closed() -> None:
+    """TOCTOU: second getaddrinfo would return public; dial must use pinned private IP."""
+    private_ip = "192.168.1.50"
+    public_ip = "8.8.8.8"
+    resolve_calls = 0
+    dial_hosts: list[str] = []
+
+    def fake_getaddrinfo(
+        host: str,
+        port: int,
+        **kwargs: object,
+    ) -> list[tuple[int, int, int, str, tuple[str, int]]]:
+        nonlocal resolve_calls
+        resolve_calls += 1
+        if resolve_calls == 1:
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (private_ip, 0))]
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (public_ip, 0))]
+
+    key_bytes = b"pinned-key"
+    fingerprint = _fingerprint_for(key_bytes)
+    fake_transport = MagicMock()
+    fake_transport.get_remote_server_key.return_value = _FakeKey("ssh-ed25519", key_bytes)
+    fake_transport.auth_password.return_value = []
+
+    fake_paramiko = MagicMock()
+    fake_paramiko.Transport.return_value = fake_transport
+
+    def capture_create_bound(
+        host: str,
+        port: int,
+        **kwargs: object,
+    ) -> MagicMock:
+        dial_hosts.append(host)
+        fake_sock = MagicMock()
+        return fake_sock
+
+    config = _make_config(ssh_host="router.local", host_key_sha256=fingerprint)
+
+    with patch(
+        "router_control.adapters.netcraze.ssh_tunnel.socket.getaddrinfo",
+        side_effect=fake_getaddrinfo,
+    ):
+        with patch(
+            "router_control.adapters.netcraze.ssh_tunnel.create_bound_tcp_connection",
+            side_effect=capture_create_bound,
+        ):
+            with patch(
+                "router_control.adapters.netcraze.ssh_tunnel._lazy_import_paramiko",
+                return_value=fake_paramiko,
+            ):
+                tunnel = PinnedSshTunnel(config)
+                with tunnel:
+                    assert tunnel.local_port > 0
+
+    assert resolve_calls == 1
+    assert dial_hosts == [private_ip]
+    assert private_ip != public_ip
+
+
+def test_resolve_private_connect_targets_preserves_fe80_scope_id() -> None:
+    from router_control.adapters.netcraze.ssh_tunnel import resolve_private_connect_targets
+
+    scoped = "fe80::1%42"
+    assert resolve_private_connect_targets(scoped) == [scoped]
+    assert resolve_private_connect_targets(f"[{scoped}]") == [scoped]
+
+    with patch(
+        "router_control.adapters.netcraze.ssh_tunnel._getaddrinfo_bounded",
+        return_value=[
+            (socket.AF_INET6, socket.SOCK_STREAM, 6, "", ("fe80::1", 0, 0, 42)),
+        ],
+    ):
+        assert resolve_private_connect_targets("router-link.local") == ["fe80::1%42"]

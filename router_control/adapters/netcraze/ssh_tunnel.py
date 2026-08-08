@@ -149,34 +149,114 @@ def _getaddrinfo_bounded(
     return result[0] if result else None
 
 
-def host_is_private(hostname: str) -> bool:
+def _split_literal_zone(candidate: str) -> tuple[str, str | None]:
+    if "%" in candidate:
+        ip_part, zone = candidate.split("%", 1)
+        return ip_part, zone or None
+    return candidate, None
+
+
+def _format_connect_address_from_sockaddr(sockaddr: tuple[Any, ...]) -> str:
+    if not sockaddr:
+        raise ValueError("empty sockaddr")
+    host = str(sockaddr[0])
+    if len(sockaddr) >= 4 and sockaddr[3]:
+        scope_id = int(sockaddr[3])
+        if scope_id and "%" not in host:
+            return f"{host}%{scope_id}"
+    return host
+
+
+def resolve_private_connect_targets(hostname: str) -> list[str]:
+    """Resolve once and return vetted private-like dial targets; fail-closed otherwise."""
     candidate = strip_host_brackets(hostname.strip())
     if not candidate:
-        return False
+        raise SshHostNotPrivate("SSH host must be in a private address range")
+
+    ip_part, _zone = _split_literal_zone(candidate)
     try:
-        addr = ipaddress.ip_address(candidate)
+        addr = ipaddress.ip_address(ip_part)
     except ValueError:
         pass
     else:
-        return _address_is_private_like(addr)
+        if not _address_is_private_like(addr):
+            raise SshHostNotPrivate("SSH host must be in a private address range")
+        return [candidate]
 
     infos = _getaddrinfo_bounded(candidate)
     if not infos:
-        return False
+        raise SshHostNotPrivate("SSH host must be in a private address range")
 
-    seen = False
+    targets: list[str] = []
+    seen: set[str] = set()
     for info in infos:
         sockaddr = info[4]
         if not sockaddr:
             continue
-        seen = True
         try:
-            addr = ipaddress.ip_address(str(sockaddr[0]))
+            addr = ipaddress.ip_address(_split_literal_zone(str(sockaddr[0]))[0])
         except ValueError:
-            return False
+            raise SshHostNotPrivate("SSH host must be in a private address range") from None
         if not _address_is_private_like(addr):
-            return False
-    return seen
+            raise SshHostNotPrivate("SSH host must be in a private address range")
+        connect_host = _format_connect_address_from_sockaddr(sockaddr)
+        if connect_host not in seen:
+            seen.add(connect_host)
+            targets.append(connect_host)
+
+    if not targets:
+        raise SshHostNotPrivate("SSH host must be in a private address range")
+    return targets
+
+
+def host_is_private(hostname: str) -> bool:
+    try:
+        resolve_private_connect_targets(hostname)
+        return True
+    except SshHostNotPrivate:
+        return False
+
+
+def _connect_private_tcp(
+    host: str,
+    port: int,
+    *,
+    timeout: float,
+    source_address: str | None = None,
+    allow_loopback_test_seam: bool = False,
+    allow_non_private: bool = False,
+    dial_targets: list[str] | None = None,
+) -> socket.socket:
+    """Dial SSH/TCP using a pinned vetted address set (no hostname re-resolve)."""
+    if dial_targets is None:
+        if allow_non_private:
+            dial_targets = [strip_host_brackets(host)]
+        elif allow_loopback_test_seam:
+            candidate = strip_host_brackets(host.strip())
+            try:
+                dial_targets = resolve_private_connect_targets(host)
+            except SshHostNotPrivate:
+                dial_targets = [candidate] if candidate else []
+                if not dial_targets:
+                    raise SshHostNotPrivate("SSH host must be in a private address range") from None
+        else:
+            dial_targets = resolve_private_connect_targets(host)
+
+    last_error: OSError | None = None
+    for target in dial_targets:
+        try:
+            return create_bound_tcp_connection(
+                target,
+                port,
+                timeout=timeout,
+                source_address=source_address,
+                allow_loopback_test_seam=allow_loopback_test_seam,
+            )
+        except OSError as exc:
+            last_error = exc
+    if last_error is not None:
+        raise last_error
+    raise SshHostNotPrivate("SSH host must be in a private address range")
 
 
 def validate_source_address(
@@ -317,13 +397,18 @@ def learn_ssh_host_key(
 ) -> LearnedSshHostKey:
     """Retrieve remote SSH host key without authentication or usable tunnel."""
     canonical_host = validate_ssh_tunnel_host(host)
-    if not host_is_private(canonical_host) and not allow_loopback_test_seam:
-        raise SshHostNotPrivate("SSH host must be in a private address range")
     if source_address is not None:
         validate_source_address(
             source_address,
             allow_loopback_test_seam=allow_loopback_test_seam,
         )
+    if allow_loopback_test_seam:
+        try:
+            dial_targets = resolve_private_connect_targets(canonical_host)
+        except SshHostNotPrivate:
+            dial_targets = [strip_host_brackets(canonical_host)]
+    else:
+        dial_targets = resolve_private_connect_targets(canonical_host)
     transport: Any | None = None
     sock: socket.socket | None = None
     paramiko = _lazy_import_paramiko()
@@ -346,12 +431,13 @@ def learn_ssh_host_key(
                 )
                 transport.start_client(timeout=connect_timeout)
             else:
-                sock = create_bound_tcp_connection(
-                    strip_host_brackets(canonical_host),
+                sock = _connect_private_tcp(
+                    canonical_host,
                     port,
                     timeout=connect_timeout,
                     source_address=source_address,
                     allow_loopback_test_seam=allow_loopback_test_seam,
+                    dial_targets=dial_targets,
                 )
                 transport = paramiko.Transport(sock)
                 sock = None
@@ -442,6 +528,7 @@ class PinnedSshTunnel:
     _host_key_algorithm: str = field(default="", init=False, repr=False)
     _host_key_fingerprint_sha256: str = field(default="", init=False, repr=False)
     _remote_rci_host: str = field(default="", init=False, repr=False)
+    _pinned_ssh_targets: list[str] = field(default_factory=list, init=False, repr=False)
     _closed: bool = field(default=False, init=False, repr=False)
 
     def __enter__(self) -> PinnedSshTunnel:
@@ -473,8 +560,10 @@ class PinnedSshTunnel:
         if self._transport is not None:
             return
         canonical_ssh_host = validate_ssh_tunnel_host(self.config.ssh_host)
-        if not self.config.allow_non_private and not host_is_private(canonical_ssh_host):
-            raise SshHostNotPrivate("SSH host must be in a private address range")
+        if self.config.allow_non_private:
+            self._pinned_ssh_targets = [strip_host_brackets(canonical_ssh_host)]
+        else:
+            self._pinned_ssh_targets = resolve_private_connect_targets(canonical_ssh_host)
         self._remote_rci_host = canonical_ssh_host
         expected_fingerprint = normalize_sha256_fingerprint(self.config.host_key_sha256)
         if self.config.source_address is not None:
@@ -561,12 +650,14 @@ class PinnedSshTunnel:
         sock: socket.socket | None = None
         transport: Any | None = None
         try:
-            sock = create_bound_tcp_connection(
-                self.tcp_connect_host,
+            sock = _connect_private_tcp(
+                self._remote_rci_host,
                 SSH_PORT,
                 timeout=self.config.connect_timeout,
                 source_address=self.config.source_address,
                 allow_loopback_test_seam=self.config.allow_loopback_test_seam,
+                allow_non_private=self.config.allow_non_private,
+                dial_targets=self._pinned_ssh_targets,
             )
             transport = paramiko.Transport(sock)
             sock = None
@@ -878,6 +969,7 @@ class PinnedSshTransport:
     _host_key_algorithm: str = field(default="", init=False, repr=False)
     _host_key_fingerprint_sha256: str = field(default="", init=False, repr=False)
     _remote_host: str = field(default="", init=False, repr=False)
+    _pinned_ssh_targets: list[str] = field(default_factory=list, init=False, repr=False)
     _closed: bool = field(default=False, init=False, repr=False)
 
     def __enter__(self) -> PinnedSshTransport:
@@ -909,8 +1001,10 @@ class PinnedSshTransport:
         if self._transport is not None:
             return
         canonical_ssh_host = validate_ssh_tunnel_host(self.config.ssh_host)
-        if not self.config.allow_non_private and not host_is_private(canonical_ssh_host):
-            raise SshHostNotPrivate("SSH host must be in a private address range")
+        if self.config.allow_non_private:
+            self._pinned_ssh_targets = [strip_host_brackets(canonical_ssh_host)]
+        else:
+            self._pinned_ssh_targets = resolve_private_connect_targets(canonical_ssh_host)
         self._remote_host = canonical_ssh_host
         expected_fingerprint = normalize_sha256_fingerprint(self.config.host_key_sha256)
         if self.config.source_address is not None:
@@ -964,12 +1058,14 @@ class PinnedSshTransport:
         sock: socket.socket | None = None
         transport: Any | None = None
         try:
-            sock = create_bound_tcp_connection(
-                self.tcp_connect_host,
+            sock = _connect_private_tcp(
+                self._remote_host,
                 SSH_PORT,
                 timeout=self.config.connect_timeout,
                 source_address=self.config.source_address,
                 allow_loopback_test_seam=self.config.allow_loopback_test_seam,
+                allow_non_private=self.config.allow_non_private,
+                dial_targets=self._pinned_ssh_targets,
             )
             transport = paramiko.Transport(sock)
             sock = None
