@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 from datetime import UTC, datetime
 
 import pytest
@@ -12,7 +13,7 @@ from router_control.application.standing_network_preferences import (
     _validate_ap_id,
 )
 from router_control.persistence.connection import open_database
-from router_control.persistence.errors import NotFoundError
+from router_control.persistence.errors import NotFoundError, PreconditionFailed
 from router_control.persistence.migrations import (
     _MIGRATIONS,
     CURRENT_USER_VERSION,
@@ -587,11 +588,77 @@ def test_service_update_preferences_rejects_simultaneous_same_ap_roles(
 def test_service_update_preferences_allows_clearing_overlap(store: PersistenceStore) -> None:
     service = StandingNetworkPreferencesService(store=store, clock=SystemClock())
     ap_id = "WifiMaster0/AccessPoint2"
-    store.upsert_standing_network_preferences(
-        staff_ap_id=ap_id,
-        guest_ap_id=ap_id,
-        now=datetime(2026, 8, 5, tzinfo=UTC),
+    # Escape hatch: plant legacy overlap via raw SQL (store now rejects overlap).
+    store.conn.execute(
+        "UPDATE standing_network_preferences SET staff_ap_id = ?, guest_ap_id = ? "
+        "WHERE preferences_id = ?",
+        (ap_id, ap_id, store._STANDING_PREFS_ID),
     )
     cleared = service.update_preferences(guest_ap_id=None)
     assert cleared["staff_ap_id"] == ap_id
     assert cleared["guest_ap_id"] is None
+
+
+def test_upsert_standing_ap_ids_rejects_overlap(store: PersistenceStore) -> None:
+    ap_id = "WifiMaster0/AccessPoint5"
+    with pytest.raises(PreconditionFailed, match="AP role overlap"):
+        store.upsert_standing_network_preferences(
+            staff_ap_id=ap_id,
+            guest_ap_id=ap_id,
+            now=datetime(2026, 8, 5, tzinfo=UTC),
+        )
+
+
+def test_service_update_preferences_concurrent_same_ap_roles_fail_closed(
+    store: PersistenceStore,
+) -> None:
+    """Concurrent partial PUTs for the same AP must not leave staff/guest overlap."""
+    service = StandingNetworkPreferencesService(store=store, clock=SystemClock())
+    ap_id = "WifiMaster0/AccessPoint4"
+    barrier = threading.Barrier(2, timeout=5)
+    overlap_errors: list[StandingNetworkPreferencesValidationError] = []
+    successes: list[dict] = []
+    unexpected_errors: list[BaseException] = []
+
+    def set_staff() -> None:
+        try:
+            barrier.wait()
+            successes.append(service.update_preferences(staff_ap_id=ap_id))
+        except StandingNetworkPreferencesValidationError as exc:
+            if exc.code == "standing.ap_role_overlap":
+                overlap_errors.append(exc)
+            else:
+                unexpected_errors.append(exc)
+        except BaseException as exc:
+            unexpected_errors.append(exc)
+
+    def set_guest() -> None:
+        try:
+            barrier.wait()
+            successes.append(service.update_preferences(guest_ap_id=ap_id))
+        except StandingNetworkPreferencesValidationError as exc:
+            if exc.code == "standing.ap_role_overlap":
+                overlap_errors.append(exc)
+            else:
+                unexpected_errors.append(exc)
+        except BaseException as exc:
+            unexpected_errors.append(exc)
+
+    t_staff = threading.Thread(target=set_staff, name="staff-ap")
+    t_guest = threading.Thread(target=set_guest, name="guest-ap")
+    t_staff.start()
+    t_guest.start()
+    t_staff.join(timeout=10)
+    t_guest.join(timeout=10)
+    assert not t_staff.is_alive()
+    assert not t_guest.is_alive()
+    assert not unexpected_errors, unexpected_errors
+
+    final = service.get_preferences()
+    staff_ap = final["staff_ap_id"]
+    guest_ap = final["guest_ap_id"]
+    assert not (
+        staff_ap is not None and guest_ap is not None and staff_ap == guest_ap
+    )
+    assert overlap_errors, "expected at least one standing.ap_role_overlap failure"
+    assert len(successes) == 1

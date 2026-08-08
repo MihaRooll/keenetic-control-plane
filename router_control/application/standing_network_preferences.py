@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from router_control.persistence.errors import NotFoundError
+from router_control.persistence.errors import NotFoundError, PreconditionFailed
 from router_control.persistence.store import _UNSET, PersistenceStore
 from router_control.ports.clock import ClockPort
 
@@ -302,21 +302,28 @@ class StandingNetworkPreferencesService:
             guest_ap_id=effective_guest_ap_id,
         )
 
-        self.store.upsert_standing_network_preferences(
+        try:
+            self.store.upsert_standing_network_preferences(
 
-            staff_ssid=resolved_staff,
+                staff_ssid=resolved_staff,
 
-            staff_password_credential_ref_id=staff_password_credential_ref_id,
+                staff_password_credential_ref_id=staff_password_credential_ref_id,
 
-            guest_default_ssid=resolved_guest,
+                guest_default_ssid=resolved_guest,
 
-            staff_ap_id=resolved_staff_ap_id,
+                staff_ap_id=resolved_staff_ap_id,
 
-            guest_ap_id=resolved_guest_ap_id,
+                guest_ap_id=resolved_guest_ap_id,
 
-            now=self.clock.now(),
+                now=self.clock.now(),
 
-        )
+            )
+        except PreconditionFailed as exc:
+            raise StandingNetworkPreferencesValidationError(
+                "staff and guest AP roles must not use the same access point",
+                code="standing.ap_role_overlap",
+                field=None,
+            ) from exc
 
         return self.get_preferences()
 

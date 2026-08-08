@@ -7109,6 +7109,15 @@ class PersistenceStore:
             resolved_guest_ap_id = current["guest_ap_id"]
         else:
             resolved_guest_ap_id = guest_ap_id
+        if (
+            resolved_staff_ap_id is not None
+            and resolved_guest_ap_id is not None
+            and resolved_staff_ap_id == resolved_guest_ap_id
+        ):
+            raise PreconditionFailed(
+                "staff and guest AP roles must not use the same access point "
+                "(AP role overlap)"
+            )
         self._conn.execute(
             "UPDATE standing_network_preferences SET "
             "staff_ssid = ?, staff_password_credential_ref_id = ?, "
