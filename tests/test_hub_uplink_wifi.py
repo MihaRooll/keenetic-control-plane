@@ -917,18 +917,81 @@ def test_uplink_describe_auto_reconnect_note_watchdog(
 ) -> None:
     """describeUplinkAutoReconnectNote: tri-state honest RU copy."""
     enabled_expr = "null" if watchdog_enabled == "null" else json.dumps(watchdog_enabled)
+    desired_expr = "true" if watchdog_enabled is True else "undefined"
     result = _run_export(
         tmp_path,
         label=f"uplink-auto-reconnect-{watchdog_enabled}",
         script_body=f"""
 console.log(JSON.stringify(
-    mod.describeUplinkAutoReconnectNote({{ watchdogEnabled: {enabled_expr} }})
+    mod.describeUplinkAutoReconnectNote({{
+      watchdogEnabled: {enabled_expr},
+      desiredActive: {desired_expr},
+    }})
 ));
 """,
     )
     assert expected_fragment in result
     assert "проверено" not in result.lower()
     assert "heal" not in result.lower()
+
+
+def test_uplink_describe_auto_reconnect_note_enabled_without_desired_active(
+    tmp_path: Path,
+) -> None:
+    """Enabled watchdog without remembered intent must not claim auto-reconnect."""
+    result = _run_export(
+        tmp_path,
+        label="uplink-auto-reconnect-no-desired",
+        script_body="""
+console.log(JSON.stringify(mod.describeUplinkAutoReconnectNote({
+  watchdogEnabled: true,
+  desiredActive: false,
+})));
+""",
+    )
+    assert "запомненного намерения нет" in result
+    assert "сохраните сеть с автоподключением" in result.lower()
+    assert "повтор при обрыве без ручного подтверждения" not in result
+
+
+def test_uplink_describe_auto_reconnect_note_enabled_with_desired_active(
+    tmp_path: Path,
+) -> None:
+    """Enabled watchdog with desired_active true keeps reconnect-enabled copy."""
+    result = _run_export(
+        tmp_path,
+        label="uplink-auto-reconnect-desired",
+        script_body="""
+console.log(JSON.stringify(mod.describeUplinkAutoReconnectNote({
+  watchdogEnabled: true,
+  desiredActive: true,
+})));
+""",
+    )
+    assert "повтор при обрыве без ручного подтверждения" in result
+    assert "работа на роутере не подтверждена" in result
+
+
+def test_uplink_describe_auto_reconnect_note_no_desired_running_and_poll(
+    tmp_path: Path,
+) -> None:
+    """No-intent note may still mention running/poll without reconnect claim."""
+    result = _run_export(
+        tmp_path,
+        label="uplink-auto-reconnect-no-desired-running",
+        script_body="""
+console.log(JSON.stringify(mod.describeUplinkAutoReconnectNote({
+  watchdogEnabled: true,
+  desiredActive: false,
+  watchdogRunning: true,
+  pollSeconds: 45,
+})));
+""",
+    )
+    assert "запомненного намерения нет" in result
+    assert "Цикл опроса на сервере управления работает" in result
+    assert "Интервал опроса: 45 с" in result
+    assert "повтор при обрыве без ручного подтверждения" not in result
 
 
 def test_uplink_describe_auto_reconnect_note_running_and_poll(tmp_path: Path) -> None:
@@ -939,6 +1002,7 @@ def test_uplink_describe_auto_reconnect_note_running_and_poll(tmp_path: Path) ->
         script_body="""
 console.log(JSON.stringify(mod.describeUplinkAutoReconnectNote({
   watchdogEnabled: true,
+  desiredActive: true,
   watchdogRunning: true,
   pollSeconds: 60,
 })));
@@ -957,6 +1021,7 @@ def test_uplink_describe_auto_reconnect_note_not_running(tmp_path: Path) -> None
         script_body="""
 console.log(JSON.stringify(mod.describeUplinkAutoReconnectNote({
   watchdogEnabled: true,
+  desiredActive: true,
   watchdogRunning: false,
 })));
 """,
@@ -974,6 +1039,8 @@ def test_internet_uplink_screen_loads_watchdog_status() -> None:
     assert "uplink_watchdog_poll_seconds" in source
     assert "loadWatchdogStatus" in source
     assert "describeUplinkAutoReconnectNote" in source
+    assert "desiredActive: rememberedUplink?.desired_active === true" in source
+    assert "rememberedUplink?.desired_active === true ? '1'" in source
     assert "hub-internet-uplink__watchdog-slot" in source
     watchdog_slot_pos = source.find("hub-internet-uplink__watchdog-slot")
     source_slot_pos = source.find("hub-internet-uplink__source-slot")

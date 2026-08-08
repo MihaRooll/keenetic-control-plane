@@ -65,12 +65,26 @@ export function describeUplinkAutoReconnectNote({
   watchdogEnabled = false,
   watchdogRunning = null,
   pollSeconds = null,
+  desiredActive = undefined,
 } = {}) {
   if (watchdogEnabled === null) {
     return 'Состояние автопереподключения неизвестно — не удалось загрузить статус с сервера управления.';
   }
   if (!watchdogEnabled) {
     return 'Автоматическое переподключение выключено — при обрыве Wi‑Fi uplink восстановите связь вручную на этом экране.';
+  }
+  if (desiredActive !== true) {
+    let note =
+      'Процесс автопереподключения на сервере управления может быть включён, но запомненного намерения нет — при обрыве Wi‑Fi uplink сам не восстановит; сохраните сеть с автоподключением на этом экране.';
+    if (watchdogRunning === true) {
+      note += ' Цикл опроса на сервере управления работает.';
+    } else if (watchdogRunning === false) {
+      note += ' Цикл опроса на сервере управления сейчас не работает.';
+    }
+    if (typeof pollSeconds === 'number' && Number.isFinite(pollSeconds) && pollSeconds > 0) {
+      note += ` Интервал опроса: ${Math.round(pollSeconds)} с.`;
+    }
+    return note;
   }
   let note =
     'Автоматическое переподключение включено в сервере управления — повтор при обрыве без ручного подтверждения команды; работа на роутере не подтверждена.';

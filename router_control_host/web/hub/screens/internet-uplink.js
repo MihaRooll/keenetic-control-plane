@@ -351,6 +351,7 @@ export function render(container, ctx) {
       watchdogEnabled === null ? '?' : String(watchdogEnabled),
       watchdogRunning === null ? '?' : String(watchdogRunning),
       watchdogPollSeconds === null ? '?' : String(watchdogPollSeconds),
+      rememberedUplink?.desired_active === true ? '1' : rememberedUplink?.desired_active === false ? '0' : '?',
     ].join('|');
   }
 
@@ -367,6 +368,7 @@ export function render(container, ctx) {
       watchdogEnabled,
       watchdogRunning,
       pollSeconds: watchdogPollSeconds,
+      desiredActive: rememberedUplink?.desired_active === true,
     });
     watchdogStatusSlot.appendChild(note);
   }
