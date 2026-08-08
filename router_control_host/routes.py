@@ -1131,6 +1131,7 @@ def get_status(request: Request) -> JSONResponse:
     }
     body.update(host.worker_status())
     body.update(host.vpn_watchdog_status())
+    body.update(host.uplink_watchdog_status())
     if host.gate_a_certification is not None:
         body.update(host.gate_a_certification.sanitized_status_payload())
     return JSONResponse(body, headers=_ok_headers(request))

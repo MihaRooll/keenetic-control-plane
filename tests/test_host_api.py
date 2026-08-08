@@ -57,6 +57,12 @@ def test_ready_status(client) -> None:
     assert "vpn_watchdog_poll_seconds" in body
     assert isinstance(body["vpn_watchdog_enabled"], bool)
     assert isinstance(body["vpn_watchdog_poll_seconds"], (int, float))
+    assert "uplink_watchdog_enabled" in body
+    assert "uplink_watchdog_poll_seconds" in body
+    assert "uplink_watchdog_running" in body
+    assert isinstance(body["uplink_watchdog_enabled"], bool)
+    assert isinstance(body["uplink_watchdog_poll_seconds"], (int, float))
+    assert isinstance(body["uplink_watchdog_running"], bool)
     assert "X-Request-Id" in r.headers
 
 
@@ -100,6 +106,48 @@ def test_status_vpn_watchdog_disabled_reflects_env(
         body = c.get("/api/router-control/v1/status").json()
     importlib.reload(vpn_watchdog_service)
     assert body["vpn_watchdog_enabled"] is False
+
+
+def test_status_uplink_watchdog_enabled_reflects_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import importlib
+
+    from router_control.application import uplink_watchdog_service
+
+    monkeypatch.setenv("HUB_ADMIN_PASSWORD", "test-admin-password")
+    monkeypatch.setenv("UPLINK_WATCHDOG_ENABLED", "true")
+    monkeypatch.setenv("UPLINK_WATCHDOG_POLL_SECONDS", "60")
+    importlib.reload(uplink_watchdog_service)
+    from fastapi.testclient import TestClient
+
+    application = create_app(db_path=tmp_path / "uplink-watchdog.sqlite3")
+    with TestClient(application) as c:
+        c.cookies.set("hub_admin", mint_hub_admin_cookie())
+        body = c.get("/api/router-control/v1/status").json()
+    importlib.reload(uplink_watchdog_service)
+    assert body["uplink_watchdog_enabled"] is True
+    assert body["uplink_watchdog_poll_seconds"] == 60.0
+
+
+def test_status_uplink_watchdog_disabled_reflects_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import importlib
+
+    from router_control.application import uplink_watchdog_service
+
+    monkeypatch.setenv("HUB_ADMIN_PASSWORD", "test-admin-password")
+    monkeypatch.delenv("UPLINK_WATCHDOG_ENABLED", raising=False)
+    importlib.reload(uplink_watchdog_service)
+    from fastapi.testclient import TestClient
+
+    application = create_app(db_path=tmp_path / "uplink-watchdog-off.sqlite3")
+    with TestClient(application) as c:
+        c.cookies.set("hub_admin", mint_hub_admin_cookie())
+        body = c.get("/api/router-control/v1/status").json()
+    importlib.reload(uplink_watchdog_service)
+    assert body["uplink_watchdog_enabled"] is False
 
 
 def test_vpn_profiles_list_includes_connection_fields(client) -> None:
