@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
+
+_LOGGER = logging.getLogger(__name__)
 
 from router_control.application.router_apply_lock import run_with_router_apply_lock
 from router_control.adapters.netcraze.startup_backup import StartupBackupError
@@ -96,7 +99,23 @@ class VpnWatchdogHandle:
             except asyncio.CancelledError:
                 raise
             except Exception:
-                pass
+                _LOGGER.exception("vpn watchdog poll loop failed")
+                try:
+                    self.host.runtime.store.try_append_sealed_apply_audit(
+                        action="vpn_watchdog.poll",
+                        outcome="failed",
+                        route="vpn-watchdog",
+                        verb="watchdog_poll",
+                        intent_redacted={},
+                        router_id=None,
+                        correlation_id=None,
+                        result_payload=None,
+                        outcome_snapshot=None,
+                        error_message="vpn watchdog poll loop failed",
+                        exception_type="Exception",
+                    )
+                except Exception:
+                    _LOGGER.exception("vpn watchdog poll failure audit append failed")
             try:
                 await asyncio.wait_for(self._stop.wait(), timeout=VPN_WATCHDOG_POLL_SECONDS)
                 break
