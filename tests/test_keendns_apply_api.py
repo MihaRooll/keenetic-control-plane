@@ -257,3 +257,51 @@ def test_live_apply_ack_error_on_second_item_fails() -> None:
     assert result.overall == "failed"
     assert any(step.ok is False for step in result.steps)
     assert transport.dispatched is True
+
+
+@pytest.mark.parametrize(
+    "ack",
+    [
+        [],
+        None,
+        "not-a-list",
+        [{}],
+        [{"parse": {}}],
+        [{"parse": {"status": []}}],
+        [{"parse": {"status": ["not-a-dict"]}}],
+    ],
+)
+def test_live_apply_empty_or_unparseable_ack_fails(ack: object) -> None:
+    transport = _LiveTransportNdnsPresent(ack)  # type: ignore[arg-type]
+    result = apply_keendns_intent(
+        intent=_APPLY_INTENT,
+        transport=transport,
+        live_dispatch=True,
+        backup_callback=lambda: None,
+    )
+    assert result.overall == "failed"
+    assert result.steps[0].ok is False
+    assert result.errors == ("service.op_dispatch_failed",)
+    assert any("dispatch ack empty or unverified" in entry for entry in result.logs)
+    assert "live dispatch failed: router ack empty or unverified" in result.notes
+    assert transport.dispatched is True
+
+
+class _OfflineTransportEmptyAck:
+    keendns_offline_only = True
+
+    def execute_sealed_rci_write(
+        self, request: SealedRciWriteRequest
+    ) -> list[dict[str, object]]:
+        return []
+
+
+def test_offline_apply_empty_ack_fails() -> None:
+    result = apply_keendns_intent(
+        intent=_APPLY_INTENT,
+        transport=_OfflineTransportEmptyAck(),
+        live_dispatch=False,
+    )
+    assert result.overall == "failed"
+    assert result.steps[0].ok is False
+    assert any("dispatch ack empty or unverified" in entry for entry in result.logs)

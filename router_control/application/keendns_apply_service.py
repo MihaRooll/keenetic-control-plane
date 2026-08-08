@@ -301,6 +301,30 @@ def _ack_has_error_status(ack: Any) -> bool:
     return False
 
 
+def _ack_has_affirmative_success(ack: Any) -> bool:
+    if not isinstance(ack, list) or not ack:
+        return False
+    for item in ack:
+        if not isinstance(item, dict):
+            continue
+        parse_block = item.get("parse")
+        if not isinstance(parse_block, dict):
+            continue
+        status_entries = parse_block.get("status")
+        if not isinstance(status_entries, list) or not status_entries:
+            continue
+        if any(
+            isinstance(entry, dict) and entry.get("status") != "error"
+            for entry in status_entries
+        ):
+            return True
+    return False
+
+
+def _ack_dispatch_unverified(ack: Any) -> bool:
+    return not _ack_has_affirmative_success(ack)
+
+
 def _probe_ndns_component_present(transport: object) -> bool | None:
 
     read_json = getattr(transport, "read_json", None)
@@ -449,7 +473,7 @@ def _dispatch_plan(
 
             return tuple(steps), tuple(errors)
 
-        if _ack_has_error_status(ack):
+        if _ack_has_error_status(ack) or _ack_dispatch_unverified(ack):
             failure = KeenDnsApplyStep(
                 op=op_name,
                 ok=False,
@@ -463,7 +487,10 @@ def _dispatch_plan(
                 )
             steps.append(failure)
             errors.append(_MSG_OP_DISPATCH_FAILED)
-            logs.append(f"dispatch failed for {op_name}")
+            if _ack_has_error_status(ack):
+                logs.append(f"dispatch failed for {op_name}")
+            else:
+                logs.append(f"dispatch ack empty or unverified for {op_name}")
             return tuple(steps), tuple(errors)
 
         success = KeenDnsApplyStep(
@@ -600,6 +627,17 @@ def apply_keendns_intent(
 
             overall = "dispatched_offline"
 
+        result_notes = apply_notes
+        if (
+            dispatch_errors
+            and live_dispatch
+            and any("dispatch ack empty or unverified" in entry for entry in logs)
+        ):
+            result_notes = (
+                *plan.notes,
+                "live dispatch failed: router ack empty or unverified",
+            )
+
         result = KeenDnsApplyResult(
 
             overall=overall,
@@ -620,7 +658,7 @@ def apply_keendns_intent(
 
             logs=tuple(logs),
 
-            notes=apply_notes,
+            notes=result_notes,
 
         )
 
