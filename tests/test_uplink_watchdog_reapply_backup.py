@@ -15,6 +15,7 @@ from router_control.application.remembered_uplink import RememberedUplinkService
 from router_control.application.uplink_watchdog_service import UplinkWatchdogHandle
 from router_control.composition import create_offline_runtime
 from router_control.domain.network_intents import UplinkIntent, UplinkMode, WifiBand
+from router_control.persistence.errors import SealedApplyTrailBeginError
 from router_control_host.state import HostState
 from router_control_host.wifi_live_transport import WifiLiveSession
 from router_control_host.wifi_station_apply_routes import (
@@ -83,7 +84,7 @@ def test_reapply_passes_backup_callback_and_invokes_before_apply(
     tmp_path: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    handle, router_id, intent, remembered, _store = _setup_watchdog(tmp_path)
+    handle, router_id, intent, remembered, store = _setup_watchdog(tmp_path)
     order: list[str] = []
     captured: dict[str, Any] = {}
 
@@ -94,8 +95,8 @@ def test_reapply_passes_backup_callback_and_invokes_before_apply(
     _wire_observe_factory(handle, monkeypatch)
 
     def _fake_apply(**kwargs: Any) -> Any:
-        captured["backup_callback"] = kwargs.get("backup_callback")
-        if captured["backup_callback"] is not None:
+        captured.update(kwargs)
+        if captured.get("backup_callback") is not None:
             captured["backup_callback"]()
         order.append("apply")
         from router_control.application.wifi_station_apply_service import WifiStationApplyResult
@@ -115,6 +116,12 @@ def test_reapply_passes_backup_callback_and_invokes_before_apply(
     handle._reapply_locked(router_id, intent, _Transport(), remembered)  # noqa: SLF001
     assert captured["backup_callback"] is backup_cb
     assert order == ["backup", "apply"]
+    assert captured.get("store") is store
+    sealed = captured.get("sealed_apply_params")
+    assert sealed is not None
+    assert sealed.route == "remembered-uplink"
+    assert sealed.verb == "watchdog_reapply"
+    assert sealed.router_id == router_id
 
 
 def test_reapply_fail_closed_when_backup_factory_returns_none(
@@ -197,6 +204,31 @@ def test_reapply_startup_backup_error_audited_without_success(
     assert audit[1] == "failed"
     assert "startup-config backup unavailable" in (audit[2] or "")
     assert "password" not in (audit[2] or "").lower()
+
+
+def test_reapply_fail_closed_on_sealed_apply_trail_begin_error(
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    handle, router_id, intent, remembered, store = _setup_watchdog(tmp_path)
+
+    handle.backup_callback_factory = lambda _rid: lambda: None
+    _wire_observe_factory(handle, monkeypatch)
+
+    def _fake_apply(**_kwargs: Any) -> Any:
+        raise SealedApplyTrailBeginError("trail begin blocked")
+
+    monkeypatch.setattr(uplink_watchdog_service, "apply_wifi_station_intent", _fake_apply)
+    outcome = handle._reapply_locked(router_id, intent, _Transport(), remembered)  # noqa: SLF001
+    assert outcome == "failed"
+    audit = store.conn.execute(
+        "SELECT action, outcome, summary_redacted FROM audit_events "
+        "ORDER BY occurred_at DESC LIMIT 1"
+    ).fetchone()
+    assert audit is not None
+    assert audit[0] == "uplink_watchdog.reapply"
+    assert audit[1] == "failed"
+    assert "sealed apply trail begin failed" in (audit[2] or "").lower()
 
 
 def _open_gate_a(*, evidence_path: str = "data/artifacts/gate-a-probe.json") -> GateACertification:

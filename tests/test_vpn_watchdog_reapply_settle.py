@@ -50,6 +50,16 @@ def _setup_watchdog(
             }
         ),
     )
+    cred_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="awg_private_key",
+        provider="MemoryVault",
+        provider_locator="loc-vpn-wd-settle",
+    )
+    store.insert_profile_secret_refs(
+        profile_id=profile_id,
+        refs=[(cred_id, "PrivateKey")],
+    )
     store.upsert_tunnel_assignment(
         router_id=router_id,
         profile_id=profile_id,
@@ -102,3 +112,9 @@ def test_reapply_passes_handshake_settle_seconds(
     expected = clamp_handshake_settle_seconds(WG_HANDSHAKE_SETTLE_SECONDS_MIN)
     assert captured.get("handshake_settle_seconds") == expected
     assert expected == 20.0
+    assert captured.get("store") is handle.host.runtime.store
+    sealed = captured.get("sealed_apply_params")
+    assert sealed is not None
+    assert sealed.route == "vpn-profiles"
+    assert sealed.verb == "watchdog_reapply"
+    assert sealed.router_id == router_id

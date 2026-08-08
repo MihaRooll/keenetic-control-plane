@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from router_control.adapters.netcraze.startup_backup import StartupBackupError
+from router_control.application.recovery import SealedApplyTrailParams
 from router_control.application.router_apply_lock import run_with_router_apply_lock
 from router_control.application.vpn_assignment_helpers import (
     coerce_peer_rci_shape,
@@ -28,6 +29,7 @@ from router_control.application.wireguard_apply_service import (
     apply_wireguard_intent,
 )
 from router_control.domain.network_intents import WireguardIntent
+from router_control.persistence.errors import SealedApplyTrailBeginError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -330,6 +332,12 @@ class VpnWatchdogHandle:
                 _audit_failure(error_message="startup-config backup unavailable")
                 outcome_holder[0] = ("failed", None)
                 return
+            sealed_apply_params = SealedApplyTrailParams(
+                route="vpn-profiles",
+                verb="watchdog_reapply",
+                intent_redacted=intent_redacted,
+                router_id=router_id,
+            )
             try:
                 result = apply_wireguard_intent(
                     intent=apply_intent,
@@ -339,10 +347,19 @@ class VpnWatchdogHandle:
                     handshake_settle_seconds=clamp_handshake_settle_seconds(
                         WG_HANDSHAKE_SETTLE_SECONDS_MIN
                     ),
+                    store=self.host.runtime.store,
+                    sealed_apply_params=sealed_apply_params,
                 )
             except StartupBackupError as exc:
                 _audit_failure(
                     error_message="startup-config backup unavailable",
+                    exception_type=type(exc).__name__,
+                )
+                outcome_holder[0] = ("failed", None)
+                return
+            except SealedApplyTrailBeginError as exc:
+                _audit_failure(
+                    error_message="Sealed apply trail begin failed",
                     exception_type=type(exc).__name__,
                 )
                 outcome_holder[0] = ("failed", None)

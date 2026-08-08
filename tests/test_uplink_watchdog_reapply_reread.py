@@ -216,7 +216,7 @@ def test_reapply_applies_with_fresh_remembered_intent(
     captured: dict[str, Any] = {}
 
     def _fake_apply(**kwargs: Any) -> Any:
-        captured["intent"] = kwargs.get("intent")
+        captured.update(kwargs)
         from router_control.application.wifi_station_apply_service import WifiStationApplyResult
 
         return WifiStationApplyResult(
@@ -238,6 +238,12 @@ def test_reapply_applies_with_fresh_remembered_intent(
     assert captured["intent"].ssid == remembered["ssid"]
     assert captured["intent"].band == WifiBand(str(remembered["band"]))
     assert captured["intent"].credential_ref_id == remembered["credential_ref_id"]
+    assert captured.get("store") is store
+    sealed = captured.get("sealed_apply_params")
+    assert sealed is not None
+    assert sealed.route == "remembered-uplink"
+    assert sealed.verb == "watchdog_reapply"
+    assert sealed.router_id == router_id
     audit = store.conn.execute(
         "SELECT action, outcome FROM audit_events ORDER BY occurred_at DESC LIMIT 1"
     ).fetchone()

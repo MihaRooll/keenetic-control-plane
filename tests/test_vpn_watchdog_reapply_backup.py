@@ -9,13 +9,13 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-
 from router_control.adapters.netcraze.certification import GateACertification
 from router_control.adapters.netcraze.startup_backup import StartupBackupError
 from router_control.application import vpn_watchdog_service
 from router_control.application.vpn_watchdog_service import VpnWatchdogHandle
-from router_control.domain.network_intents import WireguardIntent, WireguardPeerRciShape
 from router_control.composition import create_offline_runtime
+from router_control.domain.network_intents import WireguardIntent, WireguardPeerRciShape
+from router_control.persistence.errors import SealedApplyTrailBeginError
 from router_control_host.state import HostState
 from router_control_host.wifi_live_transport import WifiLiveSession
 from router_control_host.wireguard_apply_routes import (
@@ -27,7 +27,9 @@ _FINGERPRINT_DIGEST = "b" * 64
 _VALID_SSH_HOST_KEY_SHA256 = "SHA256:lU1D6ChVB8XLfHxoIFZeA8RPpPf67zA+qwYX0ARyCmM"
 
 
-def _setup_watchdog(tmp_path: Any) -> tuple[VpnWatchdogHandle, str, WireguardIntent, dict[str, Any], Any]:
+def _setup_watchdog(
+    tmp_path: Any,
+) -> tuple[VpnWatchdogHandle, str, WireguardIntent, dict[str, Any], Any]:
     runtime = create_offline_runtime(db_path=tmp_path / "vpn-wd-backup.sqlite3")
     store = runtime.store
     site_id = store.create_site(display_name="VPN WD", now=datetime(2026, 8, 8, tzinfo=UTC))
@@ -52,6 +54,16 @@ def _setup_watchdog(tmp_path: Any) -> tuple[VpnWatchdogHandle, str, WireguardInt
                 "peer_allow_ips": "0.0.0.0/0",
             }
         ),
+    )
+    cred_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="awg_private_key",
+        provider="MemoryVault",
+        provider_locator="loc-vpn-wd-backup",
+    )
+    store.insert_profile_secret_refs(
+        profile_id=profile_id,
+        refs=[(cred_id, "PrivateKey")],
     )
     store.upsert_tunnel_assignment(
         router_id=router_id,
@@ -84,7 +96,7 @@ def test_reapply_passes_backup_callback_and_invokes_before_apply(
     tmp_path: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    handle, router_id, intent, assignment, _store = _setup_watchdog(tmp_path)
+    handle, router_id, intent, assignment, store = _setup_watchdog(tmp_path)
     order: list[str] = []
     captured: dict[str, Any] = {}
 
@@ -94,8 +106,8 @@ def test_reapply_passes_backup_callback_and_invokes_before_apply(
     handle.backup_callback_factory = lambda _rid: backup_cb
 
     def _fake_apply(**kwargs: Any) -> Any:
-        captured["backup_callback"] = kwargs.get("backup_callback")
-        if captured["backup_callback"] is not None:
+        captured.update(kwargs)
+        if captured.get("backup_callback") is not None:
             captured["backup_callback"]()
         order.append("apply")
         from router_control.application.wireguard_apply_service import WireguardApplyResult
@@ -116,6 +128,12 @@ def test_reapply_passes_backup_callback_and_invokes_before_apply(
     handle._reapply_locked(router_id, intent, _Transport(), assignment)  # noqa: SLF001
     assert captured["backup_callback"] is backup_cb
     assert order == ["backup", "apply"]
+    assert captured.get("store") is store
+    sealed = captured.get("sealed_apply_params")
+    assert sealed is not None
+    assert sealed.route == "vpn-profiles"
+    assert sealed.verb == "watchdog_reapply"
+    assert sealed.router_id == router_id
 
 
 def test_reapply_fail_closed_when_backup_factory_returns_none(
@@ -184,12 +202,39 @@ def test_reapply_startup_backup_error_audited_without_success(
     monkeypatch.setattr(vpn_watchdog_service, "apply_wireguard_intent", _fake_apply)
     handle._reapply_locked(router_id, intent, _Transport(), assignment)  # noqa: SLF001
     audit = store.conn.execute(
-        "SELECT action, outcome, summary_redacted FROM audit_events ORDER BY occurred_at DESC LIMIT 1"
+        "SELECT action, outcome, summary_redacted FROM audit_events "
+        "ORDER BY occurred_at DESC LIMIT 1"
     ).fetchone()
     assert audit is not None
     assert audit[0] == "vpn_watchdog.reapply"
     assert audit[1] == "failed"
     assert "password" not in (audit[2] or "").lower()
+
+
+def test_reapply_fail_closed_on_sealed_apply_trail_begin_error(
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    handle, router_id, intent, assignment, store = _setup_watchdog(tmp_path)
+
+    handle.backup_callback_factory = lambda _rid: lambda: None
+
+    def _fake_apply(**_kwargs: Any) -> Any:
+        raise SealedApplyTrailBeginError("trail begin blocked")
+
+    monkeypatch.setattr(vpn_watchdog_service, "apply_wireguard_intent", _fake_apply)
+    outcome, _verification = handle._reapply_locked(  # noqa: SLF001
+        router_id, intent, _Transport(), assignment
+    )
+    assert outcome == "failed"
+    audit = store.conn.execute(
+        "SELECT action, outcome, summary_redacted FROM audit_events "
+        "ORDER BY occurred_at DESC LIMIT 1"
+    ).fetchone()
+    assert audit is not None
+    assert audit[0] == "vpn_watchdog.reapply"
+    assert audit[1] == "failed"
+    assert "sealed apply trail begin failed" in (audit[2] or "").lower()
 
 
 def _open_gate_a(*, evidence_path: str = "data/artifacts/gate-a-probe.json") -> GateACertification:
@@ -423,7 +468,8 @@ def test_reapply_aborts_when_assignment_cleared_before_lock(
     handle._reapply_locked(router_id, intent, _Transport(), assignment)  # noqa: SLF001
     assert apply_called is False
     audit = store.conn.execute(
-        "SELECT action, outcome, summary_redacted FROM audit_events ORDER BY occurred_at DESC LIMIT 1"
+        "SELECT action, outcome, summary_redacted FROM audit_events "
+        "ORDER BY occurred_at DESC LIMIT 1"
     ).fetchone()
     assert audit is not None
     assert audit[0] == "vpn_watchdog.reapply"

@@ -17,12 +17,14 @@ from router_control.application.internet_status_observe import (
     InternetStatusTransport,
     run_internet_status_observe,
 )
+from router_control.application.recovery import SealedApplyTrailParams
 from router_control.application.router_apply_lock import run_with_router_apply_lock
 from router_control.application.wifi_station_apply_service import (
     WifiStationApplyTransport,
     apply_wifi_station_intent,
 )
 from router_control.domain.network_intents import UplinkIntent, UplinkMode, WifiBand
+from router_control.persistence.errors import SealedApplyTrailBeginError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -475,6 +477,12 @@ class UplinkWatchdogHandle:
                 _audit_failure(error_message="startup-config backup unavailable")
                 outcome_holder[0] = "failed"
                 return
+            sealed_apply_params = SealedApplyTrailParams(
+                route="remembered-uplink",
+                verb="watchdog_reapply",
+                intent_redacted=intent_redacted,
+                router_id=router_id,
+            )
             try:
                 result = apply_wifi_station_intent(
                     intent=apply_intent,
@@ -486,10 +494,18 @@ class UplinkWatchdogHandle:
                     idempotent=True,
                     uplink_settle_seconds=25.0,
                     store=self.host.runtime.store,
+                    sealed_apply_params=sealed_apply_params,
                 )
             except StartupBackupError as exc:
                 _audit_failure(
                     error_message="startup-config backup unavailable",
+                    exception_type=type(exc).__name__,
+                )
+                outcome_holder[0] = "failed"
+                return
+            except SealedApplyTrailBeginError as exc:
+                _audit_failure(
+                    error_message="Sealed apply trail begin failed",
                     exception_type=type(exc).__name__,
                 )
                 outcome_holder[0] = "failed"
