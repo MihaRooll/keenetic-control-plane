@@ -82,6 +82,7 @@ from router_control_host.errors import (
 from router_control_host.state import HostState
 from router_control_host.vpn_assignment_helpers import (
     assignment_policy_metadata as _assignment_policy_metadata,
+    coerce_peer_rci_shape as _coerce_peer_rci_shape,
     merge_teardown_metadata as _merge_teardown_metadata,
     resolve_assignment_wg_id as _resolve_assignment_wg_id,
     wireguard_intent_from_metadata_dict as _wireguard_intent_from_metadata_dict,
@@ -756,9 +757,7 @@ def _wireguard_intent_from_profile_row(
         peer_endpoint=metadata.get("peer_endpoint"),
         peer_allow_ips=metadata.get("peer_allow_ips"),
         peer_keepalive_interval=resolved_peer_keepalive_interval,
-        peer_rci_shape=WireguardPeerRciShape(
-            str(metadata.get("peer_rci_shape", WireguardPeerRciShape.NESTED_RCI.value))
-        ),
+        peer_rci_shape=_coerce_peer_rci_shape(metadata.get("peer_rci_shape")),
         interface_address=metadata.get("interface_address"),
         ip_global_auto=resolved_ip_global_auto,
         ip_global_priority=resolved_ip_global_priority,

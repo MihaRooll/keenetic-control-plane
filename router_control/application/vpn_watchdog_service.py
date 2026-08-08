@@ -16,7 +16,11 @@ from router_control.application.wireguard_apply_service import (
     apply_wireguard_intent,
     observe_tunnel,
 )
-from router_control.domain.network_intents import WireguardIntent, WireguardPeerRciShape
+from router_control.application.vpn_assignment_helpers import (
+    coerce_peer_rci_shape,
+    resolve_assignment_wg_id,
+)
+from router_control.domain.network_intents import WireguardIntent
 
 VPN_WATCHDOG_ENABLED = os.environ.get("VPN_WATCHDOG_ENABLED", "").strip().lower() in (
     "1",
@@ -199,15 +203,9 @@ class VpnWatchdogHandle:
                 psk_ref = str(ref["credential_ref_id"])
         asc_raw = metadata.get("asc9_args")
         asc_args = tuple(asc_raw) if isinstance(asc_raw, list) else None
-        observed_locator = assignment.get("observed_vendor_locator")
-        if observed_locator and str(observed_locator).strip():
-            wg_id = str(observed_locator).strip()
-        else:
-            meta_wg_id = metadata.get("wg_id")
-            if meta_wg_id and str(meta_wg_id).strip():
-                wg_id = str(meta_wg_id).strip()
-            else:
-                return None
+        wg_id = resolve_assignment_wg_id(assignment, profile_metadata=metadata)
+        if not wg_id:
+            return None
         ip_global_priority = metadata.get("ip_global_priority")
         metadata_keepalive = metadata.get("peer_keepalive_interval")
         return WireguardIntent(
@@ -225,9 +223,7 @@ class VpnWatchdogHandle:
                 and not isinstance(metadata_keepalive, bool)
                 else None
             ),
-            peer_rci_shape=WireguardPeerRciShape(
-                str(metadata.get("peer_rci_shape", WireguardPeerRciShape.NESTED_RCI.value))
-            ),
+            peer_rci_shape=coerce_peer_rci_shape(metadata.get("peer_rci_shape")),
             interface_address=metadata.get("interface_address"),
             ip_global_auto=bool(metadata.get("ip_global_auto", False)),
             ip_global_priority=int(ip_global_priority)

@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 from router_control.application.vpn_watchdog_service import VpnWatchdogHandle
+from router_control.domain.network_intents import WireguardPeerRciShape
 from router_control.persistence.connection import open_database
 from router_control.persistence.store import PersistenceStore
 
@@ -189,6 +190,82 @@ def test_watchdog_intent_uses_metadata_wg_id_when_locator_absent(
     )
     assert intent is not None
     assert intent.wg_id == "Wireguard7"
+
+
+def test_watchdog_intent_resolves_wg_id_from_policy_metadata(
+    tmp_path: Path,
+) -> None:
+    store = PersistenceStore(open_database(tmp_path / "watchdog-policy-wg.sqlite3"))
+    profile_id = store.import_profile(
+        display_name="Policy wg profile",
+        vpn_kind="AmneziaWG",
+        content_digest="sha256:policy-wg",
+        metadata_json=json.dumps(
+            {
+                "peer_public_key": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
+                "peer_endpoint": "example.com:51820",
+                "peer_allow_ips": "0.0.0.0/0",
+            }
+        ),
+    )
+    service = _handle()
+    intent = service._intent_from_assignment(
+        {
+            "profile_id": profile_id,
+            "policy_metadata_json": json.dumps({"wg_id": "Wireguard8"}),
+        },
+        store,
+    )
+    assert intent is not None
+    assert intent.wg_id == "Wireguard8"
+
+
+def test_watchdog_intent_coerces_invalid_peer_rci_shape_fail_closed(
+    tmp_path: Path,
+) -> None:
+    store = PersistenceStore(open_database(tmp_path / "watchdog-rci-shape.sqlite3"))
+    profile_id = store.import_profile(
+        display_name="Invalid rci shape profile",
+        vpn_kind="AmneziaWG",
+        content_digest="sha256:rci-shape",
+        metadata_json=json.dumps(
+            {
+                "wg_id": "Wireguard5",
+                "peer_public_key": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
+                "peer_endpoint": "example.com:51820",
+                "peer_allow_ips": "0.0.0.0/0",
+                "peer_rci_shape": None,
+            }
+        ),
+    )
+    service = _handle()
+    intent = service._intent_from_assignment(
+        {"profile_id": profile_id},
+        store,
+    )
+    assert intent is not None
+    assert intent.peer_rci_shape is WireguardPeerRciShape.NESTED_RCI
+
+    profile_id_none_str = store.import_profile(
+        display_name="None string rci shape profile",
+        vpn_kind="AmneziaWG",
+        content_digest="sha256:rci-shape-none-str",
+        metadata_json=json.dumps(
+            {
+                "wg_id": "Wireguard5",
+                "peer_public_key": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
+                "peer_endpoint": "example.com:51820",
+                "peer_allow_ips": "0.0.0.0/0",
+                "peer_rci_shape": "None",
+            }
+        ),
+    )
+    intent_none_str = service._intent_from_assignment(
+        {"profile_id": profile_id_none_str},
+        store,
+    )
+    assert intent_none_str is not None
+    assert intent_none_str.peer_rci_shape is WireguardPeerRciShape.NESTED_RCI
 
 
 def test_watchdog_intent_returns_none_without_wg_id(tmp_path: Path) -> None:
