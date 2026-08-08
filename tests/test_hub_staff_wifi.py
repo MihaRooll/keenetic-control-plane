@@ -1548,6 +1548,28 @@ console.log(JSON.stringify({
     assert result["mismatchConfirmed"]["title"] == "Проверка не совпала"
 
 
+def test_apply_wifi_readback_outcome_blocks_on_air_unverified_upgrade(tmp_path: Path) -> None:
+    """applied+on_air_unverified must not upgrade to «Сохранено и проверено» via poll."""
+    result = _run_export(
+        tmp_path,
+        label="readback-on-air-unverified",
+        script_body="""
+const applied = mod.parseWifiApplyVerdict({
+  overall: 'applied',
+  on_air_verification_status: 'on_air_unverified',
+  errors: [],
+});
+const confirmed = mod.applyWifiReadbackOutcome(applied, true);
+console.log(JSON.stringify({ applied, confirmed }));
+""",
+    )
+    assert result["applied"]["success"] is False
+    assert result["applied"]["title"] == "Сохранено с оговоркой"
+    assert result["confirmed"]["success"] is False
+    assert result["confirmed"]["title"] == "Сохранено с оговоркой"
+    assert result["confirmed"]["title"] != "Сохранено и проверено"
+
+
 def test_staff_wifi_apply_readback_verified_full_roundtrip(tmp_path: Path) -> None:
     """F-D8: save → apply → observed refetch → «Сохранено и проверено» при совпадении."""
     observed_ap = {

@@ -552,6 +552,164 @@ def observe_station_uplink(
     return _finalize(observation)
 
 
+def _read_teardown_signals(
+    readback: dict[str, Any],
+    *,
+    readings: list[VerdictSignalReading],
+) -> None:
+    field_present = readback.get("associated_ssid_field_present")
+    readings.append(
+        VerdictSignalReading(
+            "associated_ssid_field_present",
+            field_present if isinstance(field_present, bool) else None,
+        )
+    )
+    associated = readback.get("associated_ssid")
+    if associated is not None:
+        readings.append(
+            VerdictSignalReading(
+                "associated_ssid_matches_intent",
+                not ssid_present(associated),
+            )
+        )
+    if "state" in readback:
+        readings.append(
+            VerdictSignalReading("state", normalize_up_down(readback["state"]))
+        )
+    link_up = resolve_link_up(readback)
+    if link_up is not None:
+        readings.append(VerdictSignalReading("link", link_up))
+    connected = resolve_device_connected(readback)
+    if connected is not None:
+        readings.append(VerdictSignalReading("connected", connected))
+
+
+def observe_station_teardown(readback: dict[str, Any]) -> VerdictObservation:
+    """Derive station teardown verdict from split readback (disconnected / cleared)."""
+
+    def _finalize(observation: VerdictObservation) -> VerdictObservation:
+        assert_verdict_explanation_invariant(observation.verdict, observation.explanation)
+        return assert_verdict_observation(observation)
+
+    readings: list[VerdictSignalReading] = []
+    missing: list[VerdictMissingSignalCode] = []
+    rejected: list[VerdictRejectedSignal] = []
+
+    if not readback:
+        explanation = VerdictExplanation(
+            signals_read=tuple(readings),
+            signals_missing=("readback",),
+            signals_rejected=tuple(rejected),
+        )
+        observation = VerdictObservation(
+            verdict=_UPLINK_DISPATCHED_UNVERIFIED,
+            explanation=explanation,
+        )
+        return _finalize(observation)
+
+    _read_teardown_signals(readback, readings=readings)
+
+    field_present = readback.get("associated_ssid_field_present")
+    associated = readback.get("associated_ssid")
+    configured = readback.get("configured_ssid")
+
+    if field_present is True and ssid_present(associated):
+        _append_unique_missing(missing, "associated_ssid")
+        explanation = VerdictExplanation(
+            signals_read=tuple(readings),
+            signals_missing=tuple(missing),
+            signals_rejected=tuple(rejected),
+        )
+        observation = VerdictObservation(verdict=_UPLINK_FAILED, explanation=explanation)
+        return _finalize(observation)
+
+    if ssid_present(configured):
+        _append_unique_missing(missing, "associated_ssid")
+        explanation = VerdictExplanation(
+            signals_read=tuple(readings),
+            signals_missing=tuple(missing),
+            signals_rejected=tuple(rejected),
+        )
+        observation = VerdictObservation(verdict=_UPLINK_FAILED, explanation=explanation)
+        return _finalize(observation)
+
+    if _readback_has_deceptive_uplink_signals(readback):
+        _collect_uplink_deceptive_rejections(readback, rejected)
+        explanation = VerdictExplanation(
+            signals_read=tuple(readings),
+            signals_missing=tuple(missing),
+            signals_rejected=tuple(rejected),
+        )
+        observation = VerdictObservation(
+            verdict=_UPLINK_ASSOCIATED_NO_GLOBAL,
+            explanation=explanation,
+        )
+        return _finalize(observation)
+
+    link_up = resolve_link_up(readback)
+    connected = resolve_device_connected(readback)
+    if connected is True or link_up is True:
+        _append_unique_missing(missing, "link")
+        explanation = VerdictExplanation(
+            signals_read=tuple(readings),
+            signals_missing=tuple(missing),
+            signals_rejected=tuple(rejected),
+        )
+        observation = VerdictObservation(verdict=_UPLINK_FAILED, explanation=explanation)
+        return _finalize(observation)
+
+    if field_present is not True:
+        _append_unique_missing(missing, "associated_ssid_field")
+        explanation = VerdictExplanation(
+            signals_read=tuple(readings),
+            signals_missing=tuple(missing),
+            signals_rejected=tuple(rejected),
+        )
+        observation = VerdictObservation(
+            verdict=_UPLINK_DISPATCHED_UNVERIFIED,
+            explanation=explanation,
+        )
+        return _finalize(observation)
+
+    state = readback.get("state")
+    if state is None:
+        _append_unique_missing(missing, "link")
+        explanation = VerdictExplanation(
+            signals_read=tuple(readings),
+            signals_missing=tuple(missing),
+            signals_rejected=tuple(rejected),
+        )
+        observation = VerdictObservation(
+            verdict=_UPLINK_DISPATCHED_UNVERIFIED,
+            explanation=explanation,
+        )
+        return _finalize(observation)
+
+    if not _state_is_up_token(state) or not ssid_present(associated):
+        explanation = VerdictExplanation(
+            signals_read=tuple(readings),
+            signals_missing=tuple(missing),
+            signals_rejected=tuple(rejected),
+        )
+        observation = VerdictObservation(
+            verdict=_UPLINK_VERIFIED_BOUNDED,
+            explanation=explanation,
+        )
+        return _finalize(observation)
+
+    _append_unique_missing(missing, "link")
+    explanation = VerdictExplanation(
+        signals_read=tuple(readings),
+        signals_missing=tuple(missing),
+        signals_rejected=tuple(rejected),
+    )
+    observation = VerdictObservation(
+        verdict=_UPLINK_DISPATCHED_UNVERIFIED,
+        explanation=explanation,
+    )
+    return _finalize(observation)
+
+
 def _op_to_preview_dict(op: WifiStationSealedOpDescriptor) -> dict[str, object]:
     payload: dict[str, object] = {
         "operation": op.operation,
@@ -1113,6 +1271,24 @@ def _observe_uplink_after_settle(
     return verdict, readback, settle if settle_performed else None, explanation
 
 
+def _readback_and_observe_station_teardown(
+    transport: WifiStationLiveTransport,
+    *,
+    plan: WifiStationApplyPlan,
+    logs: list[str],
+) -> tuple[str, dict[str, object] | None, VerdictExplanation]:
+    try:
+        readback = readback_wifi_station_state(transport, plan.station_id)
+    except WifiStationApplyServiceError as exc:
+        logs.append(f"teardown readback failed: {exc}")
+        verdict = _UPLINK_DISPATCHED_UNVERIFIED
+        return verdict, None, explanation_for_skipped_observe(verdict)
+
+    observation = observe_station_teardown(readback)
+    logs.append(f"teardown observe verdict: {observation.verdict}")
+    return observation.verdict, readback, observation.explanation
+
+
 def apply_wifi_station_intent(
     *,
     intent: UplinkIntent,
@@ -1347,17 +1523,49 @@ def teardown_wifi_station(
             live_dispatch=live_dispatch,
             trail=trail,
         )
-        if live_dispatch:
-            overall: ApplyOverallStatus = "failed" if dispatch_errors else "applied"
+        if not live_dispatch:
+            overall: ApplyOverallStatus = (
+                "failed" if dispatch_errors else "dispatched_offline"
+            )
+            result = _result_from_plan(
+                plan=plan,
+                overall=overall,
+                steps=steps,
+                errors=dispatch_errors,
+                logs=tuple(logs),
+            )
+        elif dispatch_errors:
+            result = _result_from_plan(
+                plan=plan,
+                overall="failed",
+                steps=steps,
+                errors=dispatch_errors,
+                logs=tuple(logs),
+                uplink_verification_status=_UPLINK_DISPATCHED_UNVERIFIED,
+            )
         else:
-            overall = "failed" if dispatch_errors else "dispatched_offline"
-        result = _result_from_plan(
-            plan=plan,
-            overall=overall,
-            steps=steps,
-            errors=dispatch_errors,
-            logs=tuple(logs),
-        )
+            uplink_status, uplink_readback, uplink_explanation = (
+                _readback_and_observe_station_teardown(
+                    transport,  # type: ignore[arg-type]
+                    plan=plan,
+                    logs=logs,
+                )
+            )
+            overall = (
+                "applied"
+                if uplink_status == _UPLINK_VERIFIED_BOUNDED
+                else "verify_mismatch"
+            )
+            result = _result_from_plan(
+                plan=plan,
+                overall=overall,
+                steps=steps,
+                errors=dispatch_errors,
+                logs=tuple(logs),
+                uplink_verification_status=uplink_status,
+                uplink_readback=uplink_readback,
+                verdict_explanation=uplink_explanation,
+            )
         finish_sealed_apply_trail(
             trail,
             overall=result.overall,
@@ -1376,6 +1584,7 @@ __all__ = [
     "WifiStationApplyTransport",
     "WifiStationLiveTransport",
     "apply_wifi_station_intent",
+    "observe_station_teardown",
     "observe_station_uplink",
     "plan_to_preview_dict",
     "preview_wifi_station_apply",

@@ -265,10 +265,26 @@ console.log(JSON.stringify(mod.parseUplinkApplyVerdict({payload}, {{ intent: 'ap
 
 
 def test_uplink_wifi_parse_teardown_verdict_applied_success(tmp_path: Path) -> None:
-    """Teardown: overall=applied → success без uplink_verified_bounded."""
+    """Teardown: overall=applied + uplink_verified_bounded → success."""
     result = _run_export(
         tmp_path,
         label="parse-teardown",
+        script_body="""
+console.log(JSON.stringify(mod.parseUplinkApplyVerdict({
+  overall: 'applied',
+  uplink_verification_status: 'uplink_verified_bounded',
+}, { intent: 'teardown' })));
+""",
+    )
+    assert result["success"] is True
+    assert result["hubState"] == "SUCCESS"
+
+
+def test_uplink_wifi_parse_teardown_unverified_is_warning(tmp_path: Path) -> None:
+    """Teardown: applied + uplink_dispatched_unverified must not toast SUCCESS."""
+    result = _run_export(
+        tmp_path,
+        label="parse-teardown-unverified",
         script_body="""
 console.log(JSON.stringify(mod.parseUplinkApplyVerdict({
   overall: 'applied',
@@ -276,8 +292,8 @@ console.log(JSON.stringify(mod.parseUplinkApplyVerdict({
 }, { intent: 'teardown' })));
 """,
     )
-    assert result["success"] is True
-    assert result["hubState"] == "SUCCESS"
+    assert result["success"] is False
+    assert result["hubState"] == "WARNING"
 
 
 def test_uplink_wifi_mutation_readiness_requires_live_params(tmp_path: Path) -> None:

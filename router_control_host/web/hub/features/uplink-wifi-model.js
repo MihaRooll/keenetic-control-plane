@@ -321,12 +321,41 @@ export function parseUplinkApplyVerdict(response, { intent = 'apply' } = {}) {
   }
 
   if (intent === 'teardown') {
-    if (overall === 'applied') {
+    if (overall === 'applied' && uplinkStatus === 'uplink_verified_bounded') {
       return {
         hubState: HubState.SUCCESS,
         success: true,
         title: 'Отключено от внешней сети',
         message: 'Роутер отключён от сети, через которую получал интернет',
+        technicalLines,
+      };
+    }
+    if (overall === 'applied' && uplinkStatus === 'uplink_dispatched_unverified') {
+      return {
+        hubState: HubState.WARNING,
+        success: false,
+        title: 'Отключение не подтверждено',
+        message:
+          'Команда принята роутером, но отключение не проверено — это не считается успешным отключением',
+        technicalLines,
+      };
+    }
+    if (overall === 'verify_mismatch') {
+      return {
+        hubState: HubState.WARNING,
+        success: false,
+        title: 'Проверка не совпала',
+        message: 'Роутер принял команду, но проверка отключения не совпала с ожиданием',
+        technicalLines,
+      };
+    }
+    if (overall === 'applied') {
+      return {
+        hubState: HubState.WARNING,
+        success: false,
+        title: 'Отключение не подтверждено',
+        message:
+          'Роутер принял команду, но отключение не подтверждено — это не считается успехом',
         technicalLines,
       };
     }

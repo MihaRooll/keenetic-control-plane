@@ -410,7 +410,50 @@ def test_teardown_offline_non_default_priority_compiles() -> None:
     assert all(step.ok for step in result.steps)
 
 
+def test_live_teardown_verified_bounded_is_applied() -> None:
+    transport = LiveDispatchTransport()
+    transport.configured_readback = {}
+    transport.runtime_readback = {"ssid": "", "encryption": {}, "state": "down"}
+    result = teardown_wifi_station(
+        intent=_wifi_wan_intent(),
+        transport=transport,  # type: ignore[arg-type]
+        live_dispatch=True,
+    )
+    assert result.overall == "applied"
+    assert result.uplink_verification_status == "uplink_verified_bounded"
+    assert any(cmd.startswith("show rc interface") for cmd in transport.parse_commands)
+    assert any(cmd.startswith("show interface") for cmd in transport.parse_commands)
 
+
+def test_live_teardown_still_associated_is_verify_mismatch() -> None:
+    transport = LiveDispatchTransport()
+    result = teardown_wifi_station(
+        intent=_wifi_wan_intent(),
+        transport=transport,  # type: ignore[arg-type]
+        live_dispatch=True,
+    )
+    assert result.overall == "verify_mismatch"
+    assert result.uplink_verification_status == "uplink_failed"
+
+
+def test_live_teardown_readback_failure_is_verify_mismatch() -> None:
+    transport = LiveDispatchTransport()
+    original_parse = transport.execute_rci_parse
+
+    def patched_parse(cli_command: str) -> Any:
+        if cli_command.startswith("show rc interface"):
+            raise RuntimeError("simulated teardown readback failure")
+        return original_parse(cli_command)
+
+    transport.execute_rci_parse = patched_parse  # type: ignore[method-assign]
+    result = teardown_wifi_station(
+        intent=_wifi_wan_intent(),
+        transport=transport,  # type: ignore[arg-type]
+        live_dispatch=True,
+    )
+    assert result.overall == "verify_mismatch"
+    assert result.uplink_verification_status == "uplink_dispatched_unverified"
+    assert any("teardown readback failed" in log for log in result.logs)
 
 
 def test_readback_split_configured_vs_associated() -> None:

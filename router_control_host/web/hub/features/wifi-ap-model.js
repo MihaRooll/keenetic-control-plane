@@ -708,6 +708,26 @@ function isWifiVerifyMismatchVerdict(verdict) {
 }
 
 /**
+ * Server-side honest warning: client readback poll must not upgrade to full success.
+ *
+ * @param {WifiApplyVerdict|null|undefined} verdict
+ * @returns {boolean}
+ */
+function isWifiServerHonestWarningVerdict(verdict) {
+  if (isWifiVerifyMismatchVerdict(verdict)) {
+    return true;
+  }
+  if (!Array.isArray(verdict?.technicalLines)) {
+    return false;
+  }
+  return verdict.technicalLines.some(
+    (line) =>
+      line.startsWith('on_air_verification_status: on_air_unverified')
+      || line.startsWith('on_air_verification_status: on_air_admin_only'),
+  );
+}
+
+/**
  * @param {WifiApplyVerdict|null|undefined} verdict
  * @returns {boolean}
  */
@@ -941,6 +961,9 @@ export function applyWifiReadbackOutcome(
   { intent = 'apply', observed = null, observedError = false, expected = null } = {},
 ) {
   if (!verdict || !shouldPollWifiApplyReadback(verdict)) {
+    return verdict;
+  }
+  if (isWifiServerHonestWarningVerdict(verdict)) {
     return verdict;
   }
   if (readbackOk === true) {
