@@ -11,6 +11,7 @@ import {
   describeInternetSource,
   describeRememberedUplink,
 } from './internet-source-block.js';
+import { OVERVIEW_INTERNET_WIFI_SWITCH_HONESTY } from './overview-internet-simple.js';
 import { describeVpnProfileTileStatus } from './vpn-model.js';
 
 /** @typedef {import('./overview-model.js').OverviewSection} OverviewSection */
@@ -884,6 +885,12 @@ export function buildInternetStatusCard(options) {
     rememberedLine.className = 'hub-internet-card__remembered';
     rememberedLine.textContent = rememberedText;
     meta.appendChild(rememberedLine);
+  }
+  if (autoconnectValue === true) {
+    const autoconnectHonestyLine = document.createElement('p');
+    autoconnectHonestyLine.className = 'hub-internet-card__remembered hub-wifi__note';
+    autoconnectHonestyLine.textContent = OVERVIEW_INTERNET_WIFI_SWITCH_HONESTY;
+    meta.appendChild(autoconnectHonestyLine);
   }
   actions.appendChild(meta);
   card.appendChild(actions);

@@ -1228,6 +1228,9 @@ export function render(container, ctx) {
       if (vpnCatalogItems.length > 0) {
         try {
           const statusResponse = await fetchVpnCatalogLiveStatus({ session, signal });
+          if (disposed || signal?.aborted) {
+            return;
+          }
           const statusPayload = /** @type {Record<string, unknown>} */ (statusResponse ?? {});
           const rows = Array.isArray(statusPayload.items)
             ? statusPayload.items.filter((item) => item && typeof item === 'object')
@@ -1349,6 +1352,8 @@ export function render(container, ctx) {
       lastVpnSignature = null;
       if (!disposed) {
         renderVpnSlot();
+        renderReadinessHeader();
+        renderStatusStrip();
       }
     }
   }
@@ -1421,6 +1426,8 @@ export function render(container, ctx) {
       lastVpnSignature = null;
       if (!disposed) {
         renderVpnSlot();
+        renderReadinessHeader();
+        renderStatusStrip();
       }
     }
   }
@@ -2244,7 +2251,11 @@ export function render(container, ctx) {
     if (disposed || isConnectionRestorePending(session)) {
       return;
     }
-    routerInternetObserve = await fetchRouterInternetObserve({ session, signal });
+    const observeResult = await fetchRouterInternetObserve({ session, signal });
+    if (disposed || signal?.aborted) {
+      return;
+    }
+    routerInternetObserve = observeResult;
   }
   /**
    * @returns {Promise<number|null>}
@@ -2578,6 +2589,8 @@ export function render(container, ctx) {
     if (!online) {
       offline = true;
       recovering = false;
+      loadAbort?.abort();
+      systemCheckAbort?.abort();
       internetObserveAbort?.abort();
       abortEnrichment();
       internetEnrichmentBusy = false;

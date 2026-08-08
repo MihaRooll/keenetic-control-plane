@@ -3449,6 +3449,77 @@ def test_overview_vpn_live_status_catch_clears_stale_cache() -> None:
     assert "optional live-status failure must not block catalog settle" in catch_block
 
 
+def test_overview_vpn_live_status_abort_guard_before_assign() -> None:
+    """overview-offline-abort-races: guard after fetchVpnCatalogLiveStatus before vpnLiveStatusById assign."""
+    source = _read(OVERVIEW_JS)
+    fn_body = _extract_function_body(source, "async function refreshVpnCatalogAndLiveStatus(")
+    assert fn_body is not None
+    fetch_idx = fn_body.find("await fetchVpnCatalogLiveStatus({ session, signal })")
+    assert fetch_idx != -1
+    assign_idx = fn_body.find("vpnLiveStatusById = nextLive")
+    assert assign_idx != -1
+    between = fn_body[fetch_idx:assign_idx]
+    guard_idx = between.find("if (disposed || signal?.aborted)")
+    assert guard_idx != -1, "abort/disposed guard must follow fetchVpnCatalogLiveStatus"
+    guard_block = between[guard_idx : guard_idx + 80]
+    assert "return" in guard_block
+
+
+def test_overview_refresh_router_internet_observe_abort_guard() -> None:
+    """overview-offline-abort-races: guard after fetch before routerInternetObserve assign."""
+    source = _read(OVERVIEW_JS)
+    fn_body = _extract_function_body(source, "async function refreshRouterInternetObserve(")
+    assert fn_body is not None
+    fetch_idx = fn_body.find("await fetchRouterInternetObserve({ session, signal })")
+    assert fetch_idx != -1
+    assign_idx = fn_body.find("routerInternetObserve = observeResult")
+    assert assign_idx != -1
+    between = fn_body[fetch_idx:assign_idx]
+    assert "if (disposed || signal?.aborted)" in between
+    assert "return" in between
+
+
+def test_overview_connectivity_offline_aborts_load_and_system_check() -> None:
+    """overview-offline-abort-races: offline arm aborts loadAbort and systemCheckAbort."""
+    source = _read(OVERVIEW_JS)
+    callback = _extract_subscribe_connectivity_callback(source)
+    offline_arm_start = callback.find("if (!online)")
+    assert offline_arm_start != -1
+    offline_arm = callback[offline_arm_start:]
+    offline_return = offline_arm.find("return")
+    offline_block = offline_arm[: offline_return + len("return")]
+    normalized = _normalize_whitespace(offline_block)
+    assert "loadAbort?.abort()" in normalized
+    assert "systemCheckAbort?.abort()" in normalized
+    load_idx = normalized.find("loadAbort?.abort()")
+    system_idx = normalized.find("systemCheckAbort?.abort()")
+    internet_idx = normalized.find("internetObserveAbort?.abort()")
+    assert load_idx != -1 and system_idx != -1 and internet_idx != -1
+    assert load_idx < system_idx < internet_idx
+
+
+def test_overview_vpn_activate_deactivate_finally_repaints_readiness() -> None:
+    """overview-offline-abort-races: VPN activate/deactivate finally repaint readiness + status strip."""
+    source = _read(OVERVIEW_JS)
+    for fn_sig in (
+        "async function runOverviewVpnActivate(",
+        "async function runOverviewVpnDeactivate(",
+    ):
+        body = _extract_function_body(source, fn_sig)
+        assert body is not None
+        finally_start = body.rfind("} finally {")
+        assert finally_start != -1
+        finally_block = body[finally_start:]
+        assert "renderVpnSlot()" in finally_block
+        assert "renderReadinessHeader()" in finally_block
+        assert "renderStatusStrip()" in finally_block
+        vpn_idx = finally_block.find("renderVpnSlot()")
+        readiness_idx = finally_block.find("renderReadinessHeader()")
+        strip_idx = finally_block.find("renderStatusStrip()")
+        assert vpn_idx != -1 and readiness_idx != -1 and strip_idx != -1
+        assert vpn_idx < readiness_idx < strip_idx
+
+
 def test_overview_networks_run_mutation_resolve_disabled_guard() -> None:
     """AC-2: runMutation early-returns when resolveDisabled() is true."""
     source = _read(OVERVIEW_SIMPLE_NETWORKS_JS)
