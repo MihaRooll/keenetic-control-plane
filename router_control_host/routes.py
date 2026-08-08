@@ -80,6 +80,7 @@ from router_control_host.errors import (
 )
 from router_control_host.state import HostState
 from router_control_host.wifi_live_transport import (
+    LiveGateARequiredError,
     LiveIdentityTupleMismatchError,
     is_win32_live_capable,
     map_wifi_live_transport_error,
@@ -808,6 +809,7 @@ def _teardown_prior_profile_assignment(
             intent=prior_intent,
             params=live_params,
             sealed_apply_params=trail_params,
+            router_id=router_id,
         )
     else:
         transport = wg_routes._resolve_transport(host, request)
@@ -2594,6 +2596,7 @@ def activate_vpn_profile(
                     body.handshake_settle_seconds
                 ),
                 sealed_apply_params=trail_params,
+                router_id=router_id,
             )
         transport = wg_routes._resolve_transport(host, request)
         if isinstance(transport, JSONResponse):
@@ -2830,6 +2833,21 @@ def deactivate_vpn_profile(
         if router_id
         else None
     )
+    if assignment is not None:
+        observed = assignment.get("observed_vendor_locator")
+        if observed:
+            observed_wg = str(observed).strip()
+            request_wg = body.wg_id.strip()
+            if observed_wg and observed_wg != request_wg:
+                return error_response(
+                    request,
+                    status_code=422,
+                    code="profile.deactivate_wg_mismatch",
+                    message=(
+                        "wg_id does not match active tunnel assignment "
+                        f"(observed={observed_wg}, requested={request_wg})"
+                    ),
+                )
     intent = WireguardIntent(wg_id=body.wg_id, enabled=False, asc_args=None)
     profile_id = str(assignment["profile_id"]) if assignment is not None else None
     if assignment is not None:
@@ -2860,6 +2878,7 @@ def deactivate_vpn_profile(
                 intent=intent,
                 params=live_params,
                 sealed_apply_params=trail_params,
+                router_id=router_id,
             )
         transport = wg_routes._resolve_transport(host, request)
         if isinstance(transport, JSONResponse):
@@ -2904,6 +2923,8 @@ def deactivate_vpn_profile(
                 route="vpn-profiles",
             )
             return sealed_apply_trail_begin_error_response(request, exc)
+        except LiveGateARequiredError as exc:
+            return wg_routes._gate_a_required_error(request, str(exc))
         except WireguardApplyServiceError as exc:
             wg_routes._record_wireguard_sealed_audit(
                 host,
@@ -3012,6 +3033,20 @@ def deactivate_vpn_profile(
 
     assert result is not None
     if router_id and _profile_apply_success(result):
+        if assignment is not None:
+            observed = assignment.get("observed_vendor_locator")
+            if observed:
+                observed_wg = str(observed).strip()
+                if observed_wg and observed_wg != body.wg_id.strip():
+                    return error_response(
+                        request,
+                        status_code=422,
+                        code="profile.deactivate_wg_mismatch",
+                        message=(
+                            "wg_id does not match active tunnel assignment "
+                            f"(observed={observed_wg}, requested={body.wg_id.strip()})"
+                        ),
+                    )
         host.runtime.store.deactivate_tunnel_assignments(
             router_id, logical_role=body.logical_role, now=host.runtime.clock.now()
         )

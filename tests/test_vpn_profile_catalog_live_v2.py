@@ -1160,3 +1160,46 @@ def test_vpn_deactivate_identity_mismatch_returns_422(
     assert resp.json()["error"]["code"] == "wireguard.identity_mismatch"
     assert backup_calls == []
 
+
+def test_vpn_deactivate_wg_id_mismatch_fail_closed(
+    authed_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Deactivate must not teardown or clear assignment when wg_id mismatches observed locator."""
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
+
+    store = authed_client.app.state.host.runtime.store
+    router_id = _seed_catalog_router(store)
+    profile_id = _seed_catalog_profile(store, display_name="active-deactivate-mismatch")
+    store.upsert_tunnel_assignment(
+        router_id=router_id,
+        profile_id=profile_id,
+        desired_active=True,
+        observed_vendor_locator="Wireguard5",
+    )
+
+    teardown_calls: list[str] = []
+
+    def _track_teardown(**kwargs: object) -> object:
+        teardown_calls.append(str(kwargs.get("wg_id")))
+        raise AssertionError("teardown must not run on wg_id mismatch")
+
+    monkeypatch.setattr(wg_routes_mod, "_should_use_live_path", lambda *_a, **_k: False)
+    monkeypatch.setattr(wg_routes_mod, "_validate_live_connection_fields", lambda *_a, **_k: None)
+    monkeypatch.setattr(routes_mod, "teardown_wireguard", _track_teardown)
+
+    resp = authed_client.post(
+        "/api/router-control/v1/vpn-profiles/deactivate",
+        json={
+            "confirm_live_apply": True,
+            "wg_id": "Wireguard6",
+            "router_id": router_id,
+        },
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "profile.deactivate_wg_mismatch"
+    assert teardown_calls == []
+    active = store.get_active_tunnel_assignment(router_id)
+    assert active is not None
+    assert str(active["profile_id"]) == profile_id
+

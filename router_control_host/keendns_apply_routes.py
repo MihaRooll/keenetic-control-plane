@@ -37,6 +37,7 @@ from router_control_host.errors import error_response, sealed_apply_trail_begin_
 from router_control_host.routes import API_PREFIX, _mutation_degraded, _ok_headers
 from router_control_host.state import HostState
 from router_control_host.wifi_live_transport import (
+    LiveGateARequiredError,
     LiveIdentityTupleMismatchError,
     WifiLiveConnectionParams,
     connection_params_from_fields,
@@ -347,7 +348,7 @@ def _dispatch_apply_live(
 ) -> KeenDnsApplyResult:
     cert = host.gate_a_certification
     if cert is None or not cert.is_open:
-        raise KeenDnsApplyServiceError(
+        raise LiveGateARequiredError(
             "Gate A certification required for live apply (startup-config backup)"
         )
 
@@ -465,6 +466,8 @@ def keendns_apply(request: Request, body: KeenDnsApplyBody) -> JSONResponse:
             return _live_backup_unavailable_error(request, str(exc))
         except SealedApplyTrailBeginError as exc:
             return sealed_apply_trail_begin_error_response(request, exc)
+        except LiveGateARequiredError as exc:
+            return _gate_a_required_error(request, str(exc))
         except KeenDnsApplyServiceError as exc:
             return _service_error(request, exc)
         except Exception as exc:

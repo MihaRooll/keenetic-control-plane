@@ -1148,6 +1148,41 @@ def test_map_wifi_live_transport_error_missing_field_is_422_not_503() -> None:
     assert "source_address" in mapped.message
 
 
+def test_live_apply_sealed_dispatch_gate_a_closed_mid_flight_returns_503() -> None:
+    """Sealed _dispatch_apply_live raises LiveGateARequiredError when Gate A closes mid-flight."""
+    from unittest.mock import MagicMock
+
+    from router_control.adapters.netcraze.allowlist import validate_wifi_ap_id
+    from router_control.domain.network_intents import WifiBand, WifiWpaMode
+    from router_control_host.wifi_apply_routes import WifiApplyBody, _dispatch_apply_live
+    from router_control_host.wifi_live_transport import LiveGateARequiredError, WifiLiveConnectionParams
+
+    host = MagicMock()
+    host.gate_a_certification = None
+    body = WifiApplyBody(
+        ap_id=validate_wifi_ap_id(_TEST_AP),
+        ssid="Staff-Private",
+        enabled=True,
+        credential_ref_id="credref:staff-wifi",
+        captive_portal="Disabled",
+        guest_isolation=False,
+        wpa_mode=WifiWpaMode.WPA2,
+        band=WifiBand.BAND_2_4GHZ,
+        confirm_live_apply=True,
+        router_id="router-mid-flight-gate-a",
+    )
+    params = WifiLiveConnectionParams(
+        host="192.168.2.1",
+        username="admin",
+        router_credential_ref_id="credref:router-admin",
+        ssh_host_key_sha256=_VALID_SSH_HOST_KEY_SHA256,
+        source_address="192.168.2.10",
+    )
+
+    with pytest.raises(LiveGateARequiredError, match="Gate A certification required"):
+        _dispatch_apply_live(host=host, body=body, params=params)
+
+
 def test_observed_live_transport_missing_source_maps_incomplete(
     wifi_client,
     monkeypatch: pytest.MonkeyPatch,

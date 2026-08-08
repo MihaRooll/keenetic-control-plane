@@ -858,6 +858,28 @@ export function listVpnTunnelInterfaceOptions() {
 }
 
 /**
+ * Resolve WireGuard interface for a catalog profile (assigned_wg_id wins over UI default).
+ * @param {ReadonlyArray<Record<string, unknown>>} catalogItems
+ * @param {string} profileId
+ * @param {string} [fallbackWgId]
+ * @returns {string}
+ */
+export function resolveVpnProfileWgId(catalogItems, profileId, fallbackWgId = 'Wireguard5') {
+  const item = catalogItems.find((row) => {
+    const payload = /** @type {Record<string, unknown>} */ (row ?? {});
+    return payload.profile_id === profileId;
+  });
+  const payload = /** @type {Record<string, unknown>} */ (item ?? {});
+  const assigned =
+    typeof payload.assigned_wg_id === 'string' ? payload.assigned_wg_id.trim() : '';
+  if (assigned) {
+    return assigned;
+  }
+  const options = listVpnTunnelInterfaceOptions();
+  return options[0]?.wgId ?? fallbackWgId;
+}
+
+/**
  * @param {unknown} item
  * @returns {VpnProfileListItem}
  */

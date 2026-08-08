@@ -768,7 +768,7 @@ def _dispatch_apply_live(
 ) -> WifiStationApplyResult:
     cert = host.gate_a_certification
     if cert is None or not cert.is_open:
-        raise WifiStationApplyServiceError(
+        raise LiveGateARequiredError(
             "Gate A certification required for live apply (startup-config backup)"
         )
 
@@ -823,10 +823,11 @@ def _dispatch_teardown_live(
     options: WifiStationPlannerOptions,
     host_state: HostState,
     sealed_apply_params: SealedApplyTrailParams | None = None,
+    router_id: str | None = None,
 ) -> WifiStationApplyResult:
     cert = host_state.gate_a_certification
     if cert is None or not cert.is_open:
-        raise WifiStationApplyServiceError(
+        raise LiveGateARequiredError(
             "Gate A certification required for live teardown (startup-config backup)"
         )
 
@@ -835,7 +836,11 @@ def _dispatch_teardown_live(
     backup_sha256: str | None = None
 
     with open_wifi_live_session(params=params, vault=vault) as session:
-        ensure_live_gate_a_tuple_match(session, cert)
+        ensure_live_gate_a_tuple_match(
+            session,
+            cert,
+            router_id=router_id,
+        )
         meta = backup_startup_config(tunnel=session.tunnel, certification=cert)
         backup_basename = Path(meta.encrypted_locator).name
         backup_sha256 = meta.content_sha256
@@ -935,6 +940,8 @@ def wifi_station_apply(request: Request, body: WifiStationApplyBody) -> JSONResp
                 router_id=router_id,
             )
             return sealed_apply_trail_begin_error_response(request, exc)
+        except LiveGateARequiredError as exc:
+            return _gate_a_required_error(request, str(exc))
         except WifiStationApplyServiceError as exc:
             _record_wifi_station_sealed_audit(
                 host,
@@ -1099,6 +1106,7 @@ def wifi_station_teardown(request: Request, body: WifiStationTeardownBody) -> JS
                     options=options,
                     host_state=host,
                     sealed_apply_params=trail_params,
+                    router_id=router_id,
                 ),
             )
         except LiveIdentityTupleMismatchError:
@@ -1116,6 +1124,8 @@ def wifi_station_teardown(request: Request, body: WifiStationTeardownBody) -> JS
                 router_id=router_id,
             )
             return sealed_apply_trail_begin_error_response(request, exc)
+        except LiveGateARequiredError as exc:
+            return _gate_a_required_error(request, str(exc))
         except WifiStationApplyServiceError as exc:
             _record_wifi_station_sealed_audit(
                 host,

@@ -827,10 +827,11 @@ def _dispatch_apply_live(
     params: WifiLiveConnectionParams,
     handshake_settle_seconds: float = 0,
     sealed_apply_params: SealedApplyTrailParams | None = None,
+    router_id: str | None = None,
 ) -> WireguardApplyResult:
     cert = host.gate_a_certification
     if cert is None or not cert.is_open:
-        raise WireguardApplyServiceError(
+        raise LiveGateARequiredError(
             "Gate A certification required for live apply (startup-config backup)"
         )
 
@@ -839,7 +840,11 @@ def _dispatch_apply_live(
     backup_sha256: str | None = None
 
     with open_wifi_live_session(params=params, vault=vault) as session:
-        ensure_live_gate_a_tuple_match(session, cert)
+        ensure_live_gate_a_tuple_match(
+            session,
+            cert,
+            router_id=router_id,
+        )
 
         def backup_callback() -> None:
             nonlocal backup_basename, backup_sha256
@@ -874,10 +879,11 @@ def _dispatch_teardown_live(
     intent: WireguardIntent,
     params: WifiLiveConnectionParams,
     sealed_apply_params: SealedApplyTrailParams | None = None,
+    router_id: str | None = None,
 ) -> WireguardApplyResult:
     cert = host.gate_a_certification
     if cert is None or not cert.is_open:
-        raise WireguardApplyServiceError(
+        raise LiveGateARequiredError(
             "Gate A certification required for live teardown (startup-config backup)"
         )
 
@@ -886,7 +892,11 @@ def _dispatch_teardown_live(
     backup_sha256: str | None = None
 
     with open_wifi_live_session(params=params, vault=vault) as session:
-        ensure_live_gate_a_tuple_match(session, cert)
+        ensure_live_gate_a_tuple_match(
+            session,
+            cert,
+            router_id=router_id,
+        )
         meta = backup_startup_config(tunnel=session.tunnel, certification=cert)
         backup_basename = Path(meta.encrypted_locator).name
         backup_sha256 = meta.content_sha256
@@ -980,6 +990,7 @@ def wireguard_apply(request: Request, body: WireguardApplyBody) -> JSONResponse:
                         body.handshake_settle_seconds
                     ),
                     sealed_apply_params=trail_params,
+                    router_id=router_id,
                 ),
             )
         except LiveIdentityTupleMismatchError:
@@ -998,6 +1009,8 @@ def wireguard_apply(request: Request, body: WireguardApplyBody) -> JSONResponse:
                 router_id=router_id,
             )
             return sealed_apply_trail_begin_error_response(request, exc)
+        except LiveGateARequiredError as exc:
+            return _gate_a_required_error(request, str(exc))
         except WireguardApplyServiceError as exc:
             _record_wireguard_sealed_audit(
                 host,
@@ -1162,6 +1175,7 @@ def wireguard_teardown(request: Request, body: WireguardTeardownBody) -> JSONRes
                     intent=intent,
                     params=params,
                     sealed_apply_params=trail_params,
+                    router_id=router_id,
                 ),
             )
         except LiveIdentityTupleMismatchError:
@@ -1180,6 +1194,8 @@ def wireguard_teardown(request: Request, body: WireguardTeardownBody) -> JSONRes
                 router_id=router_id,
             )
             return sealed_apply_trail_begin_error_response(request, exc)
+        except LiveGateARequiredError as exc:
+            return _gate_a_required_error(request, str(exc))
         except WireguardApplyServiceError as exc:
             _record_wireguard_sealed_audit(
                 host,

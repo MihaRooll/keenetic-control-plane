@@ -73,6 +73,7 @@ import {
   importVpnProfileToCatalog,
   listVpnProfiles,
   listVpnTunnelInterfaceOptions,
+  resolveVpnProfileWgId,
   observeVpnTunnel,
   parseTunnelVerdict,
   parseVpnProfileText,
@@ -2444,8 +2445,9 @@ export function render(container, ctx) {
     mutateAbort = new AbortController();
     const mutationSignal = mutateAbort.signal;
     try {
+      const wgId = resolveVpnProfileWgId(catalogItems, profileId, selectedWgId);
       const response = await deactivateVpnProfile({
-        wgId: selectedWgId,
+        wgId,
         session: getSession(),
         signal: mutationSignal,
       });

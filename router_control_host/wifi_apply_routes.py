@@ -59,6 +59,7 @@ from router_control_host.fake_wifi_device import FakeWifiDeviceState, ensure_fak
 from router_control_host.routes import API_PREFIX, _mutation_degraded, _ok_headers
 from router_control_host.state import HostState
 from router_control_host.wifi_live_transport import (
+    LiveGateARequiredError,
     LiveIdentityTupleMismatchError,
     WifiLiveConnectionParams,
     connection_params_from_fields,
@@ -579,7 +580,7 @@ def _dispatch_apply_live(
 ) -> WifiApplyResult:
     cert = host.gate_a_certification
     if cert is None or not cert.is_open:
-        raise WifiApplyServiceError(
+        raise LiveGateARequiredError(
             "Gate A certification required for live apply (startup-config backup)"
         )
 
@@ -632,7 +633,7 @@ def _dispatch_teardown_live(
 ) -> WifiApplyResult:
     cert = host.gate_a_certification
     if cert is None or not cert.is_open:
-        raise WifiApplyServiceError(
+        raise LiveGateARequiredError(
             "Gate A certification required for live teardown (startup-config backup)"
         )
 
@@ -765,6 +766,8 @@ def wifi_apply(request: Request, body: WifiApplyBody) -> JSONResponse:
                 router_id=router_id,
             )
             return sealed_apply_trail_begin_error_response(request, exc)
+        except LiveGateARequiredError as exc:
+            return _gate_a_required_error(request, str(exc))
         except WifiApplyServiceError as exc:
             _record_wifi_sealed_audit(
                 host,
@@ -943,6 +946,8 @@ def wifi_teardown(request: Request, body: WifiTeardownBody) -> JSONResponse:
                 router_id=router_id,
             )
             return sealed_apply_trail_begin_error_response(request, exc)
+        except LiveGateARequiredError as exc:
+            return _gate_a_required_error(request, str(exc))
         except WifiApplyServiceError as exc:
             _record_wifi_sealed_audit(
                 host,

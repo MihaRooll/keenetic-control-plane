@@ -487,6 +487,16 @@ def test_vpn_screen_activate_toast_gated_on_activated_flag() -> None:
     assert "describeConfigurationOutcome" not in body
 
 
+def test_vpn_screen_deactivate_resolves_wg_id_from_profile() -> None:
+    """Catalog deactivate must use assigned_wg_id via resolveVpnProfileWgId, not selectedWgId alone."""
+    source = _read(VPN_SCREEN_JS)
+    body = _extract_function_body(source, "async function runDeactivateProfile(")
+    assert body is not None
+    assert "resolveVpnProfileWgId(catalogItems, profileId" in body
+    deactivate_call = body.split("deactivateVpnProfile(", 1)[1].split(")", 1)[0]
+    assert "selectedWgId" not in deactivate_call
+
+
 def test_vpn_screen_deactivate_toast_gated_on_deactivated_flag() -> None:
     """AC-2/AC-4/AC-5: runDeactivateProfile success toast only when deactivated === true."""
     source = _read(VPN_SCREEN_JS)
