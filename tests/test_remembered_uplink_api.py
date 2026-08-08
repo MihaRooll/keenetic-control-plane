@@ -21,7 +21,9 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         yield c
 
 
-def _seed_wifi_credential(client, *, kind: str = "WifiApPsk", revoke: bool = False) -> tuple[str, str]:
+def _seed_wifi_credential(
+    client, *, kind: str = "WifiApPsk", revoke: bool = False
+) -> tuple[str, str]:
     store = client.app.state.host.runtime.store
     site_id = client.app.state.host.resolve_site_id()
     now = datetime(2026, 8, 5, tzinfo=UTC)
@@ -85,6 +87,65 @@ def test_put_accepts_usable_wifi_ap_psk_ref(client) -> None:
     assert payload["desired_active"] is True
     assert payload["ssid"] == "UpstreamWiFi"
     assert payload["router_id"] == router_id
+
+
+def test_put_rejects_desired_active_without_credential(client) -> None:
+    _, router_id = _seed_wifi_credential(client)
+    response = client.put(
+        "/api/router-control/v1/remembered-uplink",
+        json={
+            "router_id": router_id,
+            "ssid": "UpstreamWiFi",
+            "band": "BAND_2_4GHZ",
+            "desired_active": True,
+        },
+    )
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error"]["code"] == "remembered_uplink.validation_failed"
+    assert body["error"]["details"][0]["field"] == "credential_ref_id"
+
+
+def test_put_rejects_clearing_credential_while_active(client) -> None:
+    cred_id, router_id = _seed_wifi_credential(client)
+    client.put(
+        "/api/router-control/v1/remembered-uplink",
+        json={
+            "router_id": router_id,
+            "ssid": "UpstreamWiFi",
+            "credential_ref_id": cred_id,
+            "desired_active": True,
+        },
+    )
+    response = client.put(
+        "/api/router-control/v1/remembered-uplink",
+        json={"credential_ref_id": None},
+    )
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error"]["code"] == "remembered_uplink.validation_failed"
+    assert body["error"]["details"][0]["field"] == "credential_ref_id"
+
+
+def test_put_allows_clearing_credential_when_deactivating(client) -> None:
+    cred_id, router_id = _seed_wifi_credential(client)
+    client.put(
+        "/api/router-control/v1/remembered-uplink",
+        json={
+            "router_id": router_id,
+            "ssid": "UpstreamWiFi",
+            "credential_ref_id": cred_id,
+            "desired_active": True,
+        },
+    )
+    response = client.put(
+        "/api/router-control/v1/remembered-uplink",
+        json={"credential_ref_id": None, "desired_active": False},
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["desired_active"] is False
+    assert payload["credential_configured"] is False
 
 
 def test_put_rejects_desired_active_without_router_id(client) -> None:

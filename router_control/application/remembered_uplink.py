@@ -152,6 +152,18 @@ class RememberedUplinkService:
                 code="remembered_uplink.validation_failed",
                 field="router_id",
             )
+        if credential_ref_id is _UNSET:
+            will_be_configured = current["credential_configured"]
+        elif credential_ref_id is None:
+            will_be_configured = False
+        else:
+            will_be_configured = True
+        if will_be_active and not will_be_configured:
+            raise RememberedUplinkValidationError(
+                "credential required when desired_active is true",
+                code="remembered_uplink.validation_failed",
+                field="credential_ref_id",
+            )
         self.store.upsert_remembered_uplink(
             router_id=router_id,
             ssid=resolved_ssid,

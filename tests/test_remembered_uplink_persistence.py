@@ -183,6 +183,98 @@ def test_unset_sentinel_leaves_credential_ref_unchanged(store: PersistenceStore)
     assert updated["credential_ref_id"] == cred_id
 
 
+def test_update_remembered_rejects_desired_active_without_credential(tmp_path) -> None:
+    from router_control.application.remembered_uplink import (
+        RememberedUplinkService,
+        RememberedUplinkValidationError,
+    )
+    from router_control.composition import FixedClock, create_offline_runtime
+
+    moment = datetime(2026, 8, 5, 10, 0, 0, tzinfo=UTC)
+    runtime = create_offline_runtime(
+        db_path=tmp_path / "update-active-no-cred.sqlite3",
+        clock=FixedClock(moment),
+    )
+    store = runtime.store
+    site_id = _seed_site(store)
+    router_id = _seed_router(store, site_id)
+    svc = RememberedUplinkService(store=store, clock=FixedClock(moment))
+    with pytest.raises(RememberedUplinkValidationError) as exc_info:
+        svc.update_remembered(
+            router_id=router_id,
+            ssid="Net",
+            desired_active=True,
+        )
+    assert exc_info.value.code == "remembered_uplink.validation_failed"
+    assert exc_info.value.field == "credential_ref_id"
+
+
+def test_update_remembered_accepts_desired_active_with_credential(tmp_path) -> None:
+    from router_control.application.remembered_uplink import RememberedUplinkService
+    from router_control.composition import FixedClock, create_offline_runtime
+
+    moment = datetime(2026, 8, 5, 10, 0, 0, tzinfo=UTC)
+    runtime = create_offline_runtime(
+        db_path=tmp_path / "update-active-with-cred.sqlite3",
+        clock=FixedClock(moment),
+    )
+    store = runtime.store
+    site_id = _seed_site(store)
+    router_id = _seed_router(store, site_id)
+    cred_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="WifiApPsk",
+        provider="memory",
+        provider_locator="update-active-cred",
+        now=moment,
+    )
+    svc = RememberedUplinkService(store=store, clock=FixedClock(moment))
+    payload = svc.update_remembered(
+        router_id=router_id,
+        ssid="Net",
+        credential_ref_id=cred_id,
+        desired_active=True,
+    )
+    assert payload["desired_active"] is True
+    assert payload["credential_configured"] is True
+    assert payload["credential_ref_id"] == cred_id
+
+
+def test_update_remembered_rejects_clearing_credential_while_active(tmp_path) -> None:
+    from router_control.application.remembered_uplink import (
+        RememberedUplinkService,
+        RememberedUplinkValidationError,
+    )
+    from router_control.composition import FixedClock, create_offline_runtime
+
+    moment = datetime(2026, 8, 5, 10, 0, 0, tzinfo=UTC)
+    runtime = create_offline_runtime(
+        db_path=tmp_path / "update-clear-cred-active.sqlite3",
+        clock=FixedClock(moment),
+    )
+    store = runtime.store
+    site_id = _seed_site(store)
+    router_id = _seed_router(store, site_id)
+    cred_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="WifiApPsk",
+        provider="memory",
+        provider_locator="clear-cred-active",
+        now=moment,
+    )
+    svc = RememberedUplinkService(store=store, clock=FixedClock(moment))
+    svc.update_remembered(
+        router_id=router_id,
+        ssid="Net",
+        credential_ref_id=cred_id,
+        desired_active=True,
+    )
+    with pytest.raises(RememberedUplinkValidationError) as exc_info:
+        svc.update_remembered(credential_ref_id=None)
+    assert exc_info.value.code == "remembered_uplink.validation_failed"
+    assert exc_info.value.field == "credential_ref_id"
+
+
 def test_get_remembered_self_heal_desired_active_without_credential(tmp_path) -> None:
     from router_control.application.remembered_uplink import RememberedUplinkService
     from router_control.composition import FixedClock, create_offline_runtime
