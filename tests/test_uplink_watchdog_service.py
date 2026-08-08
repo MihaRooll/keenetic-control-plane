@@ -588,6 +588,7 @@ async def test_poll_once_reapplies_after_streak_threshold(
         "run_with_router_apply_lock",
         lambda _rid, fn: fn(),
     )
+    handle.backup_callback_factory = lambda _rid: lambda: None
     monkeypatch.setattr(
         uplink_watchdog_service,
         "datetime",
@@ -602,3 +603,89 @@ async def test_poll_once_reapplies_after_streak_threshold(
     await handle._poll_once()  # noqa: SLF001
     assert apply_calls == [str(router_id)]
     assert handle._states[str(router_id)].unhealthy_streak == 0  # noqa: SLF001
+
+
+@pytest.mark.asyncio
+async def test_poll_once_keeps_streak_when_apply_transport_none(
+    tmp_path, monkeypatch
+) -> None:
+    """apply_transport None at streak threshold must not falsely clear unhealthy_streak."""
+    stale = datetime(2026, 8, 5, 10, 0, 0, tzinfo=UTC)
+    poll_now = stale + timedelta(seconds=UPLINK_WATCHDOG_POLL_SECONDS * 3)
+    runtime = create_offline_runtime(
+        db_path=tmp_path / "poll-no-transport.sqlite3",
+        clock=FixedClock(stale),
+    )
+    router_id, _remembered = _seed_remembered_active(runtime, updated_at=stale)
+    host = type("Host", (), {"runtime": runtime})()
+    observation = _observation(gateway_interface=None)
+    apply_calls: list[str] = []
+    handle = _make_handle(host, observation=observation, apply_calls=apply_calls)
+    handle.apply_transport_factory = lambda _rid: None
+    monkeypatch.setattr(
+        uplink_watchdog_service,
+        "run_internet_status_observe",
+        lambda *, transport: observation,
+    )
+    monkeypatch.setattr(
+        uplink_watchdog_service,
+        "datetime",
+        MagicMock(
+            now=lambda tz=None: poll_now,
+            fromisoformat=datetime.fromisoformat,
+        ),
+    )
+    from router_control.application.uplink_watchdog_service import _RouterWatchState
+
+    handle._states[str(router_id)] = _RouterWatchState(unhealthy_streak=1)  # noqa: SLF001
+    await handle._poll_once()  # noqa: SLF001
+    assert apply_calls == []
+    assert handle._states[str(router_id)].unhealthy_streak == 2  # noqa: SLF001
+
+
+@pytest.mark.asyncio
+async def test_poll_once_keeps_streak_when_reapply_fails(
+    tmp_path, monkeypatch
+) -> None:
+    """Failed reapply must not zero unhealthy_streak as if the tunnel healed."""
+    stale = datetime(2026, 8, 5, 10, 0, 0, tzinfo=UTC)
+    poll_now = stale + timedelta(seconds=UPLINK_WATCHDOG_POLL_SECONDS * 3)
+    runtime = create_offline_runtime(
+        db_path=tmp_path / "poll-reapply-fail.sqlite3",
+        clock=FixedClock(stale),
+    )
+    router_id, _remembered = _seed_remembered_active(runtime, updated_at=stale)
+    host = type("Host", (), {"runtime": runtime})()
+    observation = _observation(gateway_interface=None)
+    apply_calls: list[str] = []
+    handle = _make_handle(host, observation=observation, apply_calls=apply_calls)
+    monkeypatch.setattr(
+        uplink_watchdog_service,
+        "run_internet_status_observe",
+        lambda *, transport: observation,
+    )
+    monkeypatch.setattr(
+        uplink_watchdog_service,
+        "apply_wifi_station_intent",
+        lambda **kwargs: type("R", (), {"overall": "failed", "to_dict": lambda self: {}})(),
+    )
+    monkeypatch.setattr(
+        uplink_watchdog_service,
+        "run_with_router_apply_lock",
+        lambda _rid, fn: fn(),
+    )
+    handle.backup_callback_factory = lambda _rid: lambda: None
+    monkeypatch.setattr(
+        uplink_watchdog_service,
+        "datetime",
+        MagicMock(
+            now=lambda tz=None: poll_now,
+            fromisoformat=datetime.fromisoformat,
+        ),
+    )
+    from router_control.application.uplink_watchdog_service import _RouterWatchState
+
+    handle._states[str(router_id)] = _RouterWatchState(unhealthy_streak=1)  # noqa: SLF001
+    await handle._poll_once()  # noqa: SLF001
+    assert apply_calls == [str(router_id)]
+    assert handle._states[str(router_id)].unhealthy_streak == 2  # noqa: SLF001

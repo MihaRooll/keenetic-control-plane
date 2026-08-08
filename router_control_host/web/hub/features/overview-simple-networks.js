@@ -514,15 +514,17 @@ export function mountOverviewSimpleNetworks(options) {
 
     const response = await applyStaffWifiChanges({ previewBody, session, signal });
     const verdict = parseWifiApplyVerdict(response);
-    if (standing && session.routerId && verdict.success) {
+    if (standing && session.routerId && verdict.success && !signal?.aborted) {
       try {
         const body = buildStaffStandingPreferencesUpdate({
           ssid: staffDraft.ssid,
           credentialRefId,
         });
-        standing = await updateStaffStandingNetworkPreferences(body);
-      } catch {
-        standingPersistWarningKind = 'staff';
+        standing = await updateStaffStandingNetworkPreferences(body, { signal });
+      } catch (error) {
+        if (!signal?.aborted && !isAborted(error)) {
+          standingPersistWarningKind = 'staff';
+        }
       }
     }
     if (shouldRefreshWifiObservedAfterMutation(verdict)) {
@@ -695,12 +697,14 @@ export function mountOverviewSimpleNetworks(options) {
     const response = await applyGuestWifiChanges({ previewBody, session, signal });
     const verdict = parseWifiApplyVerdict(response);
 
-    if (guestRememberDefault && enabled && verdict.success) {
+    if (guestRememberDefault && enabled && verdict.success && !signal?.aborted) {
       try {
         const body = buildGuestStandingPreferencesUpdate(guestDraft.ssid);
-        standing = await updateGuestStandingNetworkPreferences(body);
-      } catch {
-        standingPersistWarningKind = 'guest';
+        standing = await updateGuestStandingNetworkPreferences(body, { signal });
+      } catch (error) {
+        if (!signal?.aborted && !isAborted(error)) {
+          standingPersistWarningKind = 'guest';
+        }
       }
     }
 

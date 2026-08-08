@@ -3767,6 +3767,9 @@ def test_staff_wifi_standing_persist_failure_shows_warning_with_retry() -> None:
     assert persist_start != -1
     persist_region = source[persist_start : persist_start + 2200]
     assert "updateStaffStandingNetworkPreferences" in persist_region
+    assert "updateStaffStandingNetworkPreferences(body, { signal })" in persist_region
+    assert "signal?.aborted" in persist_region
+    assert "{ signal: mutateAbort.signal }" in source
     assert "operationError = error" in persist_region
     assert "operationRetry = async () =>" in persist_region
     assert "tone: 'warning'" in persist_region

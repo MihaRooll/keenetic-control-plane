@@ -257,6 +257,7 @@ class UplinkWatchdogHandle:
         state.unhealthy_streak += 1
         if state.unhealthy_streak >= _UNHEALTHY_STREAK_THRESHOLD:
             apply_transport = self.apply_transport_factory(router_key)
+            reapply_outcome: str | None = None
             if apply_transport is not None:
                 intent = UplinkIntent(
                     mode=UplinkMode.WIFI_WAN,
@@ -264,19 +265,23 @@ class UplinkWatchdogHandle:
                     band=band,
                     credential_ref_id=str(cred_ref),
                 )
-                await asyncio.to_thread(
+                reapply_outcome = await asyncio.to_thread(
                     self._reapply_locked,
                     router_key,
                     intent,
                     apply_transport,
                     remembered,
                 )
-            state.unhealthy_streak = 0
-            state.backoff_seconds = min(
-                state.backoff_seconds * 2.0,
-                _BACKOFF_MAX_SECONDS,
-            )
-            state.next_poll_at = now + state.backoff_seconds
+            if reapply_outcome == "applied":
+                state.unhealthy_streak = 0
+                state.backoff_seconds = _BACKOFF_BASE_SECONDS
+                state.next_poll_at = now + UPLINK_WATCHDOG_POLL_SECONDS
+            else:
+                state.backoff_seconds = min(
+                    state.backoff_seconds * 2.0,
+                    _BACKOFF_MAX_SECONDS,
+                )
+                state.next_poll_at = now + state.backoff_seconds
         else:
             state.next_poll_at = now + UPLINK_WATCHDOG_POLL_SECONDS
 
@@ -296,7 +301,7 @@ class UplinkWatchdogHandle:
         intent: UplinkIntent,
         transport: WifiStationApplyTransport,
         remembered: dict[str, Any],
-    ) -> None:
+    ) -> str | None:
         credential_resolver = self._resolve_credentials()
         intent_redacted = {
             "router_id": router_id,
@@ -304,6 +309,7 @@ class UplinkWatchdogHandle:
             "band": remembered.get("band"),
             "credential_ref_id": remembered.get("credential_ref_id"),
         }
+        outcome_holder: list[str | None] = [None]
 
         def _audit_failure(
             *,
@@ -330,6 +336,7 @@ class UplinkWatchdogHandle:
                 backup_cb = self.backup_callback_factory(router_id)
             if backup_cb is None:
                 _audit_failure(error_message="startup-config backup unavailable")
+                outcome_holder[0] = "failed"
                 return
             try:
                 result = apply_wifi_station_intent(
@@ -348,7 +355,9 @@ class UplinkWatchdogHandle:
                     error_message="startup-config backup unavailable",
                     exception_type=type(exc).__name__,
                 )
+                outcome_holder[0] = "failed"
                 return
+            outcome_holder[0] = result.overall
             self.host.runtime.store.try_append_sealed_apply_audit(
                 action="uplink_watchdog.reapply",
                 outcome=result.overall,
@@ -364,6 +373,7 @@ class UplinkWatchdogHandle:
             )
 
         run_with_router_apply_lock(router_id, _run)
+        return outcome_holder[0]
 
 
 __all__ = [

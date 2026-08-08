@@ -132,19 +132,23 @@ class VpnWatchdogHandle:
                 continue
             state.unhealthy_streak += 1
             if state.unhealthy_streak >= _UNHEALTHY_STREAK_THRESHOLD:
-                await asyncio.to_thread(
+                outcome = await asyncio.to_thread(
                     self._reapply_locked,
                     router_id,
                     intent,
                     transport,
                     assignment,
                 )
-                state.unhealthy_streak = 0
-                state.backoff_seconds = min(
-                    state.backoff_seconds * 2.0,
-                    _BACKOFF_MAX_SECONDS,
-                )
-                state.next_poll_at = now + state.backoff_seconds
+                if outcome == "applied":
+                    state.unhealthy_streak = 0
+                    state.backoff_seconds = _BACKOFF_BASE_SECONDS
+                    state.next_poll_at = now + VPN_WATCHDOG_POLL_SECONDS
+                else:
+                    state.backoff_seconds = min(
+                        state.backoff_seconds * 2.0,
+                        _BACKOFF_MAX_SECONDS,
+                    )
+                    state.next_poll_at = now + state.backoff_seconds
             else:
                 state.next_poll_at = now + VPN_WATCHDOG_POLL_SECONDS
 
@@ -230,13 +234,14 @@ class VpnWatchdogHandle:
         intent: WireguardIntent,
         transport: WireguardApplyTransport,
         assignment: dict[str, Any],
-    ) -> None:
+    ) -> str | None:
         credential_resolver = self._resolve_credentials()
         intent_redacted = {
             "router_id": router_id,
             "profile_id": assignment.get("profile_id"),
             "wg_id": intent.wg_id,
         }
+        outcome_holder: list[str | None] = [None]
 
         def _audit_failure(
             *,
@@ -263,6 +268,7 @@ class VpnWatchdogHandle:
                 backup_cb = self.backup_callback_factory(router_id)
             if backup_cb is None:
                 _audit_failure(error_message="startup-config backup unavailable")
+                outcome_holder[0] = "failed"
                 return
             try:
                 result = apply_wireguard_intent(
@@ -276,7 +282,9 @@ class VpnWatchdogHandle:
                     error_message="startup-config backup unavailable",
                     exception_type=type(exc).__name__,
                 )
+                outcome_holder[0] = "failed"
                 return
+            outcome_holder[0] = result.overall
             self.host.runtime.store.try_append_sealed_apply_audit(
                 action="vpn_watchdog.reapply",
                 outcome=result.overall,
@@ -292,6 +300,7 @@ class VpnWatchdogHandle:
             )
 
         run_with_router_apply_lock(router_id, _run)
+        return outcome_holder[0]
 
 
 __all__ = [

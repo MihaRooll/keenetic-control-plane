@@ -1983,12 +1983,16 @@ export function render(container, ctx) {
   /**
    * @param {string|null|undefined} credentialRefId
    * @param {StaffWifiRiskAction} action
+   * @param {{ signal?: AbortSignal }} [options]
    */
-  async function persistStandingPreferencesAfterSuccess(credentialRefId, action) {
+  async function persistStandingPreferencesAfterSuccess(credentialRefId, action, { signal } = {}) {
     if (!standing || action === 'teardown') {
       return;
     }
     if (!lastVerdict?.success) {
+      return;
+    }
+    if (signal?.aborted || disposed || offline) {
       return;
     }
     const resolvedCredentialRefId =
@@ -1998,9 +2002,9 @@ export function render(container, ctx) {
         ssid: draft.ssid,
         credentialRefId: resolvedCredentialRefId,
       });
-      standing = await updateStaffStandingNetworkPreferences(body);
+      standing = await updateStaffStandingNetworkPreferences(body, { signal });
     } catch (error) {
-      if (disposed || isAborted(error)) {
+      if (disposed || signal?.aborted || isAborted(error)) {
         return;
       }
       operationError = error;
@@ -2357,7 +2361,11 @@ export function render(container, ctx) {
         }
       }
       if (shouldPersistStandingPreferencesAfterMutation({ lastVerdict, action })) {
-        await persistStandingPreferencesAfterSuccess(pendingMutationCredentialRefId, action);
+        await persistStandingPreferencesAfterSuccess(
+          pendingMutationCredentialRefId,
+          action,
+          { signal: mutateAbort.signal },
+        );
       }
     } catch (error) {
       if (disposed || mutateGeneration !== gen || isAborted(error)) {

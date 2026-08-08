@@ -2207,11 +2207,13 @@ def test_overview_networks_form_dirty_and_standing_gated_on_verdict_success() ->
 
     staff_enable_body = _extract_function_body(source, "async function runStaffEnable(")
     assert staff_enable_body is not None
-    assert "if (standing && session.routerId && verdict.success)" in staff_enable_body
+    assert "if (standing && session.routerId && verdict.success && !signal?.aborted)" in staff_enable_body
 
     guest_apply_body = _extract_function_body(source, "async function runGuestApply(")
     assert guest_apply_body is not None
-    assert "if (guestRememberDefault && enabled && verdict.success)" in guest_apply_body
+    assert "if (guestRememberDefault && enabled && verdict.success && !signal?.aborted)" in guest_apply_body
+    assert "updateStaffStandingNetworkPreferences(body, { signal })" in staff_enable_body
+    assert "updateGuestStandingNetworkPreferences(body, { signal })" in guest_apply_body
 
 
 def test_overview_networks_standing_persist_failure_shows_warning_after_apply_success() -> None:
