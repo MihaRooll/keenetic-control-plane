@@ -67,14 +67,24 @@ class RememberedUplinkService:
         configured, effective_ref = self._resolve_credential_ref(
             str(stored_ref) if stored_ref else None
         )
-        if not configured and (bool(row.get("desired_active")) or stored_ref):
-            row = self.store.upsert_remembered_uplink(
-                credential_ref_id=None,
-                desired_active=False,
-                now=self.clock.now(),
+        now = self.clock.now()
+        if stored_ref and not configured:
+            self.store.clear_remembered_uplink_credential_if_matches(
+                str(stored_ref),
+                now=now,
             )
-            effective_ref = None
-            configured = False
+            row = self.store.get_remembered_uplink()
+            stored_ref = row.get("credential_ref_id")
+            configured, effective_ref = self._resolve_credential_ref(
+                str(stored_ref) if stored_ref else None
+            )
+        elif not configured and bool(row.get("desired_active")) and not stored_ref:
+            self.store.clear_remembered_uplink_desired_active_if_no_credential(now=now)
+            row = self.store.get_remembered_uplink()
+            stored_ref = row.get("credential_ref_id")
+            configured, effective_ref = self._resolve_credential_ref(
+                str(stored_ref) if stored_ref else None
+            )
         band = str(row["band"])
         station_id = row.get("station_id")
         if not station_id and band in _VALID_BANDS:

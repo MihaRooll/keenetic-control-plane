@@ -48,6 +48,65 @@ def _seed_wifi_credential(
     return cred_id, router_id
 
 
+def test_get_heal_rereads_after_cas_noop_mid_flight_put(
+    client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GET heal path: CAS no-op after concurrent PUT must re-read usable ref."""
+    from router_control.application.remembered_uplink import RememberedUplinkService
+
+    revoked_id, router_id = _seed_wifi_credential(client, revoke=True)
+    new_id, _ = _seed_wifi_credential(client)
+    store = client.app.state.host.runtime.store
+    now = datetime(2026, 8, 5, tzinfo=UTC)
+    store.upsert_remembered_uplink(
+        router_id=router_id,
+        ssid="Net",
+        credential_ref_id=revoked_id,
+        desired_active=True,
+        now=now,
+    )
+    real_resolve = RememberedUplinkService._resolve_credential_ref
+    resolve_calls = {"n": 0}
+
+    def patched_resolve(self, ref_id: str | None):
+        resolve_calls["n"] += 1
+        if resolve_calls["n"] == 1:
+            return False, None
+        return real_resolve(self, ref_id)
+
+    original_clear = store.clear_remembered_uplink_credential_if_matches
+
+    def clear_during_cas(expected_ref_id: str, *, now=None):
+        store.upsert_remembered_uplink(
+            credential_ref_id=new_id,
+            desired_active=True,
+            now=now,
+        )
+        return original_clear(expected_ref_id, now=now)
+
+    monkeypatch.setattr(
+        RememberedUplinkService,
+        "_resolve_credential_ref",
+        patched_resolve,
+    )
+    monkeypatch.setattr(
+        store,
+        "clear_remembered_uplink_credential_if_matches",
+        clear_during_cas,
+    )
+
+    response = client.get("/api/router-control/v1/remembered-uplink")
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["credential_configured"] is True
+    assert payload["credential_ref_id"] == new_id
+    assert payload["desired_active"] is True
+    row = store.get_remembered_uplink()
+    assert row["credential_ref_id"] == new_id
+    assert resolve_calls["n"] >= 2
+
+
 def test_get_remembered_uplink_never_contains_password_keys(client) -> None:
     response = client.get("/api/router-control/v1/remembered-uplink")
     assert response.status_code == 200, response.text

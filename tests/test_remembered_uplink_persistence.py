@@ -275,6 +275,145 @@ def test_update_remembered_rejects_clearing_credential_while_active(tmp_path) ->
     assert exc_info.value.field == "credential_ref_id"
 
 
+def test_clear_remembered_uplink_credential_if_matches_clears_revoked_ref(
+    store: PersistenceStore,
+) -> None:
+    site_id = _seed_site(store)
+    router_id = _seed_router(store, site_id)
+    now = datetime(2026, 8, 5, tzinfo=UTC)
+    revoked_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="WifiApPsk",
+        provider="memory",
+        provider_locator="loc-revoked-cas",
+        now=now,
+    )
+    store.mark_credential_revoked(revoked_id, now=now)
+    store.upsert_remembered_uplink(
+        router_id=router_id,
+        ssid="Net",
+        credential_ref_id=revoked_id,
+        desired_active=True,
+        now=now,
+    )
+    assert store.clear_remembered_uplink_credential_if_matches(revoked_id, now=now) is True
+    row = store.get_remembered_uplink()
+    assert row["credential_ref_id"] is None
+    assert row["desired_active"] is False
+
+
+def test_clear_remembered_uplink_credential_if_matches_noop_after_replacement(
+    store: PersistenceStore,
+) -> None:
+    site_id = _seed_site(store)
+    router_id = _seed_router(store, site_id)
+    now = datetime(2026, 8, 5, tzinfo=UTC)
+    revoked_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="WifiApPsk",
+        provider="memory",
+        provider_locator="loc-revoked-race",
+        now=now,
+    )
+    store.mark_credential_revoked(revoked_id, now=now)
+    store.upsert_remembered_uplink(
+        router_id=router_id,
+        ssid="Net",
+        credential_ref_id=revoked_id,
+        desired_active=True,
+        now=now,
+    )
+    new_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="WifiApPsk",
+        provider="memory",
+        provider_locator="loc-new-usable",
+        now=now,
+    )
+    store.upsert_remembered_uplink(
+        credential_ref_id=new_id,
+        desired_active=True,
+        now=now,
+    )
+    assert store.clear_remembered_uplink_credential_if_matches(revoked_id, now=now) is False
+    row = store.get_remembered_uplink()
+    assert row["credential_ref_id"] == new_id
+    assert row["desired_active"] is True
+
+
+def test_get_remembered_heal_rereads_after_cas_noop_mid_flight_put(
+    store: PersistenceStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Heal CAS no-op: concurrent PUT during clear must re-read usable ref."""
+    from router_control.application.remembered_uplink import RememberedUplinkService
+    from router_control.ports.clock import SystemClock
+
+    site_id = _seed_site(store)
+    router_id = _seed_router(store, site_id)
+    now = datetime(2026, 8, 5, tzinfo=UTC)
+    revoked_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="WifiApPsk",
+        provider="memory",
+        provider_locator="loc-race-revoked",
+        now=now,
+    )
+    store.mark_credential_revoked(revoked_id, now=now)
+    store.upsert_remembered_uplink(
+        router_id=router_id,
+        ssid="Net",
+        credential_ref_id=revoked_id,
+        desired_active=True,
+        now=now,
+    )
+    new_id = store.insert_credential_ref(
+        router_id=router_id,
+        kind="WifiApPsk",
+        provider="memory",
+        provider_locator="loc-race-new",
+        now=now,
+    )
+    service = RememberedUplinkService(store=store, clock=SystemClock())
+    real_resolve = RememberedUplinkService._resolve_credential_ref
+    resolve_calls = {"n": 0}
+
+    def patched_resolve(self, ref_id: str | None):
+        resolve_calls["n"] += 1
+        if resolve_calls["n"] == 1:
+            return False, None
+        return real_resolve(self, ref_id)
+
+    original_clear = store.clear_remembered_uplink_credential_if_matches
+
+    def clear_during_cas(expected_ref_id: str, *, now=None):
+        store.upsert_remembered_uplink(
+            credential_ref_id=new_id,
+            desired_active=True,
+            now=now,
+        )
+        return original_clear(expected_ref_id, now=now)
+
+    monkeypatch.setattr(
+        RememberedUplinkService,
+        "_resolve_credential_ref",
+        patched_resolve,
+    )
+    monkeypatch.setattr(
+        store,
+        "clear_remembered_uplink_credential_if_matches",
+        clear_during_cas,
+    )
+
+    payload = service.get_remembered()
+    assert payload["credential_configured"] is True
+    assert payload["credential_ref_id"] == new_id
+    assert payload["desired_active"] is True
+    row = store.get_remembered_uplink()
+    assert row["credential_ref_id"] == new_id
+    assert resolve_calls["n"] >= 2
+
+
 def test_update_remembered_preserves_desired_active_when_replacing_revoked_credential(
     tmp_path,
 ) -> None:

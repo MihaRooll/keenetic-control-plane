@@ -7221,6 +7221,36 @@ class PersistenceStore:
         )
         return self.get_remembered_uplink()
 
+    def clear_remembered_uplink_credential_if_matches(
+        self,
+        expected_ref_id: str,
+        *,
+        now: datetime | None = None,
+    ) -> bool:
+        """Clear credential_ref and desired_active when ref still equals expected."""
+        ts = _utc_now_iso(now)
+        cursor = self._conn.execute(
+            "UPDATE remembered_uplink SET "
+            "credential_ref_id = NULL, desired_active = 0, updated_at = ? "
+            "WHERE preferences_id = ? AND credential_ref_id = ?",
+            (ts, self._REMEMBERED_UPLINK_ID, expected_ref_id),
+        )
+        return cursor.rowcount > 0
+
+    def clear_remembered_uplink_desired_active_if_no_credential(
+        self,
+        *,
+        now: datetime | None = None,
+    ) -> bool:
+        """Clear desired_active only when credential_ref_id is still NULL."""
+        ts = _utc_now_iso(now)
+        cursor = self._conn.execute(
+            "UPDATE remembered_uplink SET desired_active = 0, updated_at = ? "
+            "WHERE preferences_id = ? AND credential_ref_id IS NULL AND desired_active = 1",
+            (ts, self._REMEMBERED_UPLINK_ID),
+        )
+        return cursor.rowcount > 0
+
     def reset_remembered_uplink(self, *, now: datetime | None = None) -> dict[str, Any]:
         ts = _utc_now_iso(now)
         self._conn.execute(
