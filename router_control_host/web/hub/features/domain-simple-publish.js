@@ -11,6 +11,10 @@ import {
 import { HubApiError, describeError } from '../core/errors.js';
 import { HubState } from '../core/states.js';
 import {
+  createStepNumberBadge,
+  wireOverviewCardNavigate,
+} from './overview-card-grid.js';
+import {
   DOMAIN_DRAFT_LINK_NOTE,
   DOMAIN_PUBLISH_APPLY_CONFIRM_TEXT,
   DOMAIN_PUBLISH_HUMAN_GATE_TEXT,
@@ -36,6 +40,9 @@ import {
  * @property {() => void} onPublishApply
  * @property {boolean} [showSuffixSelect]
  * @property {string} [idPrefix]
+ * @property {'full'|'overview'} [variant]
+ * @property {(routeId: string) => void} [navigate]
+ * @property {string} [title]
  */
 
 /**
@@ -74,7 +81,12 @@ export function mountDomainSimplePublishAffordance(container, options) {
     onPublishApply,
     showSuffixSelect = true,
     idPrefix = 'hub-domain-simple',
+    variant = 'full',
+    navigate,
+    title = 'Домен',
   } = options;
+
+  const isOverview = variant === 'overview';
 
   function resolveDisabled() {
     if (typeof getDisabled === 'function') {
@@ -83,12 +95,42 @@ export function mountDomainSimplePublishAffordance(container, options) {
     return disabled;
   }
 
-  const card = createCard({
-    title: 'Имя для черновика',
-    titleTag: 'h2',
-  });
-  card.classList.add('hub-domain__simple-publish-card');
-  const body = card.querySelector('.hub-card__body') ?? card;
+  /** @type {HTMLElement} */
+  let root;
+  /** @type {HTMLElement} */
+  let body;
+
+  if (isOverview) {
+    root = document.createElement('article');
+    root.className =
+      'hub-overview-step-card hub-overview__domain-compact-card hub-domain__simple-publish-card';
+
+    const header = document.createElement('div');
+    header.className = 'hub-overview-step-card__header hub-domain__compact-header';
+    header.appendChild(createStepNumberBadge(4));
+
+    const heading = document.createElement('h2');
+    heading.className = 'hub-overview-step-card__title';
+    heading.textContent = title;
+    header.appendChild(heading);
+    root.appendChild(header);
+
+    body = document.createElement('div');
+    body.className = 'hub-overview-step-card__main hub-domain__simple-publish-body';
+    root.appendChild(body);
+
+    if (typeof navigate === 'function') {
+      wireOverviewCardNavigate(root, 'domain', navigate);
+    }
+  } else {
+    const card = createCard({
+      title: 'Имя для черновика',
+      titleTag: 'h2',
+    });
+    card.classList.add('hub-domain__simple-publish-card');
+    root = card;
+    body = card.querySelector('.hub-card__body') ?? card;
+  }
 
   const nameFieldWrap = document.createElement('div');
   nameFieldWrap.className = 'hub-domain__simple-name-row';
@@ -132,6 +174,12 @@ export function mountDomainSimplePublishAffordance(container, options) {
   availabilityLine.id = `${idPrefix}-availability-line`;
   body.appendChild(availabilityLine);
 
+  const fqdnPreview = document.createElement('p');
+  fqdnPreview.className = 'hub-domain__compact-fqdn';
+  fqdnPreview.id = `${idPrefix}-fqdn-preview`;
+  fqdnPreview.hidden = true;
+  body.appendChild(fqdnPreview);
+
   const draftBlock = document.createElement('div');
   draftBlock.className = 'hub-domain__simple-draft';
   const draftUrlEl = document.createElement('p');
@@ -157,6 +205,30 @@ export function mountDomainSimplePublishAffordance(container, options) {
   publishBtn.id = `${idPrefix}-publish-btn`;
   ctaRow.appendChild(publishBtn);
   body.appendChild(ctaRow);
+
+  /** @type {HTMLElement|null} */
+  let quietLinkMeta = null;
+  if (isOverview && typeof navigate === 'function') {
+    quietLinkMeta = document.createElement('div');
+    quietLinkMeta.className = 'hub-overview-step-card__meta hub-domain__compact-meta';
+    const quietLink = document.createElement('a');
+    quietLink.className = 'hub-overview__quiet-link';
+    quietLink.href = '#/domain';
+    quietLink.textContent = 'Все настройки домена';
+    quietLink.addEventListener('click', (event) => {
+      event.preventDefault();
+      navigate('domain');
+    });
+    quietLinkMeta.appendChild(quietLink);
+    root.appendChild(quietLinkMeta);
+  }
+
+  if (isOverview) {
+    starterRow.hidden = true;
+    starterHonesty.hidden = true;
+    availabilityLine.hidden = true;
+    draftBlock.hidden = true;
+  }
 
   function rebuildNameField() {
     while (nameFieldWrap.firstChild) {
@@ -234,6 +306,31 @@ export function mountDomainSimplePublishAffordance(container, options) {
     starterBtn.disabled = isDisabled;
     publishBtn.disabled = isDisabled || !state.valid;
 
+    if (isOverview) {
+      starterRow.hidden = true;
+      starterHonesty.hidden = true;
+      availabilityLine.hidden = true;
+      draftBlock.hidden = true;
+
+      if (state.valid && state.draftUrl) {
+        const fqdn = `${getName().trim().toLowerCase()}.${getDomain().trim()}`;
+        fqdnPreview.textContent = fqdn;
+        fqdnPreview.hidden = false;
+      } else {
+        fqdnPreview.textContent = '';
+        fqdnPreview.hidden = true;
+      }
+
+      if (state.formatMessage && !state.valid) {
+        formatLine.textContent = state.formatMessage;
+        formatLine.hidden = false;
+      } else {
+        formatLine.textContent = '';
+        formatLine.hidden = true;
+      }
+      return;
+    }
+
     if (state.formatMessage) {
       formatLine.textContent = state.formatMessage;
       formatLine.hidden = false;
@@ -257,8 +354,8 @@ export function mountDomainSimplePublishAffordance(container, options) {
   }
 
   function destroy() {
-    if (card.parentNode) {
-      card.parentNode.removeChild(card);
+    if (root.parentNode) {
+      root.parentNode.removeChild(root);
     }
   }
 
@@ -277,11 +374,11 @@ export function mountDomainSimplePublishAffordance(container, options) {
   }
 
   rebuildNameField();
-  container.appendChild(card);
+  container.appendChild(root);
   update();
 
   return {
-    root: card,
+    root,
     update,
     destroy,
     getDraftUrl,

@@ -59,7 +59,6 @@ import {
   VPN_TUNNEL_UNVERIFIED_MESSAGE,
 } from '../features/vpn-model.js';
 import {
-  buildDomainStatusCard,
   buildDiagnosticsStatusCard,
   buildEntryPagesStatusCard,
   buildInternetStatusCard,
@@ -351,7 +350,6 @@ export function render(container, ctx) {
   let lastReadinessSignature = null;
   let lastStatusStripSignature = null;
   /** @type {string|null} */
-  let lastDomainCardSignature = null;
   /** @type {string|null} */
   let lastSummarySignature = null;
   /** @type {string|null} */
@@ -478,12 +476,9 @@ export function render(container, ctx) {
   const domainWrap = document.createElement('div');
   domainWrap.className = 'hub-overview__domain';
   domainGridItem.appendChild(domainWrap);
-  const domainCardSlot = document.createElement('div');
-  domainCardSlot.className = 'hub-overview__domain-card-slot';
-  domainWrap.appendChild(domainCardSlot);
-  const domainMountSlot = document.createElement('div');
-  domainMountSlot.className = 'hub-overview__domain-mount-slot';
-  domainWrap.appendChild(domainMountSlot);
+  const domainSlot = document.createElement('div');
+  domainSlot.className = 'hub-overview__domain-slot';
+  domainWrap.appendChild(domainSlot);
   const staffGridItem = createOverviewGridItem('staff');
   grid.appendChild(staffGridItem);
   const staffSlot = document.createElement('div');
@@ -994,7 +989,10 @@ export function render(container, ctx) {
       getSignal: () => ensureMutateAbort(),
       idPrefix: 'hub-overview-networks',
     });
-    domainMount = mountDomainSimplePublishAffordance(domainMountSlot, {
+    domainMount = mountDomainSimplePublishAffordance(domainSlot, {
+      variant: 'overview',
+      title: 'Домен',
+      navigate: (routeId) => ctx.navigate(routeId),
       getName: () => domainDraftName,
       setName: (value) => {
         domainDraftName = value;
@@ -1062,7 +1060,6 @@ export function render(container, ctx) {
         OVERVIEW_DIAGNOSTICS_ROUTE_HREF,
       ),
     );
-    renderDomainCardSlot();
   }
 
   function shouldShowOverviewCardSkeletons() {
@@ -1176,38 +1173,6 @@ export function render(container, ctx) {
         busy: internetEnrichmentBusy,
         navigate: (routeId) => ctx.navigate(routeId),
         onChangeClick: () => ctx.navigate('internet-uplink'),
-      }),
-    );
-  }
-
-  function renderDomainCardSlot() {
-    if (disposed) {
-      return;
-    }
-    const section = model?.domain ?? null;
-    const signature = section
-      ? [
-        section.state,
-        section.title,
-        section.subtitle ?? '',
-        section.note ?? '',
-        section.error ? describeError(section.error).title : '',
-        domainDraftName,
-        domainDraftSuffix,
-        getSession().eventPresetId ?? '',
-      ].join('|')
-      : 'empty';
-    if (signature === lastDomainCardSignature && domainCardSlot.firstChild) {
-      return;
-    }
-    lastDomainCardSignature = signature;
-    clearContainer(domainCardSlot);
-    domainCardSlot.appendChild(
-      buildDomainStatusCard(section, (routeId) => ctx.navigate(routeId), {
-        domainDraftName,
-        domainDraftSuffix,
-        eventPresetId: getSession().eventPresetId ?? null,
-        onChangeClick: () => ctx.navigate('domain'),
       }),
     );
   }
@@ -2353,7 +2318,6 @@ export function render(container, ctx) {
     mountOverviewActionSlots();
     renderRouterCardSlot();
     renderInternetCardSlot();
-    renderDomainCardSlot();
     domainMount?.update();
     renderVpnSlot();
     renderStatusStrip();
@@ -2498,7 +2462,6 @@ export function render(container, ctx) {
       lastInternetCardSignature = null;
       lastReadinessSignature = null;
       lastStatusStripSignature = null;
-      lastDomainCardSignature = null;
       renderAll();
       return gen;
     } finally {

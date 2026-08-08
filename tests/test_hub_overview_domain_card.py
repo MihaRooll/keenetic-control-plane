@@ -1,4 +1,4 @@
-"""Static contract guards for Overview step-4 domain card (offline, no DOM)."""
+"""Static contract guards for Overview step-4 compact domain card (offline, no DOM)."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 HUB = REPO_ROOT / "router_control_host" / "web" / "hub"
 OVERVIEW_CARD_GRID_JS = HUB / "features" / "overview-card-grid.js"
 OVERVIEW_JS = HUB / "screens" / "overview.js"
+DOMAIN_SIMPLE_PUBLISH_JS = HUB / "features" / "domain-simple-publish.js"
 SCREENS_CSS = HUB / "styles" / "screens.css"
 
 DOMAIN_OWNED_START = "/* ==== OVERVIEW STEP CARD: DOMAIN (owned area) ==== */"
@@ -20,21 +21,17 @@ INTERACTIVE_CLOSEST_FILTER = (
     "event.target.closest('a, button, input, select, textarea, label, [role=\"button\"]')"
 )
 
-FORBIDDEN_DOMAIN_CARD_NEEDLES = (
-    "Доступ проверен",
-    "Сертификат",
-    "probeLocalApplicationHttp",
-    "probeLocalApplicationTls",
-    "fetch(",
-    "--hub-status-",
-    "Date.now(",
-    "hub-domain-card__body",
-    "variant: 'primary'",
+FORBIDDEN_OVERVIEW_DOMAIN_NEEDLES = (
+    "buildDomainStatusCard",
+    "domainCardSlot",
+    "domainMountSlot",
+    "hub-overview__domain-card-slot",
+    "hub-overview__domain-mount-slot",
+    "renderDomainCardSlot",
 )
 
 _DOMAIN_WRAP_GUARD_CLASS_PATTERNS = (
-    re.compile(r"\.hub-overview__domain-card-slot(?![\w-])"),
-    re.compile(r"\.hub-overview__domain-mount-slot(?![\w-])"),
+    re.compile(r"\.hub-overview__domain-slot(?![\w-])"),
     re.compile(r"\.hub-overview__domain(?![\w-])"),
 )
 
@@ -159,53 +156,54 @@ def _declares_full_span_grid_column(props: dict[str, str]) -> bool:
 
 
 @pytest.fixture(scope="module")
-def grid_source() -> str:
-    return _read(OVERVIEW_CARD_GRID_JS)
-
-
-@pytest.fixture(scope="module")
 def overview_source() -> str:
     return _read(OVERVIEW_JS)
 
 
 @pytest.fixture(scope="module")
-def domain_card_block(grid_source: str) -> str:
-    start = grid_source.find("export function buildDomainStatusCard")
-    fn_match = re.search(
-        r"export function buildDomainStatusCard\([\s\S]*?\n\}",
-        grid_source,
-    )
-    assert start != -1, "buildDomainStatusCard missing"
-    assert fn_match, "buildDomainStatusCard must exist"
-    return grid_source[start:fn_match.end()]
+def simple_publish_source() -> str:
+    return _read(DOMAIN_SIMPLE_PUBLISH_JS)
 
 
 @pytest.fixture(scope="module")
-def wire_navigate_block(grid_source: str) -> str:
+def mount_overview_domain_body(overview_source: str) -> str:
+    start = overview_source.find("domainMount = mountDomainSimplePublishAffordance(")
+    assert start != -1, "overview domain mount missing"
+    end = overview_source.find("entryPagesSlot.appendChild", start)
+    assert end != -1, "overview domain mount region end missing"
+    return overview_source[start:end]
+
+
+@pytest.fixture(scope="module")
+def domain_slot_setup_region(overview_source: str) -> str:
+    start = overview_source.find("const domainWrap = document.createElement('div')")
+    assert start != -1, "domainWrap setup missing"
+    end_marker = "domainWrap.appendChild(domainSlot)"
+    end = overview_source.find(end_marker, start)
+    assert end != -1, "domainSlot append missing"
+    end = overview_source.find(";", end) + 1
+    return overview_source[start:end]
+
+
+@pytest.fixture(scope="module")
+def overview_compact_block(simple_publish_source: str) -> str:
+    fn_match = re.search(
+        r"export function mountDomainSimplePublishAffordance\([\s\S]*?\n\}",
+        simple_publish_source,
+    )
+    assert fn_match, "mountDomainSimplePublishAffordance must exist"
+    return fn_match.group(0)
+
+
+@pytest.fixture(scope="module")
+def wire_navigate_block() -> str:
+    grid_source = _read(OVERVIEW_CARD_GRID_JS)
     fn_match = re.search(
         r"export function wireOverviewCardNavigate\([\s\S]*?\n\}",
         grid_source,
     )
     assert fn_match, "wireOverviewCardNavigate must exist"
     return fn_match.group(0)
-
-
-@pytest.fixture(scope="module")
-def render_domain_body(overview_source: str) -> str:
-    body = _extract_function_body(overview_source, "function renderDomainCardSlot(")
-    assert body is not None, "renderDomainCardSlot body missing"
-    return body
-
-
-@pytest.fixture(scope="module")
-def domain_mount_setup_region(overview_source: str) -> str:
-    start = overview_source.find("const domainWrap = document.createElement('div')")
-    assert start != -1, "domainWrap setup missing"
-    end_marker = "domainWrap.appendChild(domainMountSlot)"
-    end = overview_source.find(end_marker, start)
-    assert end != -1, "domainMountSlot append missing"
-    end = overview_source.find(";", end) + 1
-    return overview_source[start:end]
 
 
 @pytest.fixture(scope="module")
@@ -224,66 +222,62 @@ def screens_css() -> str:
     return _read(SCREENS_CSS)
 
 
-def test_domain_card_function_exists(grid_source: str) -> None:
-    assert "export function buildDomainStatusCard" in grid_source
+def test_overview_uses_single_domain_slot(domain_slot_setup_region: str) -> None:
+    assert "domainSlot" in domain_slot_setup_region
+    assert "hub-overview__domain-slot" in domain_slot_setup_region
+    assert "domainWrap.appendChild(domainSlot)" in domain_slot_setup_region
 
 
-def test_domain_card_uses_shared_marketplace_chrome(domain_card_block: str) -> None:
-    assert "createOverviewStepCardMain()" in domain_card_block
-    assert "createOverviewStepCardActions()" in domain_card_block
-    assert "createOverviewStepCardMeta()" in domain_card_block
-    assert "hub-overview__quiet-link" in domain_card_block
-    assert "Все настройки домена" in domain_card_block
-    assert "#/domain" in domain_card_block
+def test_overview_no_dual_domain_slots(overview_source: str) -> None:
+    for needle in FORBIDDEN_OVERVIEW_DOMAIN_NEEDLES:
+        assert needle not in overview_source, f"forbidden overview domain needle: {needle!r}"
 
 
-def test_domain_card_uses_required_apis(domain_card_block: str) -> None:
-    assert "createStepNumberBadge(4)" in domain_card_block
-    assert domain_card_block.count("domainCreateCheckTile(") == 2
-    assert "wireOverviewCardNavigate" in domain_card_block
-    assert "hub-overview__domain-status-card" in domain_card_block
-    assert "createIcon('domain'" in domain_card_block or 'createIcon("domain"' in domain_card_block
-    assert "createIcon('info'" in domain_card_block or 'createIcon("info"' in domain_card_block
-    assert "Облако не проверяется" in domain_card_block
-    # Подписи плиток обязаны меняться вместе с состоянием: иконка не должна быть
-    # единственным признаком того, что пункт ещё не готов.
-    assert "Имя подготовлено" in domain_card_block
-    assert "Имя не готово" in domain_card_block
-    assert "Событие выбрано" in domain_card_block
-    assert "Событие не выбрано" in domain_card_block
-    assert "Проверить домен" in domain_card_block
-    assert "domainDraftSuffix" in domain_card_block
-    assert "validateDomainName" in domain_card_block
-    assert "buildDraftUrl" in domain_card_block
-    assert "DOMAIN_DRAFT_LINK_NOTE" in domain_card_block
+def test_overview_mounts_compact_variant(mount_overview_domain_body: str) -> None:
+    assert "variant: 'overview'" in mount_overview_domain_body
+    assert "navigate: (routeId) => ctx.navigate(routeId)" in mount_overview_domain_body
+    assert "openDomainPublishApplyConfirm" in mount_overview_domain_body
+    assert "applyKeendnsBooking" in mount_overview_domain_body
+    assert "KEENDNS_DEFAULT_ACCESS_MODE" in mount_overview_domain_body
 
 
-def test_domain_verify_cta_is_secondary(domain_card_block: str) -> None:
-    verify_match = re.search(
-        r"label:\s*'Проверить домен'[\s\S]*?hub-domain-card__verify",
-        domain_card_block,
-    )
-    assert verify_match, "Verify CTA createButton block missing"
-    verify_block = verify_match.group(0)
-    assert "variant: 'secondary'" in verify_block
+def test_overview_compact_publish_surface(overview_compact_block: str) -> None:
+    assert "variant === 'overview'" in overview_compact_block or "isOverview" in overview_compact_block
+    assert "createStepNumberBadge(4)" in overview_compact_block
+    assert "label: 'Опубликовать'" in overview_compact_block
+    assert "hub-overview__domain-compact-card" in overview_compact_block
+    assert "hub-domain__compact-fqdn" in overview_compact_block
+    assert "KEENDNS_APPLY_DISPATCH_HONESTY" not in overview_compact_block
+    assert "hub-overview__quiet-link" in overview_compact_block
+    assert "#/domain" in overview_compact_block
+    assert "wireOverviewCardNavigate" in overview_compact_block
 
 
-def test_domain_card_forbids_antipatterns(domain_card_block: str) -> None:
-    for needle in FORBIDDEN_DOMAIN_CARD_NEEDLES:
-        assert needle not in domain_card_block, f"forbidden needle in domain card: {needle!r}"
+def test_overview_compact_hides_legacy_chrome(overview_compact_block: str) -> None:
+    assert "starterRow.hidden = true" in overview_compact_block
+    assert "draftBlock.hidden = true" in overview_compact_block
+    assert "availabilityLine.hidden = true" in overview_compact_block
+    assert "Проверить домен" not in overview_compact_block
+    assert "Открыть черновик" not in overview_compact_block
+    assert "Облако не проверяется" not in overview_compact_block
+    assert "domainCreateCheckTile" not in overview_compact_block
 
 
-def test_render_domain_slot_no_sibling_quiet_link(render_domain_body: str) -> None:
-    assert "hub-overview__quiet-link" not in render_domain_body
-    assert "domainLink" not in render_domain_body
-    assert "buildDomainStatusCard" in render_domain_body
+def test_overview_compact_keeps_publish_honesty(
+    overview_compact_block: str,
+    simple_publish_source: str,
+) -> None:
+    assert "KEENDNS_APPLY_DISPATCH_HONESTY" not in overview_compact_block
+    assert "describeKeendnsApplyOutcome" in simple_publish_source
+    assert "openDomainPublishApplyConfirm" in simple_publish_source
 
 
-def test_domain_owned_css_markers_and_classes(domain_owned_css: str) -> None:
+def test_domain_owned_css_markers_and_compact_classes(domain_owned_css: str) -> None:
     required_classes = (
-        "hub-domain-card__icon-frame",
-        "hub-domain-card__checks",
-        "hub-domain-card__check-tile",
+        "hub-overview__domain-compact-card",
+        "hub-domain__compact-fqdn",
+        "hub-domain__compact-honesty",
+        "hub-domain__compact-meta",
     )
     for cls in required_classes:
         assert cls in domain_owned_css, f"missing owned CSS class {cls!r}"
@@ -297,17 +291,6 @@ def test_domain_owned_css_no_body_island(domain_owned_css: str) -> None:
 def test_domain_owned_css_forbids_invalid_tokens(domain_owned_css: str) -> None:
     assert "--hub-status-" not in domain_owned_css
     assert "--hub-accent-primary" not in domain_owned_css
-
-
-def test_domain_wrap_mount_slot_order(domain_mount_setup_region: str) -> None:
-    card_idx = domain_mount_setup_region.index("domainWrap.appendChild(domainCardSlot)")
-    mount_idx = domain_mount_setup_region.index("domainWrap.appendChild(domainMountSlot)")
-    assert card_idx < mount_idx, "domainCardSlot must be appended before domainMountSlot"
-    class_card_idx = domain_mount_setup_region.index("hub-overview__domain-card-slot")
-    class_mount_idx = domain_mount_setup_region.index("hub-overview__domain-mount-slot")
-    assert class_card_idx < class_mount_idx, (
-        "hub-overview__domain-card-slot must appear before hub-overview__domain-mount-slot"
-    )
 
 
 def test_domain_wrap_no_full_span_grid_column(screens_css: str) -> None:
@@ -358,13 +341,3 @@ def test_wire_overview_card_navigate_keydown_interactive_filter(wire_navigate_bl
     prevent_idx = keydown_block.index("event.preventDefault()")
     closest_idx = keydown_block.index(INTERACTIVE_CLOSEST_FILTER)
     assert closest_idx < prevent_idx, "keydown must filter interactive targets before preventDefault"
-
-
-def test_domain_card_footer_note_inside_main(domain_card_block: str) -> None:
-    assert "main.appendChild(note)" in domain_card_block
-    assert "card.appendChild(note)" not in domain_card_block
-    main_append_idx = domain_card_block.index("main.appendChild(note)")
-    card_append_main_idx = domain_card_block.index("card.appendChild(main)")
-    assert main_append_idx < card_append_main_idx, (
-        "section.note footer must be appended to __main before card.appendChild(main)"
-    )

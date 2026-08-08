@@ -120,8 +120,8 @@ name + suffix → confirm modal → POST /keendns/apply
 
 | Area | Path |
 |---|---|
-| Overview mount | `router_control_host/web/hub/screens/overview.js` |
-| Status card builder | `…/features/overview-card-grid.js` (`buildDomainStatusCard`) |
+| Overview mount | `router_control_host/web/hub/screens/overview.js` — `mountDomainSimplePublishAffordance({ variant: 'overview' })` |
+| Legacy status card (dead export) | `…/features/overview-card-grid.js` (`buildDomainStatusCard`) — **not** Overview path |
 | Simple publish widget | `…/features/domain-simple-publish.js` |
 | Model / defaults / apply | `…/features/domain-model.js` |
 | Full screen (advanced) | `…/screens/domain.js` |
@@ -133,13 +133,13 @@ name + suffix → confirm modal → POST /keendns/apply
 
 ## 7. Acceptance checklist (this wave)
 
-- [ ] Overview Domain fits one compact card: name + suffix + publish
-- [ ] Default `promo` + `netcraze.pro` still works without extra clicks
-- [ ] One UI confirm then `POST /keendns/apply` (no re-ask of standing human gate)
-- [ ] No fake «published in cloud» / readiness green
-- [ ] Quiet path to `#/domain` for advanced only
-- [ ] This doc + docs-map updated; validators green
-- [ ] Hub tests for domain/overview still pass; `CACHE_VERSION` bumped
+- [x] Overview Domain fits one compact card: name + suffix + publish
+- [x] Default `promo` + `netcraze.pro` still works without extra clicks
+- [x] One UI confirm then `POST /keendns/apply` (no re-ask of standing human gate)
+- [x] No fake «published in cloud» / readiness green
+- [x] Quiet path to `#/domain` for advanced only
+- [x] This doc + docs-map updated; validators green
+- [x] Hub tests for domain/overview still pass; `CACHE_VERSION` bumped
 
 ---
 
@@ -156,4 +156,5 @@ name + suffix → confirm modal → POST /keendns/apply
 
 | Date | Note |
 |---|---|
+| 2026-08-08 | Compact Overview card shipped: single surface (name + suffix + Опубликовать); dual status+draft cards removed |
 | 2026-08-08 | Created from operator ask «карточка слишком большая» + autonomous KeenDNS research; standing cloud booking unchanged |

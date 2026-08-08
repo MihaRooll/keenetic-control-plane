@@ -517,7 +517,7 @@
 .hub-overview__router-card-slot,
 .hub-overview__internet-card-slot,
 .hub-overview__vpn,
-.hub-overview__domain-card-slot,
+.hub-overview__domain-slot,
 .hub-overview__staff-slot,
 .hub-overview__guest-slot,
 .hub-overview__entry-pages-slot,
@@ -540,7 +540,7 @@
 .hub-overview__router-card-slot .hub-overview-step-card,
 .hub-overview__internet-card-slot .hub-overview-step-card,
 .hub-overview__vpn .hub-overview-step-card,
-.hub-overview__domain-card-slot .hub-overview-step-card,
+.hub-overview__domain-slot .hub-overview-step-card,
 .hub-overview__staff-slot .hub-overview-step-card,
 .hub-overview__guest-slot .hub-overview-step-card,
 .hub-overview__entry-pages-slot .hub-overview-step-card,
@@ -548,7 +548,8 @@
   height: 100%;
 }
 
-.hub-overview__domain-mount-slot .hub-card {
+.hub-overview__domain-slot .hub-domain__simple-publish-card {
+  height: 100%;
   margin: 0;
   padding: 0;
   border: 0;
@@ -3438,5 +3439,41 @@
   line-height: var(--hub-line-body);
   color: var(--hub-text-muted);
   text-align: center;
+}
+
+.hub-overview__domain-compact-card {
+  gap: var(--hub-space-3);
+}
+
+.hub-domain__compact-header {
+  align-items: flex-start;
+}
+
+.hub-domain__simple-publish-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hub-space-3);
+  width: 100%;
+}
+
+.hub-domain__compact-fqdn {
+  margin: 0;
+  font-size: var(--hub-font-h2);
+  font-weight: var(--hub-weight-semibold);
+  line-height: var(--hub-line-tight);
+  color: var(--hub-text-primary);
+  text-align: center;
+  word-break: break-all;
+}
+
+.hub-domain__compact-honesty {
+  margin: 0;
+  font-size: var(--hub-font-caption);
+  line-height: var(--hub-line-body);
+  color: var(--hub-text-muted);
+}
+
+.hub-domain__compact-meta {
+  margin-top: var(--hub-space-1);
 }
 /* ==== /OVERVIEW STEP CARD: DOMAIN ==== */

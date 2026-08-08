@@ -113,12 +113,17 @@ def vpn_helper_block(grid_source: str) -> str:
 
 
 @pytest.fixture(scope="module")
-def domain_card_block(grid_source: str) -> str:
+def simple_publish_source() -> str:
+    return _read(HUB / "features" / "domain-simple-publish.js")
+
+
+@pytest.fixture(scope="module")
+def overview_compact_publish_block(simple_publish_source: str) -> str:
     match = re.search(
-        r"export function buildDomainStatusCard\([\s\S]*?\n\}",
-        grid_source,
+        r"export function mountDomainSimplePublishAffordance\([\s\S]*?\n\}",
+        simple_publish_source,
     )
-    assert match, "buildDomainStatusCard must exist"
+    assert match, "mountDomainSimplePublishAffordance must exist"
     return match.group(0)
 
 
@@ -241,10 +246,16 @@ def test_vpn_helpers_negative_and_unknown_labels(vpn_helper_block: str) -> None:
     ), "vpnDeriveCardStatus must gate «Подключён» on connected_routed only"
 
 
-def test_domain_card_negative_and_unknown_labels(domain_card_block: str) -> None:
-    assert "Имя не готово" in domain_card_block
-    assert "Событие не выбрано" in domain_card_block
-    assert "createBadge({ label: 'Облако не проверяется', tone: 'warning' })" in domain_card_block
+def test_overview_compact_domain_honesty_no_cloud_badge(
+    overview_compact_publish_block: str,
+    simple_publish_source: str,
+) -> None:
+    assert "Облако не проверяется" not in overview_compact_publish_block
+    assert "KEENDNS_APPLY_DISPATCH_HONESTY" not in overview_compact_publish_block
+    assert "describeKeendnsApplyOutcome" in simple_publish_source
+    assert "openDomainPublishApplyConfirm" in simple_publish_source
+    assert "Событие не выбрано" not in overview_compact_publish_block
+    assert "Имя не готово" not in overview_compact_publish_block
 
 
 def test_resolve_router_check_tile_label_runtime(tmp_path: Path) -> None:
