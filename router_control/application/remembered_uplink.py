@@ -141,6 +141,15 @@ class RememberedUplinkService:
                 code="remembered_uplink.validation_failed",
                 field="ssid",
             )
+        next_router_id = (
+            router_id if router_id is not _UNSET else current["router_id"]
+        )
+        if will_be_active and not next_router_id:
+            raise RememberedUplinkValidationError(
+                "router_id required when desired_active is true",
+                code="remembered_uplink.validation_failed",
+                field="router_id",
+            )
         self.store.upsert_remembered_uplink(
             router_id=router_id,
             ssid=resolved_ssid,

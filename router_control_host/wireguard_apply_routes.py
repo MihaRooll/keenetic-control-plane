@@ -308,22 +308,23 @@ class _EphemeralLiveWireguardTransport:
         *,
         params: WifiLiveConnectionParams,
         vault: Any,
-        certification: Any = None,
+        host: HostState,
         router_id: str | None = None,
     ) -> None:
         self._params = params
         self._vault = vault
-        self._certification = certification
+        self._host = host
         self._router_id = router_id
 
     def _ensure_tuple_match(self, session: WifiLiveSession) -> None:
-        if self._certification is None:
+        cert = self._host.gate_a_certification
+        if cert is None or not cert.is_open:
             raise LiveIdentityTupleMismatchError(
                 "Gate A certification required for live mutation"
             )
         ensure_live_gate_a_tuple_match(
             session,
-            self._certification,
+            cert,
             router_id=self._router_id,
         )
 
@@ -346,7 +347,7 @@ def _resolve_vpn_watchdog_connection_params(
     router_id: str,
 ) -> WifiLiveConnectionParams | None:
     cert = host.gate_a_certification
-    if cert is None:
+    if cert is None or not cert.is_open:
         return None
     store = host.runtime.store
     row = store.get_router(router_id)
@@ -399,23 +400,22 @@ def build_vpn_watchdog_transport_factory(
 
         return _fake
 
-    if host.adapter_mode != "live" or not host.gate_a_open():
-        return None
-
-    cert = host.gate_a_certification
-    if cert is None:
+    if host.adapter_mode != "live":
         return None
 
     vault = host.runtime.vault
 
     def _live(router_id: str) -> WireguardApplyTransport | None:
+        cert = host.gate_a_certification
+        if cert is None or not cert.is_open:
+            return None
         params = _resolve_vpn_watchdog_connection_params(host, router_id)
         if params is None or not is_win32_live_capable():
             return None
         return _EphemeralLiveWireguardTransport(
             params=params,
             vault=vault,
-            certification=cert,
+            host=host,
             router_id=router_id,
         )
 

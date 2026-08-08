@@ -276,6 +276,58 @@ def test_skip_reapply_when_live_gateway_is_ethernet() -> None:
 
 
 @pytest.mark.asyncio
+async def test_poll_once_skips_when_desired_active_without_router_id(
+    tmp_path, monkeypatch
+) -> None:
+    runtime = create_offline_runtime(db_path=tmp_path / "poll-no-router.sqlite3")
+    store = runtime.store
+    site_id = store.create_site(display_name="WD", now=_FIXED_NOW)
+    fallback_router_id = store.enroll_router(
+        site_id=site_id,
+        display_name="Fallback Router",
+        vendor="Keenetic",
+        model="NC-1812",
+        identity_fingerprint="fp-fallback",
+        host="127.0.0.2",
+        now=_FIXED_NOW,
+    )
+    cred_id = store.insert_credential_ref(
+        router_id=fallback_router_id,
+        kind="WifiApPsk",
+        provider="memory",
+        provider_locator="wd-loc",
+        now=_FIXED_NOW,
+    )
+    store.upsert_remembered_uplink(
+        ssid="Upstream",
+        band="BAND_5GHZ",
+        credential_ref_id=cred_id,
+        desired_active=True,
+        now=_FIXED_NOW,
+    )
+    host = type("Host", (), {"runtime": runtime})()
+    observation = _observation(gateway_interface=None)
+    observe_calls = 0
+
+    def _observe(*, transport: Any) -> InternetStatusObservation:
+        nonlocal observe_calls
+        observe_calls += 1
+        return observation
+
+    handle = UplinkWatchdogHandle(host=host)
+    handle.observe_transport_factory = lambda _rid: object()
+    handle.apply_transport_factory = lambda _rid: None
+    monkeypatch.setattr(
+        uplink_watchdog_service,
+        "run_internet_status_observe",
+        _observe,
+    )
+    await handle._poll_once()  # noqa: SLF001
+    assert observe_calls == 0
+    assert str(fallback_router_id) not in handle._states  # noqa: SLF001
+
+
+@pytest.mark.asyncio
 async def test_poll_once_skips_when_desired_active_false(tmp_path, monkeypatch) -> None:
     runtime = create_offline_runtime(db_path=tmp_path / "poll-inactive.sqlite3")
     host = type("Host", (), {"runtime": runtime})()

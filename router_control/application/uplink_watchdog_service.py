@@ -194,10 +194,7 @@ class UplinkWatchdogHandle:
             return
         router_id = remembered.get("router_id")
         if not router_id:
-            rows = self.host.runtime.store.list_routers(limit=1)
-            if not rows:
-                return
-            router_id = str(rows[0]["router_id"])
+            return
         router_key = str(router_id)
         loop = asyncio.get_running_loop()
         now = loop.time()

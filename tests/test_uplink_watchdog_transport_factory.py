@@ -153,9 +153,57 @@ def test_transport_factories_none_when_gate_a_closed(tmp_path: Any) -> None:
     host.gate_a_certification = None
     observe_factory = build_uplink_watchdog_observe_transport_factory(host)
     apply_factory = build_uplink_watchdog_apply_transport_factory(host)
-    assert observe_factory is None
-    assert apply_factory is None
-    _ = router_id
+    assert observe_factory is not None
+    assert apply_factory is not None
+    assert observe_factory(router_id) is None
+    assert apply_factory(router_id) is None
+
+
+def test_observe_transport_factory_rereads_gate_a_on_invoke(
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    host, router_id = _live_host(tmp_path)
+    _patch_live_session_mocks(monkeypatch)
+    host.gate_a_certification = None
+    factory = build_uplink_watchdog_observe_transport_factory(host)
+    assert factory is not None
+    assert factory(router_id) is None
+    host.gate_a_certification = _open_gate_a()
+    transport = factory(router_id)
+    assert isinstance(transport, _EphemeralLiveInternetStatusTransport)
+
+
+def test_apply_transport_factory_rereads_gate_a_on_invoke(
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    host, router_id = _live_host(tmp_path)
+    _patch_live_session_mocks(monkeypatch)
+    host.gate_a_certification = None
+    factory = build_uplink_watchdog_apply_transport_factory(host)
+    assert factory is not None
+    assert factory(router_id) is None
+    host.gate_a_certification = _open_gate_a()
+    transport = factory(router_id)
+    assert isinstance(transport, _EphemeralLiveStationApplyTransport)
+
+
+def test_observe_transport_fail_closed_when_gate_a_closes_before_session(
+    tmp_path: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from router_control_host.wifi_live_transport import LiveIdentityTupleMismatchError
+
+    host, router_id = _live_host(tmp_path)
+    _patch_live_session_mocks(monkeypatch)
+    factory = build_uplink_watchdog_observe_transport_factory(host)
+    assert factory is not None
+    transport = factory(router_id)
+    assert transport is not None
+    host.gate_a_certification = None
+    with pytest.raises(LiveIdentityTupleMismatchError, match="Gate A certification required"):
+        transport.execute_rci_parse("show internet status")
 
 
 def test_observe_transport_factory_uses_injected_factory(tmp_path: Any) -> None:

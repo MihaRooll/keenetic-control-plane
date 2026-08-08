@@ -21,7 +21,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         yield c
 
 
-def _seed_wifi_credential(client, *, kind: str = "WifiApPsk", revoke: bool = False) -> str:
+def _seed_wifi_credential(client, *, kind: str = "WifiApPsk", revoke: bool = False) -> tuple[str, str]:
     store = client.app.state.host.runtime.store
     site_id = client.app.state.host.resolve_site_id()
     now = datetime(2026, 8, 5, tzinfo=UTC)
@@ -43,7 +43,7 @@ def _seed_wifi_credential(client, *, kind: str = "WifiApPsk", revoke: bool = Fal
     )
     if revoke:
         store.mark_credential_revoked(cred_id, now=now)
-    return cred_id
+    return cred_id, router_id
 
 
 def test_get_remembered_uplink_never_contains_password_keys(client) -> None:
@@ -67,10 +67,11 @@ def test_get_watchdog_status_exposes_uplink_watchdog_fields(client) -> None:
 
 
 def test_put_accepts_usable_wifi_ap_psk_ref(client) -> None:
-    cred_id = _seed_wifi_credential(client)
+    cred_id, router_id = _seed_wifi_credential(client)
     response = client.put(
         "/api/router-control/v1/remembered-uplink",
         json={
+            "router_id": router_id,
             "ssid": "UpstreamWiFi",
             "band": "BAND_2_4GHZ",
             "credential_ref_id": cred_id,
@@ -83,6 +84,24 @@ def test_put_accepts_usable_wifi_ap_psk_ref(client) -> None:
     assert payload["credential_ref_id"] == cred_id
     assert payload["desired_active"] is True
     assert payload["ssid"] == "UpstreamWiFi"
+    assert payload["router_id"] == router_id
+
+
+def test_put_rejects_desired_active_without_router_id(client) -> None:
+    cred_id, _router_id = _seed_wifi_credential(client)
+    response = client.put(
+        "/api/router-control/v1/remembered-uplink",
+        json={
+            "ssid": "UpstreamWiFi",
+            "band": "BAND_2_4GHZ",
+            "credential_ref_id": cred_id,
+            "desired_active": True,
+        },
+    )
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error"]["code"] == "remembered_uplink.validation_failed"
+    assert body["error"]["details"][0]["field"] == "router_id"
 
 
 def test_put_rejects_secret_shaped_keys_without_echo(client) -> None:
@@ -109,10 +128,11 @@ def test_put_rejects_other_secret_shaped_keys(client, field: str) -> None:
 
 
 def test_delete_clears_remembered_uplink(client) -> None:
-    cred_id = _seed_wifi_credential(client)
+    cred_id, router_id = _seed_wifi_credential(client)
     client.put(
         "/api/router-control/v1/remembered-uplink",
         json={
+            "router_id": router_id,
             "ssid": "ToForget",
             "credential_ref_id": cred_id,
             "desired_active": True,
