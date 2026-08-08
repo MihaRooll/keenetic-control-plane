@@ -60,6 +60,11 @@ export const KEENDNS_APPLY_DISPATCH_TITLE = 'Команда отправлена
 /** Режим доступа по умолчанию для book apply (docs-sourced). */
 export const KEENDNS_DEFAULT_ACCESS_MODE = 'auto';
 
+/** Подпись автоматического имени CrazeDNS с роутера (observe). */
+export const DOMAIN_ROUTER_DEFAULT_FQDN_LABEL = 'Автоматическое имя CrazeDNS на роутере';
+
+/** @typedef {{ default_fqdn?: string|null, ssl_valid?: boolean|null, booked_name?: string|null, booked_domain?: string|null, booked_fqdn?: string|null, access_mode?: string, name_reservation?: string, notes?: string[]|null, certification_eligible?: boolean }} KeendnsObservePayload */
+
 /** Текст для режима «только заявка» (drop / copy path). */
 export const DOMAIN_PUBLISH_HUMAN_GATE_TEXT =
   'Регистрация имени в облаке выполняется человеком, а не программой. Этот экран только готовит заявку на публикацию.';
@@ -1053,6 +1058,55 @@ async function postWithHeaders(path, body, extraHeaders, { signal, timeoutMs = 1
  */
 export function loadKeendnsStatus({ signal } = {}) {
   return apiPost('keendns/status', {}, { signal });
+}
+
+/**
+ * @param {unknown} response
+ * @returns {KeendnsObservePayload|null}
+ */
+export function normalizeKeendnsObserve(response) {
+  if (!response || typeof response !== 'object') {
+    return null;
+  }
+  const payload = /** @type {Record<string, unknown>} */ (response);
+  return {
+    default_fqdn:
+      typeof payload.default_fqdn === 'string' && payload.default_fqdn.trim()
+        ? payload.default_fqdn.trim()
+        : null,
+    ssl_valid: typeof payload.ssl_valid === 'boolean' ? payload.ssl_valid : null,
+    booked_name:
+      typeof payload.booked_name === 'string' && payload.booked_name.trim()
+        ? payload.booked_name.trim()
+        : null,
+    booked_domain:
+      typeof payload.booked_domain === 'string' && payload.booked_domain.trim()
+        ? payload.booked_domain.trim()
+        : null,
+    booked_fqdn:
+      typeof payload.booked_fqdn === 'string' && payload.booked_fqdn.trim()
+        ? payload.booked_fqdn.trim()
+        : null,
+    access_mode: typeof payload.access_mode === 'string' ? payload.access_mode : 'unknown',
+    name_reservation:
+      typeof payload.name_reservation === 'string' ? payload.name_reservation : 'unknown',
+    notes: Array.isArray(payload.notes)
+      ? payload.notes.filter((item) => typeof item === 'string')
+      : [],
+  };
+}
+
+/**
+ * @param {{ session: import('../core/session.js').SessionSnapshot|null|undefined, signal?: AbortSignal }} params
+ * @returns {Promise<KeendnsObservePayload|null>}
+ */
+export async function fetchKeendnsObserve({ session, signal }) {
+  const live = buildLiveConnectionParams(session);
+  if (!live.complete) {
+    return null;
+  }
+  const response = await apiPost('keendns/observe', live.params, { signal });
+  return normalizeKeendnsObserve(response);
 }
 
 /**

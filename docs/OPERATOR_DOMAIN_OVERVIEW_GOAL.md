@@ -16,13 +16,31 @@
 
 ## 1. Goal (do not forget)
 
-On Overview step **4 · Домен** the operator needs:
+### 1a. Operator ask 2026-08-08 (wave 2 — **current**)
+
+CrazeDNS on the router already has:
+
+1. **Automatic / default device name** — e.g. long-hash.`netcraze.io` with SSL («Доменное имя Netcraze» in Web UI).  
+   **Must be shown by querying the router** (`show acme` / `show ndns` / sealed RCI) — **never** hardcode a FQDN pasted in chat.
+2. **Personal booked name** — operator picks own label + accept-list suffix (`promo.netcraze.pro`, …) and publishes via `ndns book-name …`.  
+   Vendor note: HTTP proxy to home apps needs a **personal** booked name; the automatic `.io` name alone is not enough for that.
+
+Overview must:
+
+| Surface | Behavior |
+|---|---|
+| Default FQDN | Live RO from router → display ( + SSL hint **only if sealed**) |
+| Custom publish | Name + suffix + «Опубликовать» → confirm → `POST /keendns/apply` (`mode=auto`) |
+
+### 1b. Compact card (wave 1 — done)
+
+On Overview step **4 · Домен** keep chrome thin:
 
 1. See / edit a **name** (default `promo` or own DNS label).
 2. Pick an allowed **suffix** (default `netcraze.pro`).
-3. Press **«Опубликовать»** → **one** UI confirm → module books on the router (`POST /keendns/apply`).
+3. Press **«Опубликовать»** → **one** UI confirm → module books on the router.
 
-Everything else (event checklist, «Проверить домен», «Открыть черновик», long honesty essays, duplicate draft notes, dual status+publish cards) is **out of Overview**. Keep advanced / diagnostics on `#/domain`.
+Everything else (event checklist, «Проверить домен», «Открыть черновик», long honesty essays) stays off Overview. Advanced on `#/domain`.
 
 ---
 
@@ -60,7 +78,10 @@ Allowlisted / planned in code: `router_control/application/keendns_planner.py`, 
 |---|---|
 | `ndns get-update` | Standing authorized on expendable; **not** in allowlist/planner |
 | `ndns check-name <name>` | Docs; UI honestly says availability unknown |
-| `show ndns` / `ndns get-booked` | Parsers exist; status API does **not** live-probe yet |
+| `show acme` / `GET /rci/show/acme` | **Live sealed 2026-08-08:** `default-domain` = automatic device FQDN (`*.netcraze.io`); `default-domain-certificate-valid` = SSL hint; fixture `tests/fixtures/netcraze/show-acme-default-domain-v1.json` |
+| `show ndns` / `GET /rci/show/ndns` | Live sealed: empty `name`/`domain` when no personal book; filled after `book-name` |
+| `ndns get-booked` | Live: may return `continued` then cloud error «No booking found…» when none booked — do not treat as personal FQDN |
+| `ndns book-name` / `drop-name` apply | Live: first RCI parse ack may be `parse.continued` only — apply re-dispatches same sealed body (bounded poll) before fail-closed |
 
 ### 3.3 External evidence (vendor manuals)
 
@@ -78,7 +99,8 @@ Allowlisted / planned in code: `router_control/application/keendns_planner.py`, 
 
 | Endpoint | Role |
 |---|---|
-| `POST /keendns/status` | Classify from injected/empty observe — Overview today gets `{}` → unknown |
+| `POST /keendns/status` | Classify from injected/empty observe when live params absent — `{}` → unknown |
+| `POST /keendns/observe` | Live RO: `show acme` default FQDN + SSL hint + `show ndns` personal fields; Overview when session has complete live connection |
 | `POST /keendns/preview` | Offline plan |
 | `POST /keendns/apply` | Live book/drop under Gate A + expendable + tuple match + confirm |
 
@@ -132,7 +154,9 @@ name + suffix → confirm modal → POST /keendns/apply
 
 ---
 
-## 7. Acceptance checklist (this wave)
+## 7. Acceptance checklist
+
+### Wave 1 (compact card) — done
 
 - [x] Overview Domain fits one compact card: name + suffix + publish
 - [x] Default `promo` + `netcraze.pro` still works without extra clicks
@@ -142,14 +166,26 @@ name + suffix → confirm modal → POST /keendns/apply
 - [x] This doc + docs-map updated; validators green
 - [x] Hub tests for domain/overview still pass; `CACHE_VERSION` bumped
 
+### Wave 2 (default domain from router + custom book) — **current**
+
+- [x] Living goal recorded here + cross-links (`OPERATOR_KEENDNS_DISCOVERY`, main-menu R-8, docs-map, STATUS pointer)
+- [x] Live RO capture: **`show acme`** → `default-domain` / SSL validity; `show ndns` empty until personal book; fixture `tests/fixtures/netcraze/show-acme-default-domain-v1.json` (**never** hardcode FQDN in UI)
+- [x] Parsers extract default/automatic FQDN (+ SSL only if sealed) and booked personal names
+- [x] Hub can request live observe (wifi-style connection fields); empty inject path stays honest `unknown`
+- [x] Overview shows **queried** default domain; keep name/suffix/«Опубликовать» for personal book
+- [x] Custom book still `POST /keendns/apply` `mode=auto`; toast = dispatch honesty only
+- [x] Tests + `CACHE_VERSION` bump; docs validators green
+- [x] Live cloud book + observe proven 2026-08-08 (expendable): `POST /keendns/observe` returns automatic `*.netcraze.io` + SSL; apply drop/book with **continued poll** booked `rc39d9d0.netcraze.pro` (artifacts under `data/artifacts/keendns-*-20260808.json`). Standing template `promo` may be **taken** — UI must allow another label.
+- [x] Trap fixed: first RCI ack is often `parse.continued=true` — apply polls same sealed body up to 20 rounds (`_KEENDNS_CONTINUATION_MAX_ROUNDS`)
+
 ---
 
-## 8. Next honesty steps (not this UI cut)
+## 8. Next honesty steps (after wave 2 observe)
 
-1. Live RO: `show ndns` / `get-booked` into status so Overview can show booked name without lying.
-2. Live book on expendable → evidence artifact → flip R-8 toward `ЖИВЬЁМ` only with real cloud observe.
-3. Wire `get-update` if product needs refresh after WAN change.
-4. Refresh stale M-5 / IMPLEMENTATION_STATUS human-gate-only wording.
+1. Live book on expendable → evidence artifact → flip R-8 toward `ЖИВЬЁМ` only with real cloud observe.
+2. Wire `get-update` if product needs refresh after WAN change.
+3. Refresh stale M-5 / IMPLEMENTATION_STATUS human-gate-only wording.
+4. HTTP-proxy / 4th-level app publish (vendor: needs personal booked name) — separate product slice after observe+book.
 
 ---
 
@@ -157,5 +193,7 @@ name + suffix → confirm modal → POST /keendns/apply
 
 | Date | Note |
 |---|---|
+| 2026-08-08 | **Wave 2 shipped live:** `show acme`→default FQDN; `POST /keendns/observe`; Overview displays queried domain; apply continued-poll; live book `rc39d9d0.netcraze.pro` |
+| 2026-08-08 | **Wave 2 goal locked:** show automatic CrazeDNS name via live router query; keep personal `book-name` publish; never hardcode chat FQDN |
 | 2026-08-08 | Compact Overview card shipped: single surface (name + suffix + Опубликовать); dual status+draft cards removed |
 | 2026-08-08 | Created from operator ask «карточка слишком большая» + autonomous KeenDNS research; standing cloud booking unchanged |

@@ -66,6 +66,7 @@ from router_control_host.hub_routes import HUB_PAGE_PATHS
 from router_control_host.hub_routes import router as hub_router
 from router_control_host.internet_status_routes import router as internet_status_router
 from router_control_host.keendns_apply_routes import router as keendns_apply_router
+from router_control_host.keendns_observe_routes import router as keendns_observe_router
 from router_control_host.keendns_routes import router as keendns_router
 from router_control_host.network_family_preview_routes import (
     router as network_family_preview_router,
@@ -535,6 +536,7 @@ def create_app(
     app.include_router(vpn_catalog_status_router)
     app.include_router(vpn_catalog_remove_router)
     app.include_router(keendns_router)
+    app.include_router(keendns_observe_router)
     app.include_router(keendns_apply_router)
     app.include_router(network_family_preview_router)
     app.include_router(wifi_station_apply_router)

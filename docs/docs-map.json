@@ -831,7 +831,7 @@
     },
     {
       "path": "docs/OPERATOR_KEENDNS_DISCOVERY.md",
-      "title": "KeenDNS/CrazeDNS discovery + apply (offline shipped; standing expendable 2026-08-08)",
+      "title": "KeenDNS/CrazeDNS discovery + observe RO + apply (offline shipped; standing expendable 2026-08-08)",
       "status": "active",
       "owners": [
         "team"
@@ -851,6 +851,7 @@
         "gate-a",
         "write-shape-discovery",
         "apply-shipped-offline",
+        "observe-ro-shipped",
         "standing-approved",
         "do-not-reask"
       ],
@@ -858,7 +859,7 @@
     },
     {
       "path": "docs/OPERATOR_DOMAIN_OVERVIEW_GOAL.md",
-      "title": "Domain Overview card — compact publish goal + KeenDNS command map",
+      "title": "Domain Overview — default FQDN from show acme + personal book (wave 2 live)",
       "status": "active",
       "owners": [
         "team"
@@ -872,7 +873,8 @@
         "r-8",
         "living-goal",
         "standing-approved",
-        "do-not-reask"
+        "do-not-reask",
+        "live-proven"
       ],
       "lastReviewed": "2026-08-08"
     },

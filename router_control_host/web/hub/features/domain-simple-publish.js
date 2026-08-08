@@ -20,6 +20,7 @@ import {
   DOMAIN_PUBLISH_HUMAN_GATE_TEXT,
   DOMAIN_SIMPLE_DEFAULT_NAME_HONESTY,
   DOMAIN_SIMPLE_GATE_WHY,
+  DOMAIN_ROUTER_DEFAULT_FQDN_LABEL,
   KEENDNS_DEFAULT_ACCESS_MODE,
   KEENDNS_DOMAIN_OPTIONS,
   buildPublishRequestSummary,
@@ -42,6 +43,8 @@ import {
  * @property {string} [idPrefix]
  * @property {'full'|'overview'} [variant]
  * @property {(routeId: string) => void} [navigate]
+ * @property {() => string|null} [getRouterDefaultFqdn]
+ * @property {() => boolean|null} [getRouterSslValid]
  * @property {string} [title]
  */
 
@@ -84,6 +87,8 @@ export function mountDomainSimplePublishAffordance(container, options) {
     variant = 'full',
     navigate,
     title = 'Домен',
+    getRouterDefaultFqdn,
+    getRouterSslValid,
   } = options;
 
   const isOverview = variant === 'overview';
@@ -194,6 +199,24 @@ export function mountDomainSimplePublishAffordance(container, options) {
     availabilityLine.id = `${idPrefix}-availability-line`;
     body.appendChild(availabilityLine);
   }
+
+  const routerDefaultBlock = document.createElement('div');
+  routerDefaultBlock.className = 'hub-domain__router-default';
+  routerDefaultBlock.hidden = true;
+  const routerDefaultLabel = document.createElement('p');
+  routerDefaultLabel.className = 'hub-domain__note hub-domain__router-default-label';
+  routerDefaultLabel.textContent = DOMAIN_ROUTER_DEFAULT_FQDN_LABEL;
+  routerDefaultBlock.appendChild(routerDefaultLabel);
+  const routerDefaultFqdn = document.createElement('p');
+  routerDefaultFqdn.className = 'hub-domain__compact-fqdn hub-domain__router-default-fqdn';
+  routerDefaultFqdn.id = `${idPrefix}-router-default-fqdn`;
+  routerDefaultBlock.appendChild(routerDefaultFqdn);
+  const routerSslHint = document.createElement('p');
+  routerSslHint.className = 'hub-domain__note hub-domain__router-ssl-hint';
+  routerSslHint.id = `${idPrefix}-router-ssl-hint`;
+  routerSslHint.hidden = true;
+  routerDefaultBlock.appendChild(routerSslHint);
+  body.appendChild(routerDefaultBlock);
 
   const fqdnPreview = document.createElement('p');
   fqdnPreview.className = 'hub-domain__compact-fqdn';
@@ -325,6 +348,31 @@ export function mountDomainSimplePublishAffordance(container, options) {
     publishBtn.disabled = isDisabled || !state.valid;
 
     if (isOverview) {
+      const routerFqdn =
+        typeof getRouterDefaultFqdn === 'function' ? getRouterDefaultFqdn() : null;
+      const routerSsl =
+        typeof getRouterSslValid === 'function' ? getRouterSslValid() : null;
+
+      if (typeof routerFqdn === 'string' && routerFqdn.trim()) {
+        routerDefaultFqdn.textContent = routerFqdn.trim();
+        routerDefaultBlock.hidden = false;
+        if (routerSsl === true) {
+          routerSslHint.textContent = 'SSL сертификат действителен (по данным роутера)';
+          routerSslHint.hidden = false;
+        } else if (routerSsl === false) {
+          routerSslHint.textContent = 'SSL сертификат не действителен (по данным роутера)';
+          routerSslHint.hidden = false;
+        } else {
+          routerSslHint.textContent = '';
+          routerSslHint.hidden = true;
+        }
+      } else {
+        routerDefaultFqdn.textContent = '';
+        routerDefaultBlock.hidden = true;
+        routerSslHint.textContent = '';
+        routerSslHint.hidden = true;
+      }
+
       if (state.valid && state.draftUrl) {
         const fqdn = `${getName().trim().toLowerCase()}.${getDomain().trim()}`;
         fqdnPreview.textContent = fqdn;

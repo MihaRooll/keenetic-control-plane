@@ -247,10 +247,22 @@ def test_overview_compact_publish_surface(overview_compact_block: str) -> None:
     assert "label: 'Опубликовать'" in overview_compact_block
     assert "hub-overview__domain-compact-card" in overview_compact_block
     assert "hub-domain__compact-fqdn" in overview_compact_block
+    assert "hub-domain__router-default" in overview_compact_block
+    assert "getRouterDefaultFqdn" in overview_compact_block
     assert "KEENDNS_APPLY_DISPATCH_HONESTY" not in overview_compact_block
     assert "hub-overview__quiet-link" in overview_compact_block
     assert "#/domain" in overview_compact_block
     assert "wireOverviewCardNavigate" in overview_compact_block
+
+
+def test_overview_compact_no_hardcoded_lab_fqdn(
+    overview_compact_block: str,
+    simple_publish_source: str,
+    overview_source: str,
+) -> None:
+    forbidden = "1880927356f927ebc1b7fa92.netcraze.io"
+    for source in (overview_compact_block, simple_publish_source, overview_source):
+        assert forbidden not in source, "lab FQDN must not be hardcoded in hub product JS"
 
 
 def test_overview_compact_hides_legacy_chrome(overview_compact_block: str) -> None:

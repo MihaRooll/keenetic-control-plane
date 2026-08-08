@@ -7,6 +7,7 @@ import { apiGet, apiPost } from '../core/api.js';
 import { HubApiError, ERROR_KIND, describeError } from '../core/errors.js';
 import { HubState } from '../core/states.js';
 import { buildLiveConnectionParams } from './live-connection-params.js';
+import { fetchKeendnsObserve, loadKeendnsStatus } from './domain-model.js';
 import {
   buildObservedStateRequestBody,
   evaluateStaffWifiObservedReadiness,
@@ -14,9 +15,9 @@ import {
 } from './staff-wifi-model.js';
 import { runSystemCheckWithTransientRetry } from './system-check.js';
 
-/** @typedef {{ state: string, title: string, subtitle: string|null, badge: { label: string, tone: string }|null, note: string|null, technical: string|null, error: HubApiError|null, route: string|null, mock: boolean, checkedAt?: string|null, options?: Array<{ id: string, name: string }> }} OverviewSection */
+/** @typedef {{ state: string, title: string, subtitle: string|null, badge: { label: string, tone: string }|null, note: string|null, technical: string|null, error: HubApiError|null, route: string|null, mock: boolean, checkedAt?: string|null, options?: Array<{ id: string, name: string }>, defaultFqdn?: string|null, sslValid?: boolean|null }} OverviewSection */
 
-/** @typedef {{ router: OverviewSection, systemCheck: OverviewSection, domain: OverviewSection, domainCloudVerified: boolean, generatedAt: string, adapterMode: string, selectedRouterId: string|null, systemCheckFacts: import('./system-check.js').DescribedFact[]|null }} OverviewModel */
+/** @typedef {{ router: OverviewSection, systemCheck: OverviewSection, domain: OverviewSection, domainCloudVerified: boolean, keendnsObserve: import('./domain-model.js').KeendnsObservePayload|null, generatedAt: string, adapterMode: string, selectedRouterId: string|null, systemCheckFacts: import('./system-check.js').DescribedFact[]|null }} OverviewModel */
 
 /** @typedef {{ routerId?: string|null, routerHost?: string|null, siteId?: string|null, hostKeyConfirmed?: boolean, eventPresetId?: string|null, eventPresetName?: string|null, wifiLive?: { host?: string|null, username?: string|null, credentialRefId?: string|null, sshHostKeySha256?: string|null }, wifiRoles?: { staffApId?: string|null, guestApId?: string|null } }} SessionInput */
 
@@ -489,9 +490,11 @@ export function deriveDomainCloudVerified(statusPayload) {
 /**
  * @param {unknown} data
  * @param {HubApiError|null} error
+ * @param {{ observe?: import('./domain-model.js').KeendnsObservePayload|null, liveQueried?: boolean }} [context]
  * @returns {OverviewSection}
  */
-function buildDomainSection(data, error) {
+function buildDomainSection(data, error, context = {}) {
+  const { observe = null, liveQueried = false } = context;
   if (error) {
     return sectionFromError(error, {
       state: HubState.WARNING,
@@ -499,6 +502,36 @@ function buildDomainSection(data, error) {
       subtitle: 'Состояние домена неизвестно',
       route: '#/domain',
     });
+  }
+
+  const defaultFqdn =
+    typeof observe?.default_fqdn === 'string' && observe.default_fqdn.trim()
+      ? observe.default_fqdn.trim()
+      : null;
+  const sslValid = typeof observe?.ssl_valid === 'boolean' ? observe.ssl_valid : null;
+
+  /** @type {string|null} */
+  let subtitle = 'Состояние домена неизвестно';
+  /** @type {{ label: string, tone: string }|null} */
+  let badge = null;
+  /** @type {string|null} */
+  let note = null;
+
+  if (defaultFqdn) {
+    subtitle = defaultFqdn;
+    if (sslValid === true) {
+      badge = { label: 'SSL действителен', tone: 'success' };
+    } else if (sslValid === false) {
+      badge = { label: 'SSL не действителен', tone: 'warning' };
+    }
+    note = liveQueried
+      ? 'Автоматическое имя CrazeDNS прочитано с роутера'
+      : 'Автоматическое имя CrazeDNS прочитано';
+  } else if (liveQueried) {
+    note = 'Автоматическое имя CrazeDNS на роутере не прочитано';
+  } else {
+    note =
+      'Без параметров живого подключения запрос к роутеру из обзора не выполняется';
   }
 
   const payload = /** @type {{ feature_availability?: string, name_reservation?: string, access_mode?: string }} */ (data);
@@ -512,18 +545,25 @@ function buildDomainSection(data, error) {
   if (typeof payload?.access_mode === 'string') {
     technicalLines.push(`Режим доступа: ${translateDomainValue(payload.access_mode)}`);
   }
+  if (typeof observe?.name_reservation === 'string' && observe.name_reservation !== 'unknown') {
+    technicalLines.push(
+      `Личное имя (observe): ${translateDomainValue(observe.name_reservation)}`,
+    );
+  }
   const technical = technicalLines.length > 0 ? technicalLines.join('\n') : null;
 
   return {
     state: HubState.WARNING,
     title: 'Домен',
-    subtitle: 'Состояние домена неизвестно',
-    badge: null,
-    note: 'Статус KeenDNS — только по переданным данным; запрос к роутеру из обзора не выполняется',
+    subtitle,
+    badge,
+    note,
     technical,
     error: null,
     route: '#/domain',
     mock: false,
+    defaultFqdn,
+    sslValid,
   };
 }
 
@@ -583,6 +623,11 @@ export async function loadOverview({ session, runtime, signal, onHealthAttempt }
   }
 
   // Wi‑Fi observed, VPN list и entry-pages — в enrichment на экране (overview-simple-networks / vpn wrap).
+  const live = buildLiveConnectionParams(session);
+  const domainPromise = live.complete
+    ? settleApiCall(fetchKeendnsObserve({ session, signal }))
+    : settleApiCall(loadKeendnsStatus({ signal }).then((data) => ({ observe: null, status: data })));
+
   const [systemCheckResult, domainResult] = await Promise.all([
     settleApiCall(
       runSystemCheckWithTransientRetry(
@@ -596,11 +641,30 @@ export async function loadOverview({ session, runtime, signal, onHealthAttempt }
         { signal, onAttempt: onHealthAttempt },
       ),
     ),
-    settleApiCall(apiPost('keendns/status', null, { signal })),
+    domainPromise,
   ]);
 
   const verdict = systemCheckResult.data;
   const generatedAt = new Date().toISOString();
+
+  /** @type {import('./domain-model.js').KeendnsObservePayload|null} */
+  let keendnsObserve = null;
+  /** @type {unknown} */
+  let domainStatusData = null;
+  const liveQueried = live.complete;
+  if (domainResult.data && typeof domainResult.data === 'object') {
+    const domainPayload = /** @type {Record<string, unknown>} */ (domainResult.data);
+    if ('default_fqdn' in domainPayload || 'ssl_valid' in domainPayload) {
+      keendnsObserve = /** @type {import('./domain-model.js').KeendnsObservePayload} */ (
+        domainPayload
+      );
+      domainStatusData = domainPayload;
+    } else if ('status' in domainPayload) {
+      domainStatusData = domainPayload.status;
+    } else if ('feature_availability' in domainPayload) {
+      domainStatusData = domainPayload;
+    }
+  }
 
   return {
     router: buildRouterSection(
@@ -610,8 +674,12 @@ export async function loadOverview({ session, runtime, signal, onHealthAttempt }
       routerItems.length > 0,
     ),
     systemCheck: buildSystemCheckSection(verdict, systemCheckResult.error),
-    domain: buildDomainSection(domainResult.data, domainResult.error),
-    domainCloudVerified: deriveDomainCloudVerified(domainResult.data),
+    domain: buildDomainSection(domainStatusData, domainResult.error, {
+      observe: keendnsObserve,
+      liveQueried,
+    }),
+    domainCloudVerified: deriveDomainCloudVerified(domainStatusData),
+    keendnsObserve,
     generatedAt,
     adapterMode,
     selectedRouterId,

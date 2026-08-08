@@ -327,3 +327,119 @@ def test_offline_apply_empty_ack_fails() -> None:
     assert result.overall == "failed"
     assert result.steps[0].ok is False
     assert any("dispatch ack empty or unverified" in entry for entry in result.logs)
+
+
+class _LiveTransportContinuedSequence:
+    keendns_live_dispatch = True
+
+    def __init__(self, acks: list[list[dict[str, object]]]) -> None:
+        self._acks = list(acks)
+        self._call_index = 0
+        self.dispatch_count = 0
+
+    def read_json(self, command: object, body: bytes | None = None) -> dict[str, object]:
+        return {"component": {"ndns": {}, "wifi": {}}}
+
+    def execute_sealed_rci_write(
+        self, request: SealedRciWriteRequest
+    ) -> list[dict[str, object]]:
+        self.dispatch_count += 1
+        if self._call_index >= len(self._acks):
+            return self._acks[-1]
+        ack = self._acks[self._call_index]
+        self._call_index += 1
+        return ack
+
+
+def test_live_apply_continued_then_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "router_control.application.keendns_apply_service.time.sleep",
+        lambda _seconds: None,
+    )
+    transport = _LiveTransportContinuedSequence(
+        [
+            [{"parse": {"continued": True}}],
+            [
+                {
+                    "parse": {
+                        "status": [
+                            {
+                                "status": "message",
+                                "ident": "Ndns::Client",
+                                "message": 'Booked "sample-name.netcraze.pro"',
+                            }
+                        ]
+                    }
+                }
+            ],
+        ]
+    )
+    result = apply_keendns_intent(
+        intent=_APPLY_INTENT,
+        transport=transport,
+        live_dispatch=True,
+        backup_callback=lambda: None,
+    )
+    assert result.overall == "applied"
+    assert result.steps[0].ok is True
+    assert result.steps[0].status_ident == "Ndns::Client"
+    assert transport.dispatch_count == 2
+    assert any("continued poll round 1" in entry for entry in result.logs)
+
+
+def test_live_apply_continued_then_device_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "router_control.application.keendns_apply_service.time.sleep",
+        lambda _seconds: None,
+    )
+    transport = _LiveTransportContinuedSequence(
+        [
+            [{"parse": {"continued": True}}],
+            [
+                {
+                    "parse": {
+                        "status": [
+                            {
+                                "status": "error",
+                                "ident": "Ndns::Client",
+                                "message": "Name is not available",
+                            }
+                        ]
+                    }
+                }
+            ],
+        ]
+    )
+    result = apply_keendns_intent(
+        intent=_APPLY_INTENT,
+        transport=transport,
+        live_dispatch=True,
+        backup_callback=lambda: None,
+    )
+    assert result.overall == "failed"
+    assert result.steps[0].ok is False
+    assert result.steps[0].status_ident == "Ndns::Client"
+    assert result.errors == ("service.op_dispatch_failed",)
+    assert any("Name is not available" in entry for entry in result.logs)
+    assert transport.dispatch_count == 2
+
+
+def test_live_apply_continued_polling_exhausted(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "router_control.application.keendns_apply_service.time.sleep",
+        lambda _seconds: None,
+    )
+    continued_ack = [{"parse": {"continued": True}}]
+    transport = _LiveTransportContinuedSequence([continued_ack])
+    result = apply_keendns_intent(
+        intent=_APPLY_INTENT,
+        transport=transport,
+        live_dispatch=True,
+        backup_callback=lambda: None,
+    )
+    assert result.overall == "failed"
+    assert result.steps[0].ok is False
+    assert result.errors == ("service.op_dispatch_failed",)
+    assert any("dispatch continued polling exhausted" in entry for entry in result.logs)
+    # 1 initial dispatch + _KEENDNS_CONTINUATION_MAX_ROUNDS (20) polls
+    assert transport.dispatch_count == 21

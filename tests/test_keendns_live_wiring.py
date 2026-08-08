@@ -15,6 +15,7 @@ from router_control_host.auth import mint_hub_admin_cookie
 from router_control_host.wifi_live_transport import LiveIdentityTupleMismatchError, WifiLiveSession
 
 _API = "/api/router-control/v1/keendns/apply"
+_OBSERVE_API = "/api/router-control/v1/keendns/observe"
 _COMPONENT_DIGEST = "a" * 64
 _FINGERPRINT_DIGEST = "b" * 64
 _VALID_SSH_HOST_KEY_SHA256 = "SHA256:lU1D6ChVB8XLfHxoIFZeA8RPpPf67zA+qwYX0ARyCmM"
@@ -27,12 +28,38 @@ _LIVE_CONN: dict[str, str] = {
     "source_address": "192.168.2.10",
 }
 
+_ROUTER_ID = "router-lab-keendns"
+
+
+def _seed_live_router(client) -> None:
+    store = client.test_app.state.host.runtime.store
+    site_id = store.create_site(display_name="KeenDNS Live Wiring Lab")
+    store.enroll_router(
+        site_id=site_id,
+        display_name="KeenDNS Lab Router",
+        vendor="Netcraze",
+        model="NC-1812",
+        identity_fingerprint="digest:keendns-live-wiring",
+        host=_LIVE_CONN["host"],
+        port=22,
+        kind="ssh_tunnel",
+        source_address=_LIVE_CONN["source_address"],
+        router_id=_ROUTER_ID,
+    )
+    store.set_endpoint_ssh_host_key(
+        _ROUTER_ID,
+        _LIVE_CONN["ssh_host_key_sha256"],
+        "ssh-ed25519",
+        "operator_supplied",
+    )
+
 _APPLY_BODY = {
     "intent_kind": "book",
     "name": "sample-name",
     "domain": "netcraze.pro",
     "mode": "auto",
     "confirm_live_apply": True,
+    "router_id": _ROUTER_ID,
     **_LIVE_CONN,
 }
 
@@ -94,6 +121,7 @@ def keendns_live_client(tmp_path, monkeypatch: pytest.MonkeyPatch):
     with TestClient(app) as client:
         client.cookies.set("hub_admin", mint_hub_admin_cookie())
         client.test_app = app
+        _seed_live_router(client)
         yield client
 
 
@@ -198,3 +226,65 @@ def test_keendns_live_apply_tuple_match_continues(
     assert body["backup_content_sha256"] == "deadbeef" * 8
     assert backup_calls == ["backup"]
     assert session_transport.dispatched is True
+
+
+class _ObserveLiveTransport:
+    def execute_rci_parse(self, cli_command: str) -> dict[str, object]:
+        if cli_command == "show acme":
+            return {
+                "acme": {
+                    "default-domain": "abc123.netcraze.io",
+                    "default-domain-certificate-valid": True,
+                }
+            }
+        if cli_command == "show ndns":
+            return {"name": "", "domain": "", "access": ""}
+        if cli_command == "ndns get-booked":
+            return {"continued": True, "message": "No booking found"}
+        return {}
+
+
+def test_keendns_observe_live_path_gate_a_and_transport(
+    keendns_live_client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_transport = _ObserveLiveTransport()
+
+    @contextmanager
+    def _mock_live(**_kwargs: object):
+        tunnel = MagicMock()
+        yield WifiLiveSession(transport=session_transport, tunnel=tunnel)
+
+    monkeypatch.setattr(
+        "router_control_host.keendns_observe_routes.open_wifi_live_session",
+        _mock_live,
+    )
+    monkeypatch.setattr(
+        "router_control_host.keendns_observe_routes.is_win32_live_capable",
+        lambda: True,
+    )
+
+    resp = keendns_live_client.post(
+        _OBSERVE_API,
+        json=_LIVE_CONN,
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["default_fqdn"] == "abc123.netcraze.io"
+    assert body["ssl_valid"] is True
+    assert body["name_reservation"] == "not_reserved"
+    assert body["certification_eligible"] is False
+
+
+def test_keendns_observe_live_gate_a_closed_returns_503(
+    keendns_live_client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    keendns_live_client.test_app.state.host.gate_a_certification = None
+    monkeypatch.setattr(
+        "router_control_host.keendns_observe_routes.is_win32_live_capable",
+        lambda: True,
+    )
+    resp = keendns_live_client.post(_OBSERVE_API, json=_LIVE_CONN)
+    assert resp.status_code == 503
+    assert resp.json()["error"]["code"] == "keendns.gate_a_required"

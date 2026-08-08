@@ -109,6 +109,36 @@ def test_no_apply_keendns_service_export() -> None:
     assert not hasattr(module, "execute_sealed_rci_write")
 
 
+def test_keendns_observe_fake_adapter(client) -> None:
+    resp = client.post(
+        f"{_API}/keendns/observe",
+        json={},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["default_fqdn"] is None
+    assert body["ssl_valid"] is None
+    assert body["name_reservation"] == "not_reserved"
+    assert body["access_mode"] == "unknown"
+    assert body["certification_eligible"] is False
+
+
+def test_keendns_status_empty_still_no_io(client) -> None:
+    resp = client.post(f"{_API}/keendns/status", json={})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["feature_availability"] == "unknown"
+    assert body["name_reservation"] == "unknown"
+    assert body["access_mode"] == "unknown"
+
+
+def test_openapi_has_observe_route(client) -> None:
+    resp = client.get("/openapi.json")
+    assert resp.status_code == 200
+    paths = resp.json()["paths"]
+    assert f"{_API}/keendns/observe" in paths
+
+
 def test_keendns_preview_service_has_no_execute_import() -> None:
     path = Path("router_control/application/keendns_preview_service.py")
     source = path.read_text(encoding="utf-8")

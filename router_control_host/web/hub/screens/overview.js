@@ -993,6 +993,26 @@ export function render(container, ctx) {
       variant: 'overview',
       title: 'Домен',
       navigate: (routeId) => ctx.navigate(routeId),
+      getRouterDefaultFqdn: () => {
+        const fromObserve = model?.keendnsObserve?.default_fqdn;
+        if (typeof fromObserve === 'string' && fromObserve.trim()) {
+          return fromObserve.trim();
+        }
+        const fromSection = model?.domain?.defaultFqdn;
+        if (typeof fromSection === 'string' && fromSection.trim()) {
+          return fromSection.trim();
+        }
+        return null;
+      },
+      getRouterSslValid: () => {
+        if (typeof model?.keendnsObserve?.ssl_valid === 'boolean') {
+          return model.keendnsObserve.ssl_valid;
+        }
+        if (typeof model?.domain?.sslValid === 'boolean') {
+          return model.domain.sslValid;
+        }
+        return null;
+      },
       getName: () => domainDraftName,
       setName: (value) => {
         domainDraftName = value;

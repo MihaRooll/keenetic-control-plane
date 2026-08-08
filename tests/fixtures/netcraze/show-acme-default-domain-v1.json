@@ -1,0 +1,10 @@
+{
+  "_comment": "Sealed live RO sample 2026-08-08 NC-1812 expendable; public default-domain only; no secrets",
+  "acme": {
+    "server-enabled": true,
+    "ndns-domain": "",
+    "ndns-domain-acme": false,
+    "default-domain": "1880927356f927ebc1b7fa92.netcraze.io",
+    "default-domain-certificate-valid": true
+  }
+}

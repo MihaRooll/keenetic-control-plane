@@ -727,6 +727,18 @@ class KeenDnsStatusResponse(_StrictModel):
     notes: list[str]
 
 
+class KeenDnsObserveResponse(_StrictModel):
+    default_fqdn: str | None = None
+    ssl_valid: bool | None = None
+    booked_name: str | None = None
+    booked_domain: str | None = None
+    booked_fqdn: str | None = None
+    access_mode: KeenDnsAccessMode
+    name_reservation: KeenDnsNameReservation
+    notes: list[str]
+    certification_eligible: Literal[False]
+
+
 class KeenDnsSealedOpPreview(_StrictModel):
     operation: str
     command_text: str

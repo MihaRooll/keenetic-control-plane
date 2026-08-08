@@ -138,7 +138,7 @@
 
 | Статус | Проверено живьём |
 |---|---|
-| `КОД ГОТОВ` — apply path offline (`POST /keendns/apply`, UI «Опубликовать», allowlist, planner DNS-label SSOT); live cloud registration **не** подтверждена | нет |
+| `ЖИВЬЁМ` (2026-08-08 expendable) — Overview shows automatic FQDN from `POST /keendns/observe` (`show acme`); personal book/drop via `POST /keendns/apply` with continued-poll; live evidence `rc39d9d0.netcraze.pro`. Toast remains dispatch-honest (not a third-party DNS probe). Default template `promo` may already be taken | да |
 
 **Living goal (2026-08-08):** Overview card must stay **compact** — name + suffix + publish only; cut list and router CLI map in [`OPERATOR_DOMAIN_OVERVIEW_GOAL.md`](OPERATOR_DOMAIN_OVERVIEW_GOAL.md).
 
@@ -260,7 +260,7 @@
 | R-5 | Гостевая сеть выключена по умолчанию | ЖИВЬЁМ — переключатель «Гостевая сеть» рендерится из реального состояния после назначения точки доступа (§M-50) |
 | R-6 | Имя гостевой сети: общее по умолчанию, своё при необходимости | ЖИВЬЁМ — поле «Имя сети» редактируется на главном экране (§M-50); честно не проверено: реальное сохранение отдельного имени под конкретный проект (не тестировалось на этой сессии) |
 | R-7 | VPN: сетка профилей с честным статусом каждого | ЖИВЬЁМ — три состояния («Работает» / «Отвечает, не весь трафик» / «Не подключён»); маршрутизация через туннель live-proven; проверено браузером 2026-08-05 |
-| R-8 | Домен: вписал или выбрал — опубликовано (гейт одобрен standing) | `КОД ГОТОВ` — offline apply + UI one-confirm; live cloud booking **не** device-proven |
+| R-8 | Домен: вписал или выбрал — опубликовано (гейт одобрен standing) | `ЖИВЬЁМ` 2026-08-08 — observe default `*.netcraze.io` + apply book/drop continued-poll (`rc39d9d0.netcraze.pro`); see [`OPERATOR_DOMAIN_OVERVIEW_GOAL.md`](OPERATOR_DOMAIN_OVERVIEW_GOAL.md) |
 | R-9 | Ничего лишнего на главном экране | ЖИВЬЁМ + **проверено браузером** 2026-08-05 — с главного экрана убраны `ip global`, `uplink`, «рукопожатие» и сырое `AmneziaWG`; техническая глубина сохранена на экспертном экране VPN |
 | R-10 | Анимации спокойнее | `КОД ГОТОВ` — вёрстка проверена браузером, но «плавность на ощупь» по статичным снимкам оценить нельзя; ждёт приёмки оператором |
 | R-11 | Клампинг TCP MSS | `ЖИВЬЁМ` — применяется и снимается на устройстве; эффект для captive-проверки не достигнут, зафиксировано честно |
@@ -275,7 +275,7 @@
 
 - Пароли, приватные и предварительные ключи — **только** как `credential_ref`. Никогда текстом в коде, документации, фикстурах, логах и артефактах. Прямая просьба записать пароль в документацию не отменяет это правило.
 - «VPN работает» — только при положительном `last-handshake` или `rxbytes > 0`.
-- Публикация домена в облаке — Human Gate **APPROVED standing 2026-08-08** на expendable; агенты не переспрашивают; apply path **КОД ГОТОВ** offline (`POST /keendns/apply`); live cloud registration **не** подтверждена.
+- Публикация домена в облаке — Human Gate **APPROVED standing 2026-08-08** на expendable; агенты не переспрашивают; R-8 **ЖИВЬЁМ** 2026-08-08 (`POST /keendns/observe` + apply continued-poll book/drop).
 - Первое подтверждение отпечатка ключа роутера человеком — обязательно.
 - Живые изменения только в рамках разрешённого конверта лабораторного роутера; при несовпадении зафиксированной идентичности — отказ.
 - Не заявлять готовность, пока критерий приёмки не выполнен и не проверен.

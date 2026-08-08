@@ -42,6 +42,7 @@ ALLOWED_KEENDNS_PATHS = (
     "keendns/status",
     "keendns/preview",
     "keendns/apply",
+    "keendns/observe",
 )
 
 HOST_HTTP_UNKNOWN_REASON_CODES = (
@@ -581,7 +582,7 @@ console.log(JSON.stringify({ validation, url }));
 
 
 def test_domain_keendns_paths_allowed_and_dispatch_forbidden() -> None:
-    """D-DOM-7: keendns/status, preview, apply; без book/drop/update путей."""
+    """D-DOM-7: keendns/status, preview, apply, observe; без book/drop/update путей."""
     combined = DOMAIN_MODEL_JS.read_text(encoding="utf-8") + DOMAIN_SCREEN_JS.read_text(
         encoding="utf-8",
     )
@@ -589,6 +590,7 @@ def test_domain_keendns_paths_allowed_and_dispatch_forbidden() -> None:
         assert path in combined, f"missing allowed path: {path}"
     for forbidden in FORBIDDEN_KEENDNS_DISPATCH_PATHS:
         assert forbidden not in combined, f"forbidden dispatch path: {forbidden}"
+    assert "fetchKeendnsObserve" in DOMAIN_MODEL_JS.read_text(encoding="utf-8")
 
 
 PROBE_FACT_MATRIX: tuple[tuple[dict[str, object], str, str | None], ...] = (

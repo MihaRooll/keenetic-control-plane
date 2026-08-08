@@ -1,16 +1,23 @@
-"""KeenDNS/CrazeDNS read-only status classification (injected raw only; no network I/O)."""
+"""KeenDNS/CrazeDNS read-only status classification and live observe."""
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 from router_control.adapters.netcraze.ndns_probe import (
+    GET_BOOKED_COMMAND,
     NDNS_DOCS_SOURCED_ALTERNATE_LABELS,
     NDNS_SEALED_COMPONENT_ID,
+    SHOW_ACME_COMMAND,
+    SHOW_NDNS_COMMAND,
+    AcmeShowParseStatus,
     ComponentsParseStatus,
+    NdnsBookedParseStatus,
+    NdnsShowParseStatus,
     ndns_component_present,
     parse_components_inventory,
     parse_get_booked,
+    parse_show_acme,
     parse_show_ndns,
 )
 
@@ -19,6 +26,10 @@ NameReservation = Literal["reserved", "not_reserved", "unknown"]
 AccessMode = Literal["auto", "cloud", "direct", "unknown"]
 
 _DISCOVERY_DOC = "docs/OPERATOR_KEENDNS_DISCOVERY.md"
+
+
+class KeenDnsObserveTransport(Protocol):
+    def execute_rci_parse(self, cli_command: str) -> Any: ...
 
 
 def classify_keendns_status(
@@ -64,23 +75,55 @@ def classify_keendns_status(
         elif present is True:
             notes.append(
                 f"components parse OK and sealed id {NDNS_SEALED_COMPONENT_ID!r} present "
-                f"(feature availability beyond component install not device-confirmed)"
+                "(feature availability beyond component install not device-confirmed)"
             )
     elif components_raw:
         notes.append("components inventory unparsed or unfamiliar → feature_availability unknown")
 
     # D-5: no sealed disabled sample in repo — never emit disabled from empty/unparsed.
     name_reservation: NameReservation = "unknown"
-    if booked.get("parse_status") != "unknown":
+    show_status = show.get("parse_status")
+    if show_status == NdnsShowParseStatus.OK.value:
+        name_reservation = "reserved"
+        notes.append(
+            f"show ndns sealed parse: personal name/domain present ({_DISCOVERY_DOC} §3)"
+        )
+    elif show_status == NdnsShowParseStatus.NOT_RESERVED.value:
+        name_reservation = "not_reserved"
+        notes.append(
+            f"show ndns sealed parse: empty personal name/domain ({_DISCOVERY_DOC} §3)"
+        )
+    elif show.get("parse_status") != "unknown":
+        notes.append(
+            "show ndns output present but no sealed reservation parse shape "
+            f"({_DISCOVERY_DOC} §3)"
+        )
+
+    booked_status = booked.get("parse_status")
+    if booked_status == NdnsBookedParseStatus.OK.value:
+        if name_reservation == "unknown":
+            name_reservation = "reserved"
+        notes.append(f"get-booked sealed parse returned booked FQDN ({_DISCOVERY_DOC} §3)")
+    elif booked_status == NdnsBookedParseStatus.NOT_RESERVED.value:
+        if name_reservation == "unknown":
+            name_reservation = "not_reserved"
+        notes.append(
+            f"get-booked indicates no cloud booking — not treated as FQDN ({_DISCOVERY_DOC} §3)"
+        )
+    elif get_booked_raw and booked_status not in ("unknown",):
         notes.append(
             "get-booked output present but no sealed reservation parse shape "
             f"({_DISCOVERY_DOC} §3)"
         )
 
     access_mode: AccessMode = "unknown"
-    if show.get("parse_status") != "unknown":
+    sealed_access = show.get("access_mode")
+    if isinstance(sealed_access, str) and sealed_access in {"auto", "cloud", "direct"}:
+        access_mode = sealed_access  # type: ignore[assignment]
+        notes.append(f"show ndns access mode from sealed sample ({_DISCOVERY_DOC} §3)")
+    elif show_status not in (NdnsShowParseStatus.UNKNOWN.value,):
         notes.append(
-            "show ndns output present but no sealed access-mode parse shape "
+            "show ndns output present but access-mode not sealed "
             f"({_DISCOVERY_DOC} §3)"
         )
 
@@ -92,9 +135,97 @@ def classify_keendns_status(
     }
 
 
+def _compose_booked_fqdn(name: str | None, domain: str | None) -> str | None:
+    if name and domain:
+        return f"{name}.{domain}"
+    return None
+
+
+def run_keendns_observe(*, transport: KeenDnsObserveTransport) -> dict[str, Any]:
+    """Read-only live observe: show acme + show ndns (+ optional get-booked honesty)."""
+    notes: list[str] = [
+        "live read-only observe via show acme + show ndns",
+        f"sealed shapes per {_DISCOVERY_DOC} §3",
+    ]
+
+    try:
+        acme_raw = transport.execute_rci_parse(SHOW_ACME_COMMAND)
+    except Exception as exc:
+        notes.append(f"show acme transport error: {exc!s}")
+        acme_raw = None
+
+    try:
+        ndns_raw = transport.execute_rci_parse(SHOW_NDNS_COMMAND)
+    except Exception as exc:
+        notes.append(f"show ndns transport error: {exc!s}")
+        ndns_raw = None
+
+    booked_raw: Any | None = None
+    try:
+        booked_raw = transport.execute_rci_parse(GET_BOOKED_COMMAND)
+    except Exception as exc:
+        notes.append(f"get-booked optional probe skipped or failed: {exc!s}")
+
+    acme = parse_show_acme(acme_raw)
+    show = parse_show_ndns(ndns_raw)
+    booked = parse_get_booked(booked_raw)
+
+    default_fqdn: str | None = None
+    ssl_valid: bool | None = None
+    if acme.get("parse_status") == AcmeShowParseStatus.OK.value:
+        default_domain = acme.get("default_domain")
+        if isinstance(default_domain, str) and default_domain.strip():
+            default_fqdn = default_domain.strip().lower()
+        cert = acme.get("default_domain_certificate_valid")
+        if isinstance(cert, bool):
+            ssl_valid = cert
+    elif acme.get("parse_status") != AcmeShowParseStatus.UNKNOWN.value:
+        notes.append("show acme present but default-domain not sealed-parseable")
+
+    booked_name = show.get("name") if isinstance(show.get("name"), str) else None
+    booked_domain = show.get("domain") if isinstance(show.get("domain"), str) else None
+    booked_fqdn = _compose_booked_fqdn(booked_name, booked_domain)
+
+    if booked_fqdn is None and booked.get("parse_status") == NdnsBookedParseStatus.OK.value:
+        candidate = booked.get("booked_fqdn")
+        if isinstance(candidate, str) and candidate.strip():
+            booked_fqdn = candidate.strip().lower()
+
+    name_reservation: NameReservation = "unknown"
+    show_status = show.get("parse_status")
+    if show_status == NdnsShowParseStatus.OK.value or booked_fqdn:
+        name_reservation = "reserved"
+    elif show_status == NdnsShowParseStatus.NOT_RESERVED.value:
+        name_reservation = "not_reserved"
+    elif booked.get("parse_status") == NdnsBookedParseStatus.NOT_RESERVED.value:
+        name_reservation = "not_reserved"
+
+    access_mode: AccessMode = "unknown"
+    sealed_access = show.get("access_mode")
+    if isinstance(sealed_access, str) and sealed_access in {"auto", "cloud", "direct"}:
+        access_mode = sealed_access  # type: ignore[assignment]
+
+    if default_fqdn is None:
+        notes.append("default automatic CrazeDNS FQDN not read — never invented")
+
+    return {
+        "default_fqdn": default_fqdn,
+        "ssl_valid": ssl_valid,
+        "booked_name": booked_name,
+        "booked_domain": booked_domain,
+        "booked_fqdn": booked_fqdn,
+        "access_mode": access_mode,
+        "name_reservation": name_reservation,
+        "notes": notes,
+        "certification_eligible": False,
+    }
+
+
 __all__ = [
     "AccessMode",
     "FeatureAvailability",
+    "KeenDnsObserveTransport",
     "NameReservation",
     "classify_keendns_status",
+    "run_keendns_observe",
 ]

@@ -8,7 +8,7 @@
 | Scope | Greenfield KeenDNS/CrazeDNS discovery — documentation-sourced candidate write-shape only; **no** live cloud booking |
 | Status | DOCUMENTATION-SOURCED candidate — **NOT** device-certified; does **not** set `write_shapes_registered=true`; does **not** imply WriteCertified |
 | Gates | A open ReadOnlyCertified (unchanged); B `completed_failed`; C/D **closed**; **not WriteCertified**; `write_shapes_registered` remains **false** |
-| Next | External/cloud write on **expendable lab** = **standing authorized 2026-08-08** — `POST /keendns/apply` shipped offline; live RO on expendable lab next. Non-expendable cloud write still needs a separate packet. WriteCertified / `write_shapes_registered` remain false until certified. **Overview Domain card goal (compact name+publish):** [`OPERATOR_DOMAIN_OVERVIEW_GOAL.md`](OPERATOR_DOMAIN_OVERVIEW_GOAL.md) — living operator ask + command surface; do not re-grow clutter. |
+| Next | External/cloud write on **expendable lab** = **standing authorized 2026-08-08** — `POST /keendns/apply` shipped offline; **`POST /keendns/observe`** live RO (`show acme` + `show ndns`) shipped for Overview default FQDN (2026-08-08). Non-expendable cloud write still needs a separate packet. WriteCertified / `write_shapes_registered` remain false until certified. **Overview Domain card goal:** [`OPERATOR_DOMAIN_OVERVIEW_GOAL.md`](OPERATOR_DOMAIN_OVERVIEW_GOAL.md) wave 2 — queried default FQDN + personal book via apply. |
 
 ---
 
@@ -27,11 +27,11 @@ Discovery is **classification only** — it does **not** infer cloud account sta
 | Item | State |
 |---|---|
 | UI `#config` KeenDNS section | Expert stub «в разработке» unchanged ([`OPERATOR_ROUTER_CONFIG_UI.md`](OPERATOR_ROUTER_CONFIG_UI.md)) |
-| Simple-mode step 5 | **Status + preview + apply** via `POST /keendns/status`, `/keendns/preview`, `/keendns/apply` ([`OPERATOR_SIMPLE_MODE.md`](OPERATOR_SIMPLE_MODE.md)) |
-| Domain model / entity / intent | Preview + apply intent (`book`/`drop`); classify in `keendns_observe.py` + parsers in `ndns_probe.py` |
-| Parser / typed op / WRITE_ALLOWLIST | Probe parsers + preview planner + `is_ndns_parse_body` OR arm; apply service dispatches sealed book/drop |
-| Cloud booking (`book-name` / `drop-name` / `get-update`) | **`book-name`/`drop-name` apply HTTP shipped** (2026-08-08 cycle); `get-update` **not** allowlisted; live lab RO pending |
-| Live RO ndns capture | **None** in current lab session |
+| Simple-mode step 5 | **Status + observe + preview + apply** via `POST /keendns/status`, `/keendns/observe`, `/keendns/preview`, `/keendns/apply` ([`OPERATOR_SIMPLE_MODE.md`](OPERATOR_SIMPLE_MODE.md)) |
+| Domain model / entity / intent | Preview + apply intent (`book`/`drop`); classify in `keendns_observe.py` + parsers in `ndns_probe.py` (`parse_show_acme`, `parse_show_ndns`, `parse_get_booked`) |
+| Parser / typed op / WRITE_ALLOWLIST | Probe parsers + preview planner + `is_ndns_parse_body` OR arm; apply service dispatches sealed book/drop; **sealed RO samples:** `show acme` default-domain + SSL validity; empty `show ndns` personal name/domain |
+| Cloud booking (`book-name` / `drop-name` / `get-update`) | **`book-name`/`drop-name` apply HTTP shipped** (2026-08-08 cycle); `get-update` **not** allowlisted; live observe RO shipped; live cloud book **not** device-proven |
+| Live RO ndns capture | **`show acme` + `show ndns`** via `POST /keendns/observe` (Gate A + live session); fixture `tests/fixtures/netcraze/show-acme-default-domain-v1.json` |
 | WriteCertified / `write_shapes_registered` | **NOT claimed**; remains **false** |
 
 ---
@@ -49,7 +49,8 @@ Discovery is **classification only** — it does **not** infer cloud account sta
 | `ndns drop-name <name> <domain>` | Release domain registration |
 | `ndns get-booked` | List booked names |
 | `ndns get-update [<access>]` | Trigger cloud update / refresh |
-| `show ndns` | Show current ndns state |
+| `show ndns` | Show current ndns state (personal booked `name`/`domain` when present; empty until book) |
+| `show acme` / `GET /rci/show/acme` | **Device-observed 2026-08-08 NC-1812:** automatic device FQDN in `default-domain` (e.g. `*.netcraze.io`); SSL hint `default-domain-certificate-valid`; personal ACME target in `ndns-domain` when booked |
 
 **Modes:** `auto` | `cloud` | `direct`
 

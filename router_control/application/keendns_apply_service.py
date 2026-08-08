@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 
+import time
+
 from collections.abc import Callable, Mapping
 
 from dataclasses import dataclass
@@ -16,7 +18,10 @@ from typing import Any, Literal, Protocol
 
 
 
-from router_control.adapters.netcraze.allowlist import COMPONENTS_LIST, build_sealed_parse_body
+from router_control.adapters.netcraze.allowlist import (
+    COMPONENTS_LIST,
+    build_sealed_parse_body,
+)
 
 from router_control.adapters.netcraze.ndns_probe import ndns_component_present, parse_components_inventory
 
@@ -72,6 +77,12 @@ _MSG_LIVE_DISPATCH_DISABLED = (
 )
 
 _MSG_OP_DISPATCH_FAILED = ERROR_CODE_OP_DISPATCH_FAILED
+
+# Cloud ndns book/drop often returns parse.continued for several seconds.
+# Live lab 2026-08-08: successful book needed ~9 rounds; global transport
+# MAX_CONTINUATION_ROUNDS=5 is too low for this cloud path.
+_KEENDNS_CONTINUATION_MAX_ROUNDS = 20
+_CONTINUATION_POLL_SLEEP_SECONDS = 0.75
 
 
 
@@ -334,6 +345,64 @@ def _ack_dispatch_unverified(ack: Any) -> bool:
     return not _ack_has_affirmative_success(ack)
 
 
+def _ack_is_continued_only(ack: Any) -> bool:
+    if _ack_has_affirmative_success(ack) or _ack_has_error_status(ack):
+        return False
+    if not isinstance(ack, list):
+        return False
+    for item in ack:
+        if not isinstance(item, dict):
+            continue
+        parse_block = item.get("parse")
+        if isinstance(parse_block, dict) and parse_block.get("continued") is True:
+            return True
+    return False
+
+
+def _error_message_from_ack(ack: Any) -> str | None:
+    if not isinstance(ack, list):
+        return None
+    for item in ack:
+        if not isinstance(item, dict):
+            continue
+        parse_block = item.get("parse")
+        if not isinstance(parse_block, dict):
+            continue
+        status_entries = parse_block.get("status")
+        if not isinstance(status_entries, list):
+            continue
+        for entry in status_entries:
+            if not isinstance(entry, dict):
+                continue
+            if entry.get("status") != "error":
+                continue
+            message = entry.get("message")
+            if isinstance(message, str) and message.strip():
+                return message.strip()
+    return None
+
+
+def _poll_dispatch_ack_until_terminal(
+    *,
+    transport: object,
+    body: bytes,
+    op_name: str,
+    logs: list[str],
+) -> Any:
+    ack = transport.execute_sealed_rci_write(SealedRciWriteRequest(body=body))
+    if not _ack_is_continued_only(ack):
+        return ack
+
+    for poll_round in range(1, _KEENDNS_CONTINUATION_MAX_ROUNDS + 1):
+        time.sleep(_CONTINUATION_POLL_SLEEP_SECONDS)
+        ack = transport.execute_sealed_rci_write(SealedRciWriteRequest(body=body))
+        logs.append(f"continued poll round {poll_round} for {op_name}")
+        if not _ack_is_continued_only(ack):
+            return ack
+
+    return ack
+
+
 def _probe_ndns_component_present(transport: object) -> bool | None:
 
     read_json = getattr(transport, "read_json", None)
@@ -444,7 +513,12 @@ def _dispatch_plan(
 
         try:
 
-            ack = transport.execute_sealed_rci_write(SealedRciWriteRequest(body=body))
+            ack = _poll_dispatch_ack_until_terminal(
+                transport=transport,
+                body=body,
+                op_name=op_name,
+                logs=logs,
+            )
 
         except KeenDnsApplyServiceError:
 
@@ -483,10 +557,12 @@ def _dispatch_plan(
             return tuple(steps), tuple(errors)
 
         if _ack_has_error_status(ack) or _ack_dispatch_unverified(ack):
+            device_message = _error_message_from_ack(ack)
             failure = KeenDnsApplyStep(
                 op=op_name,
                 ok=False,
                 command_redacted=command,
+                status_ident=_status_ident_from_ack(ack),
                 error=_MSG_OP_DISPATCH_FAILED,
             )
             if intent_recorded and trail is not None:
@@ -497,7 +573,12 @@ def _dispatch_plan(
             steps.append(failure)
             errors.append(_MSG_OP_DISPATCH_FAILED)
             if _ack_has_error_status(ack):
-                logs.append(f"dispatch failed for {op_name}")
+                if device_message:
+                    logs.append(f"dispatch failed for {op_name}: {device_message}")
+                else:
+                    logs.append(f"dispatch failed for {op_name}")
+            elif _ack_is_continued_only(ack):
+                logs.append(f"dispatch continued polling exhausted for {op_name}")
             else:
                 logs.append(f"dispatch ack empty or unverified for {op_name}")
             return tuple(steps), tuple(errors)
