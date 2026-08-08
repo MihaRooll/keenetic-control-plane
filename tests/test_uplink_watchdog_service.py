@@ -219,7 +219,10 @@ def test_watchdog_reapply_records_audit_without_password(tmp_path, monkeypatch) 
 
     from router_control.domain.network_intents import UplinkIntent, UplinkMode, WifiBand
 
-    handle = UplinkWatchdogHandle(host=host)
+    handle = UplinkWatchdogHandle(
+        host=host,
+        backup_callback_factory=lambda _rid: (lambda: None),
+    )
     intent = UplinkIntent(
         mode=UplinkMode.WIFI_WAN,
         ssid=str(remembered["ssid"]),

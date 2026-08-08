@@ -211,15 +211,20 @@ def create_app(
         from router_control.application.vpn_watchdog_service import VpnWatchdogHandle
         from router_control.application.wifi_station_apply_service import WifiStationApplyTransport
 
-        from router_control_host.wireguard_apply_routes import build_vpn_watchdog_transport_factory
+        from router_control_host.wireguard_apply_routes import (
+            build_vpn_watchdog_backup_callback_factory,
+            build_vpn_watchdog_transport_factory,
+        )
 
         host = app.state.host
         transport_factory = build_vpn_watchdog_transport_factory(host)
+        backup_callback_factory = build_vpn_watchdog_backup_callback_factory(host)
         credential_resolver = host.wireguard_apply_credential_resolver
         vpn_watchdog = VpnWatchdogHandle(
             host,
             transport_factory=transport_factory,
             credential_resolver=credential_resolver,
+            backup_callback_factory=backup_callback_factory,
         )
         host.vpn_watchdog = vpn_watchdog
         vpn_watchdog.start()
@@ -242,11 +247,17 @@ def create_app(
             runner = host.host_probe_runner or DefaultHostProbeRunner()
             return runner.probe_internet(targets_profile="default").internet_reachable
 
+        from router_control_host.wifi_station_apply_routes import (
+            build_uplink_watchdog_backup_callback_factory,
+        )
+
+        uplink_backup_callback_factory = build_uplink_watchdog_backup_callback_factory(host)
         uplink_watchdog = UplinkWatchdogHandle(
             host,
             observe_transport_factory=_uplink_observe_factory,
             apply_transport_factory=_uplink_apply_factory,
             credential_resolver=host.wifi_station_apply_credential_resolver,
+            backup_callback_factory=uplink_backup_callback_factory,
             host_internet_probe=_uplink_host_internet_probe,
         )
         host.uplink_watchdog = uplink_watchdog

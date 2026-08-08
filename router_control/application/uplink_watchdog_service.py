@@ -15,6 +15,7 @@ from router_control.application.internet_status_observe import (
     run_internet_status_observe,
 )
 from router_control.application.router_apply_lock import run_with_router_apply_lock
+from router_control.adapters.netcraze.startup_backup import StartupBackupError
 from router_control.application.wifi_station_apply_service import (
     WifiStationApplyTransport,
     apply_wifi_station_intent,
@@ -37,6 +38,8 @@ _BACKOFF_MAX_SECONDS = 600.0
 CredentialResolver = Callable[[str], str]
 ObserveTransportFactory = Callable[[str], InternetStatusTransport | None]
 ApplyTransportFactory = Callable[[str], WifiStationApplyTransport | None]
+BackupCallback = Callable[[], None]
+BackupCallbackFactory = Callable[[str], BackupCallback | None]
 # True = internet reachable (skip router SSH this cycle), False = unreachable
 # (escalate to router-side check), None = inconclusive (fall back to router-side
 # check, same as if no probe were wired at all).
@@ -122,6 +125,7 @@ class UplinkWatchdogHandle:
     observe_transport_factory: ObserveTransportFactory | None = None
     apply_transport_factory: ApplyTransportFactory | None = None
     credential_resolver: CredentialResolver | None = None
+    backup_callback_factory: BackupCallbackFactory | None = None
     host_internet_probe: HostInternetProbeFn | None = None
     _task: asyncio.Task[None] | None = field(default=None, init=False)
     _stop: asyncio.Event = field(default_factory=asyncio.Event, init=False)
@@ -297,29 +301,63 @@ class UplinkWatchdogHandle:
         remembered: dict[str, Any],
     ) -> None:
         credential_resolver = self._resolve_credentials()
+        intent_redacted = {
+            "router_id": router_id,
+            "ssid": remembered.get("ssid"),
+            "band": remembered.get("band"),
+            "credential_ref_id": remembered.get("credential_ref_id"),
+        }
+
+        def _audit_failure(
+            *,
+            error_message: str,
+            exception_type: str | None = None,
+        ) -> None:
+            self.host.runtime.store.try_append_sealed_apply_audit(
+                action="uplink_watchdog.reapply",
+                outcome="failed",
+                route="remembered-uplink",
+                verb="watchdog_reapply",
+                intent_redacted=intent_redacted,
+                router_id=router_id,
+                correlation_id=None,
+                result_payload=None,
+                outcome_snapshot=None,
+                error_message=error_message,
+                exception_type=exception_type,
+            )
 
         def _run() -> None:
-            result = apply_wifi_station_intent(
-                intent=intent,
-                transport=transport,
-                credential_resolver=credential_resolver,
-                live_dispatch=True,
-                compensate_on_failure=True,
-                idempotent=True,
-                uplink_settle_seconds=25.0,
-                store=self.host.runtime.store,
-            )
+            backup_cb: BackupCallback | None = None
+            if self.backup_callback_factory is not None:
+                backup_cb = self.backup_callback_factory(router_id)
+            if backup_cb is None:
+                _audit_failure(error_message="startup-config backup unavailable")
+                return
+            try:
+                result = apply_wifi_station_intent(
+                    intent=intent,
+                    transport=transport,
+                    credential_resolver=credential_resolver,
+                    live_dispatch=True,
+                    backup_callback=backup_cb,
+                    compensate_on_failure=True,
+                    idempotent=True,
+                    uplink_settle_seconds=25.0,
+                    store=self.host.runtime.store,
+                )
+            except StartupBackupError as exc:
+                _audit_failure(
+                    error_message="startup-config backup unavailable",
+                    exception_type=type(exc).__name__,
+                )
+                return
             self.host.runtime.store.try_append_sealed_apply_audit(
                 action="uplink_watchdog.reapply",
                 outcome=result.overall,
                 route="remembered-uplink",
                 verb="watchdog_reapply",
-                intent_redacted={
-                    "router_id": router_id,
-                    "ssid": remembered.get("ssid"),
-                    "band": remembered.get("band"),
-                    "credential_ref_id": remembered.get("credential_ref_id"),
-                },
+                intent_redacted=intent_redacted,
                 router_id=router_id,
                 correlation_id=None,
                 result_payload=result.to_dict(),

@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from router_control.application.router_apply_lock import run_with_router_apply_lock
+from router_control.adapters.netcraze.startup_backup import StartupBackupError
 from router_control.application.wireguard_apply_service import (
     WireguardApplyTransport,
     apply_wireguard_intent,
@@ -32,6 +33,8 @@ _BACKOFF_MAX_SECONDS = 600.0
 
 CredentialResolver = Callable[[str], str]
 TransportFactory = Callable[[str], WireguardApplyTransport | None]
+BackupCallback = Callable[[], None]
+BackupCallbackFactory = Callable[[str], BackupCallback | None]
 
 
 class WatchdogHost(Protocol):
@@ -50,6 +53,7 @@ class VpnWatchdogHandle:
     host: WatchdogHost
     transport_factory: TransportFactory | None = None
     credential_resolver: CredentialResolver | None = None
+    backup_callback_factory: BackupCallbackFactory | None = None
     _task: asyncio.Task[None] | None = field(default=None, init=False)
     _stop: asyncio.Event = field(default_factory=asyncio.Event, init=False)
     _states: dict[str, _RouterWatchState] = field(default_factory=dict, init=False)
@@ -228,23 +232,57 @@ class VpnWatchdogHandle:
         assignment: dict[str, Any],
     ) -> None:
         credential_resolver = self._resolve_credentials()
+        intent_redacted = {
+            "router_id": router_id,
+            "profile_id": assignment.get("profile_id"),
+            "wg_id": intent.wg_id,
+        }
+
+        def _audit_failure(
+            *,
+            error_message: str,
+            exception_type: str | None = None,
+        ) -> None:
+            self.host.runtime.store.try_append_sealed_apply_audit(
+                action="vpn_watchdog.reapply",
+                outcome="failed",
+                route="vpn-profiles",
+                verb="watchdog_reapply",
+                intent_redacted=intent_redacted,
+                router_id=router_id,
+                correlation_id=None,
+                result_payload=None,
+                outcome_snapshot=None,
+                error_message=error_message,
+                exception_type=exception_type,
+            )
 
         def _run() -> None:
-            result = apply_wireguard_intent(
-                intent=intent,
-                transport=transport,
-                credential_resolver=credential_resolver,
-            )
+            backup_cb: BackupCallback | None = None
+            if self.backup_callback_factory is not None:
+                backup_cb = self.backup_callback_factory(router_id)
+            if backup_cb is None:
+                _audit_failure(error_message="startup-config backup unavailable")
+                return
+            try:
+                result = apply_wireguard_intent(
+                    intent=intent,
+                    transport=transport,
+                    credential_resolver=credential_resolver,
+                    backup_callback=backup_cb,
+                )
+            except StartupBackupError as exc:
+                _audit_failure(
+                    error_message="startup-config backup unavailable",
+                    exception_type=type(exc).__name__,
+                )
+                return
             self.host.runtime.store.try_append_sealed_apply_audit(
                 action="vpn_watchdog.reapply",
                 outcome=result.overall,
                 route="vpn-profiles",
                 verb="watchdog_reapply",
-                intent_redacted={
-                    "router_id": router_id,
-                    "profile_id": assignment.get("profile_id"),
-                    "wg_id": intent.wg_id,
-                },
+                intent_redacted=intent_redacted,
                 router_id=router_id,
                 correlation_id=None,
                 result_payload=result.to_dict(),

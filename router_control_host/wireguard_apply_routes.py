@@ -341,6 +341,42 @@ class _EphemeralLiveWireguardTransport:
             return cast(dict[str, Any], session.transport.execute_rci_parse(cli_command))
 
 
+def _resolve_vpn_watchdog_connection_params(
+    host: HostState,
+    router_id: str,
+) -> WifiLiveConnectionParams | None:
+    cert = host.gate_a_certification
+    if cert is None:
+        return None
+    store = host.runtime.store
+    row = store.get_router(router_id)
+    if row is None:
+        return None
+    endpoint = store.get_primary_endpoint(router_id)
+    if endpoint is None:
+        return None
+    cred_id = str(row["credential_ref_id"] or "")
+    if not cred_id:
+        for cref in store.list_credential_refs(router_id):
+            if cref["revoked_at"] is None:
+                cred_id = str(cref["credential_ref_id"])
+                break
+    if not cred_id:
+        return None
+    source_raw = endpoint["source_address"]
+    if source_raw is None or not str(source_raw).strip():
+        return None
+    return connection_params_from_fields(
+        host=str(endpoint["host"]),
+        username=os.environ.get("RC_NETCRAZE_USERNAME", "admin"),
+        router_credential_ref_id=cred_id,
+        ssh_host_key_sha256=cert.ssh_host_key_fingerprint_sha256,
+        source_address=str(source_raw).strip(),
+        router_id=router_id,
+        store=store,
+    )
+
+
 def build_vpn_watchdog_transport_factory(
     host: HostState,
 ) -> Callable[[str], WireguardApplyTransport | None] | None:
@@ -373,33 +409,7 @@ def build_vpn_watchdog_transport_factory(
     vault = host.runtime.vault
 
     def _live(router_id: str) -> WireguardApplyTransport | None:
-        store = host.runtime.store
-        row = store.get_router(router_id)
-        if row is None:
-            return None
-        endpoint = store.get_primary_endpoint(router_id)
-        if endpoint is None:
-            return None
-        cred_id = str(row["credential_ref_id"] or "")
-        if not cred_id:
-            for cref in store.list_credential_refs(router_id):
-                if cref["revoked_at"] is None:
-                    cred_id = str(cref["credential_ref_id"])
-                    break
-        if not cred_id:
-            return None
-        source_raw = endpoint["source_address"]
-        if source_raw is None or not str(source_raw).strip():
-            return None
-        params = connection_params_from_fields(
-            host=str(endpoint["host"]),
-            username=os.environ.get("RC_NETCRAZE_USERNAME", "admin"),
-            router_credential_ref_id=cred_id,
-            ssh_host_key_sha256=cert.ssh_host_key_fingerprint_sha256,
-            source_address=str(source_raw).strip(),
-            router_id=router_id,
-            store=store,
-        )
+        params = _resolve_vpn_watchdog_connection_params(host, router_id)
         if params is None or not is_win32_live_capable():
             return None
         return _EphemeralLiveWireguardTransport(
@@ -408,6 +418,50 @@ def build_vpn_watchdog_transport_factory(
             certification=cert,
             router_id=router_id,
         )
+
+    return _live
+
+
+def build_vpn_watchdog_backup_callback_factory(
+    host: HostState,
+) -> Callable[[str], Callable[[], None] | None] | None:
+    """Gate-A-gated startup-config backup closure for env-gated VPN watchdog reapply."""
+    if host.wireguard_apply_transport_factory is not None:
+
+        def _injected(_router_id: str) -> Callable[[], None]:
+            return lambda: None
+
+        return _injected
+
+    allow_fake = host.adapter_mode == "fake" and (
+        host.allow_fake_mutations or os.environ.get("RC_ALLOW_FAKE_MUTATIONS") == "1"
+    )
+    if allow_fake:
+
+        def _fake(_router_id: str) -> Callable[[], None]:
+            return lambda: None
+
+        return _fake
+
+    if host.adapter_mode != "live" or not host.gate_a_open():
+        return None
+
+    vault = host.runtime.vault
+
+    def _live(router_id: str) -> Callable[[], None] | None:
+        params = _resolve_vpn_watchdog_connection_params(host, router_id)
+        if params is None or not is_win32_live_capable():
+            return None
+
+        def backup_callback() -> None:
+            cert = host.gate_a_certification
+            if cert is None or not cert.is_open:
+                raise StartupBackupError("Gate A certification required for watchdog backup")
+            with open_wifi_live_session(params=params, vault=vault) as session:
+                ensure_live_gate_a_tuple_match(session, cert)
+                backup_startup_config(tunnel=session.tunnel, certification=cert)
+
+        return backup_callback
 
     return _live
 
