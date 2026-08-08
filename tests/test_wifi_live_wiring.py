@@ -15,11 +15,13 @@ from router_control.adapters.netcraze.startup_backup import StartupBackupMetadat
 from router_control_host.app import create_app
 from router_control_host.auth import mint_hub_admin_cookie
 from router_control_host.wifi_live_transport import (
+    LiveIdentityTupleMismatchError,
     MissingLiveConnectionFieldError,
     WifiLiveConnectionParams,
     WifiLiveSession,
     connection_fields_present,
     connection_params_from_fields,
+    ensure_live_gate_a_tuple_match,
     is_win32_live_capable,
     map_wifi_live_transport_error,
     missing_connection_fields,
@@ -77,6 +79,31 @@ def _open_gate_a() -> GateACertification:
         gates_c_closed=True,
         gates_d_closed=True,
     )
+
+
+def _patch_tuple_match_ok(monkeypatch: pytest.MonkeyPatch, module: str) -> None:
+    monkeypatch.setattr(
+        f"{module}.ensure_live_gate_a_tuple_match",
+        lambda *_args, **_kwargs: None,
+    )
+
+
+def _matching_probe_evidence() -> dict[str, Any]:
+    return {
+        "model": "NC-1812",
+        "firmware_version": "5.01.C.1.0-0",
+        "build": "0-b592e619a0",
+        "bsp_build": "0-f371d30955",
+        "update_channel": "Main",
+        "region": "EA",
+        "component_set_digest": _COMPONENT_DIGEST,
+        "device_fingerprint": _FINGERPRINT_DIGEST,
+        "transport_security": "ssh_tunnel",
+        "ssh_host_key_algorithm": "ssh-ed25519",
+        "ssh_host_key_fingerprint_sha256": _VALID_SSH_HOST_KEY_SHA256,
+        "certification_eligible": True,
+        "identity_complete": True,
+    }
 
 
 def _intent_payload(**overrides: object) -> dict[str, object]:
@@ -305,6 +332,7 @@ def test_live_path_selected_with_mocked_session(
         "router_control_host.wifi_apply_routes.open_wifi_live_session",
         _mock_live,
     )
+    _patch_tuple_match_ok(monkeypatch, "router_control_host.wifi_apply_routes")
     monkeypatch.setattr(
         "router_control_host.wifi_apply_routes.is_win32_live_capable",
         lambda: True,
@@ -460,6 +488,7 @@ def test_live_teardown_backup_before_write_and_response_fields(
         "router_control_host.wifi_apply_routes.open_wifi_live_session",
         _mock_live,
     )
+    _patch_tuple_match_ok(monkeypatch, "router_control_host.wifi_apply_routes")
     monkeypatch.setattr(
         "router_control_host.wifi_apply_routes.is_win32_live_capable",
         lambda: True,
@@ -507,6 +536,7 @@ def test_live_teardown_backup_error_maps_code_and_skips_write(
         "router_control_host.wifi_apply_routes.open_wifi_live_session",
         _mock_live,
     )
+    _patch_tuple_match_ok(monkeypatch, "router_control_host.wifi_apply_routes")
     monkeypatch.setattr(
         "router_control_host.wifi_apply_routes.is_win32_live_capable",
         lambda: True,
@@ -551,6 +581,7 @@ def test_live_apply_backup_error_maps_code_and_skips_write(
         "router_control_host.wifi_apply_routes.open_wifi_live_session",
         _mock_live,
     )
+    _patch_tuple_match_ok(monkeypatch, "router_control_host.wifi_apply_routes")
     monkeypatch.setattr(
         "router_control_host.wifi_apply_routes.is_win32_live_capable",
         lambda: True,
@@ -567,6 +598,140 @@ def test_live_apply_backup_error_maps_code_and_skips_write(
     assert resp.status_code == 503
     assert resp.json()["error"]["code"] == "wifi.live_backup_unavailable"
     assert session_transport.write_commands == []
+
+
+def test_live_apply_identity_mismatch_returns_422_zero_writes(
+    wifi_client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    wifi_client.test_app.state.host.gate_a_certification = _open_gate_a()
+    session_transport = ApiFakeWifiTransport()
+    backup_calls: list[str] = []
+
+    @contextmanager
+    def _mock_live(**_kwargs: object):
+        tunnel = MagicMock()
+        yield WifiLiveSession(transport=session_transport, tunnel=tunnel)
+
+    def _raise_mismatch(*_args: object, **_kwargs: object) -> None:
+        raise LiveIdentityTupleMismatchError("tuple mismatch")
+
+    def _track_backup(**_kwargs: object) -> StartupBackupMetadata:
+        backup_calls.append("backup")
+        raise AssertionError("backup must not run on identity mismatch")
+
+    monkeypatch.setattr(
+        "router_control_host.wifi_apply_routes.open_wifi_live_session",
+        _mock_live,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wifi_apply_routes.ensure_live_gate_a_tuple_match",
+        _raise_mismatch,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wifi_apply_routes.is_win32_live_capable",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wifi_apply_routes.backup_startup_config",
+        _track_backup,
+    )
+
+    resp = wifi_client.post(
+        "/api/router-control/v1/wifi/apply",
+        json=_intent_payload(**_LIVE_CONN),
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "wifi.identity_mismatch"
+    assert backup_calls == []
+    assert session_transport.write_commands == []
+
+
+def test_live_teardown_identity_mismatch_returns_422_zero_writes(
+    wifi_client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    wifi_client.test_app.state.host.gate_a_certification = _open_gate_a()
+    session_transport = ApiFakeWifiTransport(readback=_baseline_readback())
+    backup_calls: list[str] = []
+
+    @contextmanager
+    def _mock_live(**_kwargs: object):
+        tunnel = MagicMock()
+        yield WifiLiveSession(transport=session_transport, tunnel=tunnel)
+
+    def _raise_mismatch(*_args: object, **_kwargs: object) -> None:
+        raise LiveIdentityTupleMismatchError("tuple mismatch")
+
+    def _track_backup(**_kwargs: object) -> StartupBackupMetadata:
+        backup_calls.append("backup")
+        raise AssertionError("backup must not run on identity mismatch")
+
+    monkeypatch.setattr(
+        "router_control_host.wifi_apply_routes.open_wifi_live_session",
+        _mock_live,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wifi_apply_routes.ensure_live_gate_a_tuple_match",
+        _raise_mismatch,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wifi_apply_routes.is_win32_live_capable",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wifi_apply_routes.backup_startup_config",
+        _track_backup,
+    )
+
+    resp = wifi_client.post(
+        "/api/router-control/v1/wifi/teardown",
+        json={
+            "ap_id": _TEST_AP,
+            "wpa_mode": "WPA2",
+            "confirm_live_teardown": True,
+            **_LIVE_CONN,
+        },
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "wifi.identity_mismatch"
+    assert backup_calls == []
+    assert session_transport.write_commands == []
+
+
+def test_ensure_live_gate_a_tuple_match_accepts_matching_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cert = _open_gate_a()
+    session = WifiLiveSession(transport=MagicMock(), tunnel=MagicMock())
+
+    class _FakeAdapter:
+        def probe_gate_a_evidence(self) -> dict[str, object]:
+            return _matching_probe_evidence()
+
+    monkeypatch.setattr(
+        "router_control.adapters.netcraze.adapter.NetcrazeReadOnlyAdapter",
+        lambda **_kwargs: _FakeAdapter(),
+    )
+    ensure_live_gate_a_tuple_match(session, cert)
+
+
+def test_ensure_live_gate_a_tuple_match_rejects_incomplete_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cert = _open_gate_a()
+    session = WifiLiveSession(transport=MagicMock(), tunnel=MagicMock())
+
+    class _FakeAdapter:
+        def probe_gate_a_evidence(self) -> dict[str, object]:
+            return {"model": "NC-1812"}
+
+    monkeypatch.setattr(
+        "router_control.adapters.netcraze.adapter.NetcrazeReadOnlyAdapter",
+        lambda **_kwargs: _FakeAdapter(),
+    )
+    with pytest.raises(LiveIdentityTupleMismatchError):
+        ensure_live_gate_a_tuple_match(session, cert)
 
 
 def test_incomplete_connection_params_rejected_422(

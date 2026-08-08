@@ -44,9 +44,12 @@ from router_control_host.errors import error_response, sealed_apply_trail_begin_
 from router_control_host.routes import API_PREFIX, _mutation_degraded, _ok_headers
 from router_control_host.state import HostState
 from router_control_host.wifi_live_transport import (
+    LiveIdentityTupleMismatchError,
     WifiLiveConnectionParams,
     connection_params_from_fields,
+    ensure_live_gate_a_tuple_match,
     gate_a_required_code,
+    identity_mismatch_code,
     incomplete_live_connection_fields,
     is_win32_live_capable,
     live_backup_unavailable_code,
@@ -342,6 +345,15 @@ def _live_backup_unavailable_error(request: Request, message: str) -> JSONRespon
     )
 
 
+def _identity_mismatch_error(request: Request) -> JSONResponse:
+    return error_response(
+        request,
+        status_code=422,
+        code=identity_mismatch_code(_LIVE_FAMILY_PREFIX),
+        message="live device identity does not match recorded Gate A tuple",
+    )
+
+
 def _live_platform_unsupported_error(request: Request) -> JSONResponse:
     return error_response(
         request,
@@ -490,6 +502,11 @@ def _dispatch_apply_live(
     backup_sha256: str | None = None
 
     with open_wifi_live_session(params=params, vault=vault) as session:
+        ensure_live_gate_a_tuple_match(
+            session,
+            cert,
+            router_id=body.router_id.strip() if body.router_id else None,
+        )
         transport = _LiveStationTransportWrapper(session.transport)
 
         def backup_callback() -> None:
@@ -543,6 +560,7 @@ def _dispatch_teardown_live(
     backup_sha256: str | None = None
 
     with open_wifi_live_session(params=params, vault=vault) as session:
+        ensure_live_gate_a_tuple_match(session, cert)
         meta = backup_startup_config(tunnel=session.tunnel, certification=cert)
         backup_basename = Path(meta.encrypted_locator).name
         backup_sha256 = meta.content_sha256
@@ -621,6 +639,8 @@ def wifi_station_apply(request: Request, body: WifiStationApplyBody) -> JSONResp
                 options=options,
                 sealed_apply_params=trail_params,
             )
+        except LiveIdentityTupleMismatchError:
+            return _identity_mismatch_error(request)
         except StartupBackupError as exc:
             return _live_backup_unavailable_error(request, str(exc))
         except SealedApplyTrailBeginError as exc:
@@ -791,6 +811,8 @@ def wifi_station_teardown(request: Request, body: WifiStationTeardownBody) -> JS
                 host_state=host,
                 sealed_apply_params=trail_params,
             )
+        except LiveIdentityTupleMismatchError:
+            return _identity_mismatch_error(request)
         except StartupBackupError as exc:
             return _live_backup_unavailable_error(request, str(exc))
         except SealedApplyTrailBeginError as exc:

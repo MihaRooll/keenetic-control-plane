@@ -80,6 +80,7 @@ from router_control_host.errors import (
 )
 from router_control_host.state import HostState
 from router_control_host.wifi_live_transport import (
+    LiveIdentityTupleMismatchError,
     is_win32_live_capable,
     map_wifi_live_transport_error,
 )
@@ -2604,6 +2605,8 @@ def activate_vpn_profile(
             )
         try:
             result = run_with_router_apply_lock(lock_key, _dispatch_activate)
+        except LiveIdentityTupleMismatchError:
+            return wg_routes._identity_mismatch_error(request)
         except StartupBackupError:
             return wg_routes._live_backup_unavailable_error(request)
         except SealedApplyTrailBeginError as exc:
@@ -2860,6 +2863,8 @@ def deactivate_vpn_profile(
             )
         try:
             result = run_with_router_apply_lock(lock_key, _dispatch_deactivate)
+        except LiveIdentityTupleMismatchError:
+            return wg_routes._identity_mismatch_error(request)
         except StartupBackupError:
             return wg_routes._live_backup_unavailable_error(request)
         except SealedApplyTrailBeginError as exc:

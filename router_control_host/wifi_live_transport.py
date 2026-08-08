@@ -14,9 +14,11 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, cast
 
 if TYPE_CHECKING:
+    from router_control.adapters.netcraze.certification import GateACertification
     from router_control.adapters.netcraze.ssh_tunnel import PinnedSshTunnel
     from router_control.adapters.netcraze.transport import SshTunnelNetcrazeTransport
     from router_control.persistence.store import PersistenceStore
+    from router_control.ports.clock import Clock
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +36,10 @@ class MissingLiveConnectionFieldError(ValueError):
         super().__init__(
             f"live Wi-Fi transport requires {field} for bound SSH dial"
         )
+
+
+class LiveIdentityTupleMismatchError(RuntimeError):
+    """Live Gate A probe evidence does not match the recorded certified tuple."""
 
 
 def _is_vault_error(exc: BaseException) -> bool:
@@ -59,6 +65,15 @@ def gate_a_required_code(family_prefix: str) -> str:
 
 def live_backup_unavailable_code(family_prefix: str) -> str:
     return f"{family_prefix}.live_backup_unavailable"
+
+
+def identity_mismatch_code(family_prefix: str) -> str:
+    return f"{family_prefix}.identity_mismatch"
+
+
+_IDENTITY_MISMATCH_MESSAGE = (
+    "live device identity does not match recorded Gate A tuple"
+)
 
 
 def live_platform_unsupported_message() -> str:
@@ -433,13 +448,47 @@ def open_wifi_live_session(
         yield WifiLiveSession(transport=transport, tunnel=tunnel)
 
 
+def ensure_live_gate_a_tuple_match(
+    session: WifiLiveSession,
+    certification: GateACertification,
+    *,
+    clock: Clock | None = None,
+    router_id: str | None = None,
+) -> None:
+    """Probe live device tuple via open session; fail-closed before backup/mutation."""
+    from router_control.adapters.netcraze.adapter import NetcrazeReadOnlyAdapter
+    from router_control.adapters.netcraze.identity import OperatorIdentityHints
+    from router_control.domain.ids import RouterId
+    from router_control.ports.clock import SystemClock
+
+    resolved_clock = clock or SystemClock()
+    rid = RouterId(router_id.strip()) if router_id and str(router_id).strip() else RouterId(
+        "live-apply-probe"
+    )
+    adapter = NetcrazeReadOnlyAdapter(
+        router_id=rid,
+        transport=session.transport,
+        clock=resolved_clock,
+        identity_hints=OperatorIdentityHints(
+            expected_model=certification.model,
+            update_channel=certification.update_channel,
+        ),
+    )
+    evidence = dict(adapter.probe_gate_a_evidence())
+    if not certification.matches_probe_evidence(evidence):
+        raise LiveIdentityTupleMismatchError(_IDENTITY_MISMATCH_MESSAGE)
+
+
 __all__ = [
+    "LiveIdentityTupleMismatchError",
     "MissingLiveConnectionFieldError",
     "WifiLiveConnectionParams",
     "WifiLiveSession",
     "WifiLiveTransportErrorMapping",
     "connection_fields_present",
     "connection_params_from_fields",
+    "ensure_live_gate_a_tuple_match",
+    "identity_mismatch_code",
     "incomplete_live_connection_fields",
     "is_win32_live_capable",
     "gate_a_required_code",

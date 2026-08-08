@@ -17,7 +17,7 @@ from router_control.adapters.netcraze.transport import SealedRciWriteRequest
 from router_control.adapters.netcraze.wifi_station_rci import WifiStationRciOperation
 from router_control_host.app import create_app
 from router_control_host.auth import mint_hub_admin_cookie
-from router_control_host.wifi_live_transport import WifiLiveSession
+from router_control_host.wifi_live_transport import LiveIdentityTupleMismatchError, WifiLiveSession
 
 _OFFLINE_PSK_PLACEHOLDER = "test-psk-placeholder-for-station"
 _VALID_SSH_HOST_KEY_SHA256 = "SHA256:" + "a" * 43
@@ -67,6 +67,13 @@ def _open_gate_a() -> GateACertification:
         gates_b_closed=True,
         gates_c_closed=True,
         gates_d_closed=True,
+    )
+
+
+def _patch_tuple_match_ok(monkeypatch: pytest.MonkeyPatch, module: str) -> None:
+    monkeypatch.setattr(
+        f"{module}.ensure_live_gate_a_tuple_match",
+        lambda *_args, **_kwargs: None,
     )
 
 
@@ -440,6 +447,7 @@ def test_wifi_station_apply_live_backup_before_write_and_response_fields(
         "router_control_host.wifi_station_apply_routes.open_wifi_live_session",
         _mock_live,
     )
+    _patch_tuple_match_ok(monkeypatch, "router_control_host.wifi_station_apply_routes")
     monkeypatch.setattr(
         "router_control_host.wifi_station_apply_routes.is_win32_live_capable",
         lambda: True,
@@ -669,6 +677,7 @@ def test_wifi_station_apply_live_backup_error_maps_code(
         "router_control_host.wifi_station_apply_routes.open_wifi_live_session",
         _mock_live,
     )
+    _patch_tuple_match_ok(monkeypatch, "router_control_host.wifi_station_apply_routes")
     monkeypatch.setattr(
         "router_control_host.wifi_station_apply_routes.is_win32_live_capable",
         lambda: True,
@@ -722,6 +731,7 @@ def test_wifi_station_apply_live_dispatch_failure_not_verified_bounded(
         "router_control_host.wifi_station_apply_routes.open_wifi_live_session",
         _mock_live,
     )
+    _patch_tuple_match_ok(monkeypatch, "router_control_host.wifi_station_apply_routes")
     monkeypatch.setattr(
         "router_control_host.wifi_station_apply_routes.is_win32_live_capable",
         lambda: True,
@@ -771,6 +781,7 @@ def test_wifi_station_apply_settle_zero_no_destructive_rollback(
         "router_control_host.wifi_station_apply_routes.open_wifi_live_session",
         _mock_live,
     )
+    _patch_tuple_match_ok(monkeypatch, "router_control_host.wifi_station_apply_routes")
     monkeypatch.setattr(
         "router_control_host.wifi_station_apply_routes.is_win32_live_capable",
         lambda: True,
@@ -854,3 +865,97 @@ def test_observe_traps_never_verified_bounded(readback, internet_status) -> None
     )
     verdict = observation.verdict
     assert verdict != "uplink_verified_bounded"
+
+
+def test_wifi_station_apply_identity_mismatch_returns_422_zero_writes(
+    station_client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    station_client.test_app.state.host.gate_a_certification = _open_gate_a()
+    session_transport = ApiFakeStationLiveTransport()
+    backup_calls: list[str] = []
+
+    @contextmanager
+    def _mock_live(**_kwargs: object):
+        tunnel = MagicMock()
+        yield WifiLiveSession(transport=session_transport, tunnel=tunnel)
+
+    def _raise_mismatch(*_args: object, **_kwargs: object) -> None:
+        raise LiveIdentityTupleMismatchError("tuple mismatch")
+
+    def _track_backup(**_kwargs: object) -> StartupBackupMetadata:
+        backup_calls.append("backup")
+        raise AssertionError("backup must not run on identity mismatch")
+
+    monkeypatch.setattr(
+        "router_control_host.wifi_station_apply_routes.open_wifi_live_session",
+        _mock_live,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wifi_station_apply_routes.ensure_live_gate_a_tuple_match",
+        _raise_mismatch,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wifi_station_apply_routes.is_win32_live_capable",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wifi_station_apply_routes.backup_startup_config",
+        _track_backup,
+    )
+
+    resp = station_client.post(
+        "/api/router-control/v1/wifi/station/apply",
+        json=dict(_APPLY_BODY, confirm_live_apply=True, **_LIVE_CONN),
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "wifi.station.identity_mismatch"
+    assert backup_calls == []
+    assert len(session_transport.write_commands) == 0
+
+
+def test_wifi_station_teardown_identity_mismatch_returns_422_zero_writes(
+    station_client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    station_client.test_app.state.host.gate_a_certification = _open_gate_a()
+    session_transport = ApiFakeStationLiveTransport()
+    backup_calls: list[str] = []
+
+    @contextmanager
+    def _mock_live(**_kwargs: object):
+        tunnel = MagicMock()
+        yield WifiLiveSession(transport=session_transport, tunnel=tunnel)
+
+    def _raise_mismatch(*_args: object, **_kwargs: object) -> None:
+        raise LiveIdentityTupleMismatchError("tuple mismatch")
+
+    def _track_backup(**_kwargs: object) -> StartupBackupMetadata:
+        backup_calls.append("backup")
+        raise AssertionError("backup must not run on identity mismatch")
+
+    monkeypatch.setattr(
+        "router_control_host.wifi_station_apply_routes.open_wifi_live_session",
+        _mock_live,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wifi_station_apply_routes.ensure_live_gate_a_tuple_match",
+        _raise_mismatch,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wifi_station_apply_routes.is_win32_live_capable",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wifi_station_apply_routes.backup_startup_config",
+        _track_backup,
+    )
+
+    resp = station_client.post(
+        "/api/router-control/v1/wifi/station/teardown",
+        json=dict(_APPLY_BODY, confirm_live_teardown=True, **_LIVE_CONN),
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "wifi.station.identity_mismatch"
+    assert backup_calls == []
+    assert len(session_transport.write_commands) == 0

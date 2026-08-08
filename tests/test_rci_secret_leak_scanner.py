@@ -121,6 +121,9 @@ def _ephemeral_live_wireguard_scan_patch():
     with patch(
         "router_control_host.wireguard_apply_routes.open_wifi_live_session",
         _mock_open_wifi_live_session,
+    ), patch(
+        "router_control_host.wireguard_apply_routes.ensure_live_gate_a_tuple_match",
+        lambda *_args, **_kwargs: None,
     ):
         yield inner
 
@@ -278,7 +281,13 @@ def _instantiate_transport_or_fail(qualified_name: str, cls: type[Any]) -> Any:
         if required == ["inner"]:
             return cls(_MinimalDelegatingInner())
         if required == ["params", "vault"]:
-            return cls(params=_SCANNER_INERT_LIVE_PARAMS, vault=_InertScannerVault())
+            kwargs: dict[str, Any] = {
+                "params": _SCANNER_INERT_LIVE_PARAMS,
+                "vault": _InertScannerVault(),
+            }
+            if qualified_name == _EPHEMERAL_LIVE_WG_QUALIFIED:
+                kwargs["certification"] = MagicMock(name="scanner_fake_gate_a_cert")
+            return cls(**kwargs)
         pytest.fail(
             f"secret leak scanner cannot instantiate {qualified_name}: {type_exc!r}"
         )

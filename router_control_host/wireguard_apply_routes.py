@@ -66,9 +66,13 @@ from router_control_host.errors import (
 from router_control_host.routes import API_PREFIX, _mutation_degraded, _ok_headers
 from router_control_host.state import HostState
 from router_control_host.wifi_live_transport import (
+    LiveIdentityTupleMismatchError,
     WifiLiveConnectionParams,
+    WifiLiveSession,
     connection_params_from_fields,
+    ensure_live_gate_a_tuple_match,
     gate_a_required_code,
+    identity_mismatch_code,
     incomplete_live_connection_fields,
     is_win32_live_capable,
     live_backup_unavailable_code,
@@ -304,12 +308,28 @@ class _EphemeralLiveWireguardTransport:
         *,
         params: WifiLiveConnectionParams,
         vault: Any,
+        certification: Any = None,
+        router_id: str | None = None,
     ) -> None:
         self._params = params
         self._vault = vault
+        self._certification = certification
+        self._router_id = router_id
+
+    def _ensure_tuple_match(self, session: WifiLiveSession) -> None:
+        if self._certification is None:
+            raise LiveIdentityTupleMismatchError(
+                "Gate A certification required for live mutation"
+            )
+        ensure_live_gate_a_tuple_match(
+            session,
+            self._certification,
+            router_id=self._router_id,
+        )
 
     def execute_sealed_rci_write(self, request: SealedRciWriteRequest) -> list[dict[str, Any]]:
         with open_wifi_live_session(params=self._params, vault=self._vault) as session:
+            self._ensure_tuple_match(session)
             return cast(
                 list[dict[str, Any]],
                 session.transport.execute_sealed_rci_write(request),
@@ -317,6 +337,7 @@ class _EphemeralLiveWireguardTransport:
 
     def execute_rci_parse(self, cli_command: str) -> dict[str, Any]:
         with open_wifi_live_session(params=self._params, vault=self._vault) as session:
+            self._ensure_tuple_match(session)
             return cast(dict[str, Any], session.transport.execute_rci_parse(cli_command))
 
 
@@ -381,7 +402,12 @@ def build_vpn_watchdog_transport_factory(
         )
         if params is None or not is_win32_live_capable():
             return None
-        return _EphemeralLiveWireguardTransport(params=params, vault=vault)
+        return _EphemeralLiveWireguardTransport(
+            params=params,
+            vault=vault,
+            certification=cert,
+            router_id=router_id,
+        )
 
     return _live
 
@@ -700,6 +726,15 @@ def _live_backup_unavailable_error(request: Request) -> JSONResponse:
     )
 
 
+def _identity_mismatch_error(request: Request) -> JSONResponse:
+    return error_response(
+        request,
+        status_code=422,
+        code=identity_mismatch_code(_LIVE_FAMILY_PREFIX),
+        message="live device identity does not match recorded Gate A tuple",
+    )
+
+
 def _live_platform_unsupported_error(request: Request) -> JSONResponse:
     return error_response(
         request,
@@ -741,6 +776,7 @@ def _dispatch_apply_live(
     backup_sha256: str | None = None
 
     with open_wifi_live_session(params=params, vault=vault) as session:
+        ensure_live_gate_a_tuple_match(session, cert)
 
         def backup_callback() -> None:
             nonlocal backup_basename, backup_sha256
@@ -787,6 +823,7 @@ def _dispatch_teardown_live(
     backup_sha256: str | None = None
 
     with open_wifi_live_session(params=params, vault=vault) as session:
+        ensure_live_gate_a_tuple_match(session, cert)
         meta = backup_startup_config(tunnel=session.tunnel, certification=cert)
         backup_basename = Path(meta.encrypted_locator).name
         backup_sha256 = meta.content_sha256
@@ -880,6 +917,8 @@ def wireguard_apply(request: Request, body: WireguardApplyBody) -> JSONResponse:
                     sealed_apply_params=trail_params,
                 ),
             )
+        except LiveIdentityTupleMismatchError:
+            return _identity_mismatch_error(request)
         except StartupBackupError as exc:
             _ = exc
             return _live_backup_unavailable_error(request)
@@ -1058,6 +1097,8 @@ def wireguard_teardown(request: Request, body: WireguardTeardownBody) -> JSONRes
                     sealed_apply_params=trail_params,
                 ),
             )
+        except LiveIdentityTupleMismatchError:
+            return _identity_mismatch_error(request)
         except StartupBackupError as exc:
             _ = exc
             return _live_backup_unavailable_error(request)

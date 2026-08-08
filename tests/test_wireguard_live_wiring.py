@@ -15,6 +15,7 @@ from router_control.adapters.netcraze.startup_backup import StartupBackupMetadat
 from router_control_host.app import create_app
 from router_control_host.auth import mint_hub_admin_cookie
 from router_control_host.wifi_live_transport import (
+    LiveIdentityTupleMismatchError,
     WifiLiveSession,
     connection_params_from_fields,
     is_win32_live_capable,
@@ -65,6 +66,13 @@ def _open_gate_a() -> GateACertification:
         gates_b_closed=True,
         gates_c_closed=True,
         gates_d_closed=True,
+    )
+
+
+def _patch_tuple_match_ok(monkeypatch: pytest.MonkeyPatch, module: str) -> None:
+    monkeypatch.setattr(
+        f"{module}.ensure_live_gate_a_tuple_match",
+        lambda *_args, **_kwargs: None,
     )
 
 
@@ -202,6 +210,7 @@ def test_live_path_selected_with_mocked_session(
         "router_control_host.wireguard_apply_routes.open_wifi_live_session",
         _mock_live,
     )
+    _patch_tuple_match_ok(monkeypatch, "router_control_host.wireguard_apply_routes")
     monkeypatch.setattr(
         "router_control_host.wireguard_apply_routes.is_win32_live_capable",
         lambda: True,
@@ -233,6 +242,7 @@ def test_live_apply_requires_gate_a(wg_client, monkeypatch: pytest.MonkeyPatch) 
         "router_control_host.wireguard_apply_routes.open_wifi_live_session",
         _mock_live,
     )
+    _patch_tuple_match_ok(monkeypatch, "router_control_host.wireguard_apply_routes")
     monkeypatch.setattr(
         "router_control_host.wireguard_apply_routes.is_win32_live_capable",
         lambda: True,
@@ -257,6 +267,7 @@ def test_live_teardown_requires_gate_a(wg_client, monkeypatch: pytest.MonkeyPatc
         "router_control_host.wireguard_apply_routes.open_wifi_live_session",
         _mock_live,
     )
+    _patch_tuple_match_ok(monkeypatch, "router_control_host.wireguard_apply_routes")
     monkeypatch.setattr(
         "router_control_host.wireguard_apply_routes.is_win32_live_capable",
         lambda: True,
@@ -319,6 +330,7 @@ def test_live_teardown_backup_before_write_and_response_fields(
         "router_control_host.wireguard_apply_routes.open_wifi_live_session",
         _mock_live,
     )
+    _patch_tuple_match_ok(monkeypatch, "router_control_host.wireguard_apply_routes")
     monkeypatch.setattr(
         "router_control_host.wireguard_apply_routes.is_win32_live_capable",
         lambda: True,
@@ -367,6 +379,7 @@ def test_live_teardown_backup_error_maps_code_and_skips_write(
         "router_control_host.wireguard_apply_routes.open_wifi_live_session",
         _mock_live,
     )
+    _patch_tuple_match_ok(monkeypatch, "router_control_host.wireguard_apply_routes")
     monkeypatch.setattr(
         "router_control_host.wireguard_apply_routes.is_win32_live_capable",
         lambda: True,
@@ -412,6 +425,7 @@ def test_live_apply_backup_error_maps_code_and_skips_write(
         "router_control_host.wireguard_apply_routes.open_wifi_live_session",
         _mock_live,
     )
+    _patch_tuple_match_ok(monkeypatch, "router_control_host.wireguard_apply_routes")
     monkeypatch.setattr(
         "router_control_host.wireguard_apply_routes.is_win32_live_capable",
         lambda: True,
@@ -498,6 +512,7 @@ def test_live_observe_requires_gate_a(wg_client, monkeypatch: pytest.MonkeyPatch
         "router_control_host.wireguard_apply_routes.open_wifi_live_session",
         _mock_live,
     )
+    _patch_tuple_match_ok(monkeypatch, "router_control_host.wireguard_apply_routes")
     monkeypatch.setattr(
         "router_control_host.wireguard_apply_routes.is_win32_live_capable",
         lambda: True,
@@ -533,6 +548,7 @@ def test_live_observe_uses_session_without_backup(
         "router_control_host.wireguard_apply_routes.open_wifi_live_session",
         _mock_live,
     )
+    _patch_tuple_match_ok(monkeypatch, "router_control_host.wireguard_apply_routes")
     monkeypatch.setattr(
         "router_control_host.wireguard_apply_routes.is_win32_live_capable",
         lambda: True,
@@ -603,3 +619,103 @@ def test_live_observe_ssh_host_key_mismatch_422(
     err = resp.json()["error"]
     assert err["code"] == "wireguard.ssh_host_key_mismatch"
     assert "refused" in err["message"].lower()
+
+
+def test_live_apply_identity_mismatch_returns_422_zero_writes(
+    wg_client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    wg_client.test_app.state.host.gate_a_certification = _open_gate_a()
+    session_transport = ApiFakeWireguardTransport()
+    backup_calls: list[str] = []
+
+    @contextmanager
+    def _mock_live(**_kwargs: object):
+        tunnel = MagicMock()
+        yield WifiLiveSession(transport=session_transport, tunnel=tunnel)
+
+    def _raise_mismatch(*_args: object, **_kwargs: object) -> None:
+        raise LiveIdentityTupleMismatchError("tuple mismatch")
+
+    def _track_backup(**_kwargs: object) -> StartupBackupMetadata:
+        backup_calls.append("backup")
+        raise AssertionError("backup must not run on identity mismatch")
+
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.open_wifi_live_session",
+        _mock_live,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.ensure_live_gate_a_tuple_match",
+        _raise_mismatch,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.is_win32_live_capable",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.backup_startup_config",
+        _track_backup,
+    )
+
+    resp = wg_client.post(
+        "/api/router-control/v1/wireguard/apply",
+        json=_intent_payload(**_LIVE_CONN),
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "wireguard.identity_mismatch"
+    assert backup_calls == []
+    assert session_transport.write_commands == []
+
+
+def test_live_teardown_identity_mismatch_returns_422_zero_writes(
+    wg_client,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    wg_client.test_app.state.host.gate_a_certification = _open_gate_a()
+    session_transport = ApiFakeWireguardTransport(readback=_baseline_readback())
+    backup_calls: list[str] = []
+
+    @contextmanager
+    def _mock_live(**_kwargs: object):
+        tunnel = MagicMock()
+        yield WifiLiveSession(transport=session_transport, tunnel=tunnel)
+
+    def _raise_mismatch(*_args: object, **_kwargs: object) -> None:
+        raise LiveIdentityTupleMismatchError("tuple mismatch")
+
+    def _track_backup(**_kwargs: object) -> StartupBackupMetadata:
+        backup_calls.append("backup")
+        raise AssertionError("backup must not run on identity mismatch")
+
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.open_wifi_live_session",
+        _mock_live,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.ensure_live_gate_a_tuple_match",
+        _raise_mismatch,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.is_win32_live_capable",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.backup_startup_config",
+        _track_backup,
+    )
+
+    resp = wg_client.post(
+        "/api/router-control/v1/wireguard/teardown",
+        json={
+            "wg_id": _TEST_WG,
+            "enabled": True,
+            "asc_args": _ASC_9,
+            "confirm_live_teardown": True,
+            **_LIVE_CONN,
+        },
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "wireguard.identity_mismatch"
+    assert backup_calls == []
+    assert session_transport.write_commands == []

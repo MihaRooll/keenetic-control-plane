@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 from router_control.adapters.netcraze.awg_profile import parse_awg_profile_text
+from router_control.adapters.netcraze.certification import GateACertification
+from router_control.adapters.netcraze.startup_backup import StartupBackupMetadata
 from router_control.adapters.netcraze.wireguard_rci import (
     WireguardRciOperation,
     command_for,
@@ -25,6 +30,7 @@ from router_control.application.wireguard_apply_service import (
 from router_control.domain.network_intents import WireguardIntent
 from router_control_host.app import create_app
 from router_control_host.auth import mint_hub_admin_cookie
+from router_control_host.wifi_live_transport import LiveIdentityTupleMismatchError, WifiLiveSession
 
 SAMPLE_PROFILE = """
 [Interface]
@@ -48,6 +54,49 @@ PersistentKeepalive = 25
 """
 
 _ASC_9 = (5, 50, 1000, 80, 80, 1, 2, 3, 4)
+
+_VALID_SSH_HOST_KEY_SHA256 = "SHA256:lU1D6ChVB8XLfHxoIFZeA8RPpPf67zA+qwYX0ARyCmM"
+_COMPONENT_DIGEST = "a" * 64
+_FINGERPRINT_DIGEST = "b" * 64
+
+_LIVE_CONN: dict[str, str] = {
+    "host": "192.168.2.1",
+    "username": "admin",
+    "router_credential_ref_id": "credref:router-admin",
+    "ssh_host_key_sha256": _VALID_SSH_HOST_KEY_SHA256,
+    "source_address": "192.168.2.10",
+}
+
+
+def _open_gate_a() -> GateACertification:
+    now = datetime.now(UTC)
+    return GateACertification(
+        status="open",
+        certification="ReadOnlyCertified",
+        approved_scope="SLICE-4-readonly",
+        model="NC-1812",
+        model_display="Ultra (NC-1812)",
+        firmware_version="5.01.C.1.0-0",
+        firmware_display="5.1.1",
+        ndm_build="0-b592e619a0",
+        bsp_build="0-f371d30955",
+        update_channel="Main",
+        region="EA",
+        component_set_digest=_COMPONENT_DIGEST,
+        device_fingerprint_digest=_FINGERPRINT_DIGEST,
+        physical_id_source="show.identification_digest",
+        transport="ssh_tunnel",
+        ssh_host_key_algorithm="ssh-ed25519",
+        ssh_host_key_fingerprint_sha256=_VALID_SSH_HOST_KEY_SHA256,
+        certification_eligible=True,
+        evidence_recorded_at=now,
+        evidence_path="data/artifacts/gate-a-probe.json",
+        expires_at=now + timedelta(days=90),
+        revocation_policy="human",
+        gates_b_closed=True,
+        gates_c_closed=True,
+        gates_d_closed=True,
+    )
 
 
 @pytest.fixture
@@ -790,4 +839,101 @@ def test_teardown_prior_profile_assignment_live_dispatch_failed_raises(
     active = store.get_active_tunnel_assignment(router_id)
     assert active is not None
     assert str(active["profile_id"]) == prior_profile_id
+
+
+def test_vpn_activate_identity_mismatch_returns_422(
+    authed_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    authed_client.app.state.host.gate_a_certification = _open_gate_a()
+    import_resp = authed_client.post(
+        "/api/router-control/v1/vpn-profiles/import",
+        json={
+            "display_name": "Identity Mismatch Activate",
+            "profile_text": SAMPLE_PROFILE,
+            "vpn_kind": "AmneziaWG",
+        },
+        headers={"Idempotency-Key": "import-identity-mismatch-activate"},
+    )
+    assert import_resp.status_code == 201
+    profile_id = import_resp.json()["profile_id"]
+    backup_calls: list[str] = []
+
+    @contextmanager
+    def _mock_live(**_kwargs: object):
+        yield WifiLiveSession(transport=MagicMock(), tunnel=MagicMock())
+
+    def _raise_mismatch(*_args: object, **_kwargs: object) -> None:
+        raise LiveIdentityTupleMismatchError("tuple mismatch")
+
+    def _track_backup(**_kwargs: object) -> StartupBackupMetadata:
+        backup_calls.append("backup")
+        raise AssertionError("backup must not run on identity mismatch")
+
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.open_wifi_live_session",
+        _mock_live,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.ensure_live_gate_a_tuple_match",
+        _raise_mismatch,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.is_win32_live_capable",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.backup_startup_config",
+        _track_backup,
+    )
+
+    resp = authed_client.post(
+        f"/api/router-control/v1/vpn-profiles/{profile_id}/activate",
+        json={"confirm_live_apply": True, "wg_id": "Wireguard5", **_LIVE_CONN},
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "wireguard.identity_mismatch"
+    assert backup_calls == []
+
+
+def test_vpn_deactivate_identity_mismatch_returns_422(
+    authed_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    authed_client.app.state.host.gate_a_certification = _open_gate_a()
+    backup_calls: list[str] = []
+
+    @contextmanager
+    def _mock_live(**_kwargs: object):
+        yield WifiLiveSession(transport=MagicMock(), tunnel=MagicMock())
+
+    def _raise_mismatch(*_args: object, **_kwargs: object) -> None:
+        raise LiveIdentityTupleMismatchError("tuple mismatch")
+
+    def _track_backup(**_kwargs: object) -> StartupBackupMetadata:
+        backup_calls.append("backup")
+        raise AssertionError("backup must not run on identity mismatch")
+
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.open_wifi_live_session",
+        _mock_live,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.ensure_live_gate_a_tuple_match",
+        _raise_mismatch,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.is_win32_live_capable",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "router_control_host.wireguard_apply_routes.backup_startup_config",
+        _track_backup,
+    )
+
+    resp = authed_client.post(
+        "/api/router-control/v1/vpn-profiles/deactivate",
+        json={"confirm_live_apply": True, "wg_id": "Wireguard5", **_LIVE_CONN},
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "wireguard.identity_mismatch"
+    assert backup_calls == []
 
