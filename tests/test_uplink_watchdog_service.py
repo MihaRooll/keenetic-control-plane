@@ -15,6 +15,7 @@ from router_control.application.uplink_watchdog_service import (
     UplinkWatchdogHandle,
     gateway_matches_remembered_station,
     is_ethernet_like_gateway,
+    is_wireguard_like_gateway,
     should_reapply_uplink,
     should_skip_uplink_reapply,
 )
@@ -267,6 +268,14 @@ def test_is_ethernet_like_gateway() -> None:
     assert not is_ethernet_like_gateway(None)
 
 
+def test_is_wireguard_like_gateway() -> None:
+    assert is_wireguard_like_gateway("Wireguard9")
+    assert is_wireguard_like_gateway("Wireguard5")
+    assert not is_wireguard_like_gateway("WifiMaster1/WifiStation0")
+    assert not is_wireguard_like_gateway("GigabitEthernet0")
+    assert not is_wireguard_like_gateway(None)
+
+
 def test_skip_reapply_when_live_gateway_is_ethernet() -> None:
     observation = _observation(gateway_interface="GigabitEthernet0")
     assert should_reapply_uplink(
@@ -415,6 +424,29 @@ async def test_poll_once_skips_reapply_when_gateway_is_ethernet(
     router_id, _remembered = _seed_remembered_active(runtime)
     host = type("Host", (), {"runtime": runtime})()
     observation = _observation(gateway_interface="GigabitEthernet0")
+    apply_calls: list[str] = []
+    handle = _make_handle(host, observation=observation, apply_calls=apply_calls)
+    from router_control.application.uplink_watchdog_service import _RouterWatchState
+
+    handle._states[str(router_id)] = _RouterWatchState(unhealthy_streak=1)  # noqa: SLF001
+    monkeypatch.setattr(
+        uplink_watchdog_service,
+        "run_internet_status_observe",
+        lambda *, transport: observation,
+    )
+    await handle._poll_once()  # noqa: SLF001
+    assert apply_calls == []
+    assert handle._states[str(router_id)].unhealthy_streak == 0  # noqa: SLF001
+
+
+@pytest.mark.asyncio
+async def test_poll_once_skips_reapply_when_gateway_is_wireguard(
+    tmp_path, monkeypatch
+) -> None:
+    runtime = create_offline_runtime(db_path=tmp_path / "poll-wireguard.sqlite3")
+    router_id, _remembered = _seed_remembered_active(runtime)
+    host = type("Host", (), {"runtime": runtime})()
+    observation = _observation(gateway_interface="Wireguard9")
     apply_calls: list[str] = []
     handle = _make_handle(host, observation=observation, apply_calls=apply_calls)
     from router_control.application.uplink_watchdog_service import _RouterWatchState

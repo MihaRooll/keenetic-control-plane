@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
+from router_control.adapters.netcraze.allowlist import is_wireguard_like_interface_name
 from router_control.adapters.netcraze.startup_backup import StartupBackupError
 from router_control.application.internet_status_observe import (
     InternetStatusTransport,
@@ -72,6 +73,15 @@ def is_ethernet_like_gateway(gateway_interface: str | None) -> bool:
     if gateway.startswith("GigabitEthernet"):
         return True
     return bool(re.match(r"^Ethernet", gateway, re.IGNORECASE))
+
+
+def is_wireguard_like_gateway(gateway_interface: str | None) -> bool:
+    if not gateway_interface:
+        return False
+    gateway = gateway_interface.strip()
+    if not gateway:
+        return False
+    return is_wireguard_like_interface_name(gateway)
 
 
 def gateway_matches_remembered_station(
@@ -250,6 +260,13 @@ class UplinkWatchdogHandle:
         )
         gateway = getattr(observation, "gateway_interface", None)
         if is_ethernet_like_gateway(
+            str(gateway) if gateway is not None else None
+        ):
+            state.unhealthy_streak = 0
+            state.backoff_seconds = _BACKOFF_BASE_SECONDS
+            state.next_poll_at = now + UPLINK_WATCHDOG_POLL_SECONDS
+            return
+        if is_wireguard_like_gateway(
             str(gateway) if gateway is not None else None
         ):
             state.unhealthy_streak = 0
@@ -450,6 +467,7 @@ __all__ = [
     "UplinkWatchdogHandle",
     "gateway_matches_remembered_station",
     "is_ethernet_like_gateway",
+    "is_wireguard_like_gateway",
     "should_reapply_uplink",
     "should_skip_uplink_reapply",
 ]
