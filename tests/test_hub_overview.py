@@ -3532,6 +3532,52 @@ def test_overview_connectivity_offline_aborts_load_and_system_check() -> None:
     assert load_idx < system_idx < internet_idx
 
 
+def test_overview_connectivity_offline_invalidates_overview_mutations() -> None:
+    """domain-connection-offline-invalidate: offline arm aborts mutateAbort and clears VPN mutation UI."""
+    source = _read(OVERVIEW_JS)
+    callback = _extract_subscribe_connectivity_callback(source)
+    offline_arm_start = callback.find("if (!online)")
+    assert offline_arm_start != -1
+    offline_arm = callback[offline_arm_start:]
+    offline_return = offline_arm.find("return")
+    offline_block = offline_arm[: offline_return + len("return")]
+    assert "invalidateOverviewMutations()" in offline_block
+    invalidate_idx = offline_block.find("invalidateOverviewMutations()")
+    return_idx = offline_block.find("return")
+    assert invalidate_idx != -1 and return_idx != -1 and invalidate_idx < return_idx
+
+
+def test_overview_mutations_use_dedicated_mutate_abort() -> None:
+    """domain-connection-offline-invalidate: VPN/network mutations use mutateAbort, skip toasts when offline."""
+    source = _read(OVERVIEW_JS)
+    assert "let mutateAbort = null" in source
+    assert "function ensureMutateAbort()" in source
+    assert "function invalidateOverviewMutations()" in source
+
+    slots_body = _extract_function_body(source, "function mountOverviewActionSlots(")
+    assert slots_body is not None
+    assert "getSignal: () => ensureMutateAbort()" in slots_body
+
+    abort_body = _extract_function_body(source, "function abortAllOperations(")
+    assert abort_body is not None
+    assert "invalidateOverviewMutations()" in abort_body
+
+    for fn_sig in (
+        "async function runOverviewVpnActivate(",
+        "async function runOverviewVpnDeactivate(",
+    ):
+        body = _extract_function_body(source, fn_sig)
+        assert body is not None
+        assert "mutateAbort = new AbortController()" in body
+        assert "signal: mutationSignal" in body
+        response_guard = body.split("await ", 1)[1]
+        toast_idx = response_guard.find("ctx.showToast(")
+        assert toast_idx != -1
+        before_toast = response_guard[:toast_idx]
+        assert "if (disposed || offline)" in before_toast
+        assert "return" in before_toast
+
+
 def test_overview_vpn_activate_deactivate_finally_repaints_readiness() -> None:
     """overview-offline-abort-races: VPN activate/deactivate finally repaint readiness + status strip."""
     source = _read(OVERVIEW_JS)

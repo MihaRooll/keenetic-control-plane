@@ -369,6 +369,8 @@ export function render(container, ctx) {
   const OVERVIEW_MANAGEMENT_USERNAME_SAVE_BTN_ID = 'hub-overview-management-username-save';
   /** @type {AbortController|null} */
   let enrichmentAbort = null;
+  /** @type {AbortController|null} */
+  let mutateAbort = null;
   /** @type {import('../features/uplink-wifi-model.js').RememberedUplinkPref|null} */
   let rememberedUplink = null;
   let internetEnrichmentBusy = false;
@@ -980,7 +982,7 @@ export function render(container, ctx) {
       showToast: ctx.showToast,
       isRestorePending: () => isConnectionRestorePending(getSession()),
       getDisabled: () => offline,
-      getSignal: () => enrichmentAbort?.signal,
+      getSignal: () => ensureMutateAbort(),
       idPrefix: 'hub-overview-networks',
     });
     domainMount = mountDomainSimplePublishAffordance(domainMountSlot, {
@@ -1306,15 +1308,18 @@ export function render(container, ctx) {
     vpnActivatingProfileIds = { ...vpnActivatingProfileIds, [profileId]: '1' };
     lastVpnSignature = null;
     renderVpnSlot();
+    mutateAbort?.abort();
+    mutateAbort = new AbortController();
+    const mutationSignal = mutateAbort.signal;
     try {
       const wgId = resolveVpnProfileWgId(profileId);
       const response = await activateVpnProfile({
         profileId,
         session: getSession(),
         wgId,
-        signal: enrichmentAbort?.signal,
+        signal: mutationSignal,
       });
-      if (disposed) {
+      if (disposed || offline) {
         return;
       }
       if (response?.activated === true) {
@@ -1382,14 +1387,17 @@ export function render(container, ctx) {
     vpnDeactivatingProfileIds = { ...vpnDeactivatingProfileIds, [profileId]: '1' };
     lastVpnSignature = null;
     renderVpnSlot();
+    mutateAbort?.abort();
+    mutateAbort = new AbortController();
+    const mutationSignal = mutateAbort.signal;
     try {
       const wgId = resolveVpnProfileWgId(profileId);
       const response = await deactivateVpnProfile({
         wgId,
         session: getSession(),
-        signal: enrichmentAbort?.signal,
+        signal: mutationSignal,
       });
-      if (disposed) {
+      if (disposed || offline) {
         return;
       }
       if (response?.deactivated === true) {
@@ -1738,6 +1746,22 @@ export function render(container, ctx) {
   function abortEnrichment() {
     enrichmentAbort?.abort();
     enrichmentAbort = null;
+  }
+
+  function ensureMutateAbort() {
+    if (!mutateAbort) {
+      mutateAbort = new AbortController();
+    }
+    return mutateAbort.signal;
+  }
+
+  function invalidateOverviewMutations() {
+    mutateAbort?.abort();
+    mutateAbort = null;
+    vpnMutating = false;
+    vpnActivatingProfileIds = {};
+    vpnDeactivatingProfileIds = {};
+    vpnCheckingProfileIds = {};
   }
 
   /**
@@ -2248,6 +2272,7 @@ export function render(container, ctx) {
     systemCheckAbort?.abort();
     internetObserveAbort?.abort();
     abortEnrichment();
+    invalidateOverviewMutations();
     const hadEnrichmentBusy = internetEnrichmentBusy || vpnEnrichmentBusy;
     internetEnrichmentBusy = false;
     vpnEnrichmentBusy = false;
@@ -2609,6 +2634,7 @@ export function render(container, ctx) {
       systemCheckAbort?.abort();
       internetObserveAbort?.abort();
       abortEnrichment();
+      invalidateOverviewMutations();
       internetEnrichmentBusy = false;
       vpnEnrichmentBusy = false;
       routerInternetObserve = null;

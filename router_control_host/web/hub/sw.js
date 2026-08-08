@@ -1,7 +1,7 @@
 /* LOCAL HUB service worker — кэширует только статическую оболочку PWA. */
 
 // Поднимайте CACHE_VERSION при любом изменении файлов оболочки — иначе SW отдаст устаревшую копию из кэша.
-const CACHE_VERSION = '95';
+const CACHE_VERSION = '96';
 const CACHE_NAME = `local-hub-v${CACHE_VERSION}`;
 const HUB_PREFIX = '/settings/router-control/hub/';
 

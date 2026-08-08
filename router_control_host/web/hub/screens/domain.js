@@ -2501,6 +2501,7 @@ export function render(container, ctx) {
     if (!online) {
       offline = true;
       recovering = false;
+      invalidateOperations();
       renderAll();
       return;
     }

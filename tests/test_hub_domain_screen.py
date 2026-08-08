@@ -529,3 +529,38 @@ def test_domain_save_local_bounded_network_retry() -> None:
     )
     network_block = save_body.split("ERROR_KIND.NETWORK", 1)[1].split("throw error", 1)[0]
     assert network_block.count("continue") == 1
+
+
+def _extract_subscribe_connectivity_callback(source: str) -> str:
+    """Извлекает тело subscribeConnectivity((online) => { ... })."""
+    marker = "subscribeConnectivity((online) => {"
+    start = source.find(marker)
+    assert start != -1, "subscribeConnectivity callback missing"
+    brace = source.find("{", start + len(marker) - 1)
+    depth = 0
+    j = brace
+    while j < len(source):
+        char = source[j]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return source[brace + 1 : j]
+        j += 1
+    raise AssertionError("subscribeConnectivity callback body not closed")
+
+
+def test_domain_connectivity_offline_invalidates_operations() -> None:
+    """domain-connection-offline-invalidate: offline connectivity invalidates in-flight domain ops."""
+    source = _read(DOMAIN_SCREEN_JS)
+    callback = _extract_subscribe_connectivity_callback(source)
+    offline_arm_start = callback.find("if (!online)")
+    assert offline_arm_start != -1
+    offline_arm = callback[offline_arm_start:]
+    offline_return = offline_arm.find("return")
+    offline_block = offline_arm[: offline_return + len("return")]
+    assert "invalidateOperations()" in offline_block
+    invalidate_idx = offline_block.find("invalidateOperations()")
+    render_idx = offline_block.find("renderAll()")
+    assert invalidate_idx != -1 and render_idx != -1 and invalidate_idx < render_idx
