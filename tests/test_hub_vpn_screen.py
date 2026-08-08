@@ -612,15 +612,18 @@ def test_vpn_model_exports_tile_grid_helpers() -> None:
 
 
 def test_vpn_screen_disconnect_toast_overall_first() -> None:
-    """Disconnect toast branches on response.overall before tunnel health (mirror connect)."""
+    """Disconnect toast branches on response.overall; applied shows success without health gate."""
     source = _read(VPN_SCREEN_JS)
     body = _extract_function_body(source, "async function runTunnelMutation(")
     assert body is not None
     disconnect_idx = body.find("if (action === 'disconnect') {")
     assert disconnect_idx != -1
     disconnect_region = body[disconnect_idx:]
-    assert "const response = await teardownVpnTunnel(" in disconnect_region
-    post_teardown = disconnect_region.split(
+    reconnect_else_idx = disconnect_region.find("} else {\n        if (action === 'reconnect')")
+    assert reconnect_else_idx != -1
+    disconnect_only = disconnect_region[:reconnect_else_idx]
+    assert "const response = await teardownVpnTunnel(" in disconnect_only
+    post_teardown = disconnect_only.split(
         "const response = await teardownVpnTunnel(", 1,
     )[1]
     post_teardown = post_teardown.split("storeMutationOutcome(wgId, response);", 1)[1]
@@ -628,18 +631,16 @@ def test_vpn_screen_disconnect_toast_overall_first() -> None:
     assert "overall !== 'applied'" in post_teardown
     assert "describeConfigurationOutcome(response)" in post_teardown
     assert "getStateDescriptor(outcome.hubState).tone" in post_teardown
-    overall_idx = post_teardown.find("overall !== 'applied'")
-    healthy_idx = post_teardown.find("tunnel_healthy")
-    assert overall_idx != -1 and healthy_idx != -1
-    assert overall_idx < healthy_idx
+    assert "tunnel_healthy" not in disconnect_only
     non_applied_branch = post_teardown.split("overall !== 'applied'", 1)[1].split("} else", 1)[0]
     assert "describeConfigurationOutcome" in non_applied_branch
     assert "Туннель отключён, ответ сервера не подтверждён" not in non_applied_branch
     assert "tone: 'success'" not in non_applied_branch
     assert "tone: 'primary'" not in non_applied_branch
     applied_region = post_teardown.split("} else", 1)[1]
-    assert "Туннель отключён, ответ сервера не подтверждён" in applied_region
-    assert "tunnel_healthy" in applied_region
+    assert "Туннель отключён, ответ сервера не подтверждён" not in applied_region
+    assert "Отключено" in applied_region
+    assert "tone: 'success'" in applied_region
 
 
 def test_vpn_screen_connect_toast_overall_first() -> None:
@@ -681,7 +682,7 @@ def test_vpn_screen_reconnect_teardown_failure_does_not_continue() -> None:
     preview_idx = body.find("mutationPhase = 'preview'", reconnect_teardown_idx)
     assert preview_idx != -1
     reconnect_region = body[reconnect_teardown_idx:preview_idx]
-    assert "await teardownVpnTunnel({ teardownBody, signal: myController.signal });" in reconnect_region
+    assert "await teardownVpnTunnel({" in reconnect_region
     assert "} catch (error) {" in reconnect_region
     assert "isAborted(error)" in reconnect_region
     assert "operationError = error" in reconnect_region
@@ -691,6 +692,30 @@ def test_vpn_screen_reconnect_teardown_failure_does_not_continue() -> None:
     catch_block = reconnect_region[catch_start:]
     assert "return;" in catch_block
     assert "mutationPhase = 'preview'" not in catch_block
+
+
+def test_vpn_screen_reconnect_teardown_overall_gates_preview_apply() -> None:
+    """Non-applied reconnect teardown overall aborts before preview/apply."""
+    source = _read(VPN_SCREEN_JS)
+    body = _extract_function_body(source, "async function runTunnelMutation(")
+    assert body is not None
+    first_teardown = body.find("mutationPhase = 'reconnect_teardown'")
+    reconnect_teardown_idx = body.find("mutationPhase = 'reconnect_teardown'", first_teardown + 1)
+    assert reconnect_teardown_idx != -1
+    preview_idx = body.find("mutationPhase = 'preview'", reconnect_teardown_idx)
+    assert preview_idx != -1
+    reconnect_region = body[reconnect_teardown_idx:preview_idx]
+    assert "await teardownVpnTunnel({" in reconnect_region
+    assert re.search(r"teardownResponse\?\.overall|typeof teardownResponse\?\.overall", reconnect_region)
+    assert "teardownOverall !== 'applied'" in reconnect_region
+    assert "storeMutationOutcome(wgId, teardownResponse)" in reconnect_region
+    assert "describeConfigurationOutcome(teardownResponse)" in reconnect_region
+    overall_idx = reconnect_region.find("teardownOverall !== 'applied'")
+    return_idx = reconnect_region.find("return;", overall_idx)
+    assert overall_idx != -1 and return_idx != -1
+    assert overall_idx < return_idx
+    assert "previewVpnTunnel(" not in reconnect_region
+    assert "applyVpnTunnel(" not in reconnect_region
 
 
 def test_vpn_screen_connect_handshake_only_on_apply_phase() -> None:

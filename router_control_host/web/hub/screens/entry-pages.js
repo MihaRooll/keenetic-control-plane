@@ -974,7 +974,7 @@ export function render(container, ctx) {
   async function handlePublicationToggle(nextPublished) {
     const pageId = activePageId();
     const summary = activeSummary();
-    if (!pageId || !summary || publishing) {
+    if (!pageId || !summary || publishing || offline) {
       return;
     }
 
@@ -1435,7 +1435,7 @@ export function render(container, ctx) {
           id: 'hub-entry-pages-publish-toggle',
           label: 'Опубликована',
           checked: publication.published,
-          disabled: publishing || !publication.hasDraft,
+          disabled: publishing || offline || !publication.hasDraft,
           onChange: (checked) => {
             void handlePublicationToggle(checked);
           },

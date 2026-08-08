@@ -1783,16 +1783,11 @@ export function render(container, ctx) {
             title: outcome.title,
             message: outcome.message,
           });
-        } else {
-          const stored = tunnelOutcomesByWgId[wgId];
-          const healthy = stored?.tunnelVerificationStatus === 'tunnel_healthy';
-          if (!healthy && !disposed) {
-            ctx.showToast({
-              tone: 'warning',
-              title: 'Туннель отключён, ответ сервера не подтверждён',
-              message: VPN_POST_SETTLE_RECHECK_HINT,
-            });
-          }
+        } else if (!disposed) {
+          ctx.showToast({
+            tone: 'success',
+            message: 'Отключено',
+          });
         }
       } else {
         if (action === 'reconnect') {
@@ -1808,7 +1803,28 @@ export function render(container, ctx) {
               intentBody: teardownIntent,
               session: getSession(),
             });
-            await teardownVpnTunnel({ teardownBody, signal: myController.signal });
+            const teardownResponse = await teardownVpnTunnel({
+              teardownBody,
+              signal: myController.signal,
+            });
+            if (disposed || gen !== generation || mutateGeneration !== gen) {
+              return;
+            }
+            storeMutationOutcome(wgId, teardownResponse);
+            const teardownOverall =
+              typeof teardownResponse?.overall === 'string' ? teardownResponse.overall : null;
+            if (teardownOverall !== 'applied') {
+              if (!disposed) {
+                const outcome = describeConfigurationOutcome(teardownResponse);
+                const tone = getStateDescriptor(outcome.hubState).tone;
+                ctx.showToast({
+                  tone,
+                  title: outcome.title,
+                  message: outcome.message,
+                });
+              }
+              return;
+            }
           } catch (error) {
             if (disposed || gen !== generation || mutateGeneration !== gen || isAborted(error)) {
               return;
