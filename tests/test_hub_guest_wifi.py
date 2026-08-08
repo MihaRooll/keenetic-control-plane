@@ -1373,6 +1373,26 @@ def test_guest_load_standing_flow_merges_observed_when_not_dirty() -> None:
     assert "!formDirty && !observed" not in source
 
 
+def test_guest_wifi_standing_load_error_renders_inline_warning() -> None:
+    """Standing GET failure shows inline warning — empty defaults not silent."""
+    source = GUEST_WIFI_SCREEN_JS.read_text(encoding="utf-8")
+    load_start = source.find("async function loadStandingFlow(")
+    assert load_start != -1
+    load_region = source[load_start : load_start + 600]
+    assert "standingError = error" in load_region
+    extra_sig_start = source.find("function buildGuestExtraSignature(")
+    assert extra_sig_start != -1
+    extra_sig_region = source[extra_sig_start : extra_sig_start + 500]
+    assert "standingError && !isAborted(standingError)" in extra_sig_region
+    assert "standing-load-fail" in extra_sig_region
+    extra_render_start = source.find("function renderExtraSlot(")
+    assert extra_render_start != -1
+    extra_render_region = source[extra_render_start : extra_render_start + 2000]
+    assert "Не удалось загрузить обычные настройки" in extra_render_region
+    assert "standingError && !isAborted(standingError)" in extra_render_region
+    assert "Значения по умолчанию могут быть пустыми." in extra_render_region
+
+
 def test_should_clear_guest_wifi_form_password_after_readback_success_despite_apply_false(
     tmp_path: Path,
 ) -> None:

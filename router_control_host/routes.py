@@ -801,24 +801,29 @@ def _teardown_prior_profile_assignment(
         cast(wg_routes.WireguardLiveConnectionFields, body), host
     ):
         assert live_params is not None
-        wg_routes._dispatch_teardown_live(
+        prior_teardown = wg_routes._dispatch_teardown_live(
             host=host,
             intent=prior_intent,
             params=live_params,
             sealed_apply_params=trail_params,
         )
-        return
-    transport = wg_routes._resolve_transport(host, request)
-    if isinstance(transport, JSONResponse):
-        raise WireguardApplyServiceError("transport resolution failed")
-    teardown_wireguard(
-        wg_id=prior_intent.wg_id,
-        transport=transport,
-        credential_resolver=wg_routes._credential_resolver(host),
-        intent=prior_intent,
-        store=host.runtime.store,
-        sealed_apply_params=trail_params,
-    )
+    else:
+        transport = wg_routes._resolve_transport(host, request)
+        if isinstance(transport, JSONResponse):
+            raise WireguardApplyServiceError("transport resolution failed")
+        prior_teardown = teardown_wireguard(
+            wg_id=prior_intent.wg_id,
+            transport=transport,
+            credential_resolver=wg_routes._credential_resolver(host),
+            intent=prior_intent,
+            store=host.runtime.store,
+            sealed_apply_params=trail_params,
+        )
+    if not _profile_apply_success(prior_teardown):
+        raise WireguardApplyServiceError(
+            "prior VPN profile teardown did not complete successfully "
+            f"(overall={prior_teardown.overall})"
+        )
 
 
 def _write_gates_summary(host: HostState) -> dict[str, Any]:

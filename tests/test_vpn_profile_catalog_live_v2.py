@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 from router_control.adapters.netcraze.awg_profile import parse_awg_profile_text
@@ -641,3 +642,152 @@ def test_parsed_awg_profile_retains_interface_address() -> None:
     assert parsed.interface_address == "10.0.0.2/32"
     assert parsed.interface_address_present is True
     assert parsed.sanitized_dict_for_apply()["interface_address"] == "10.0.0.2/32"
+
+
+def _seed_catalog_router(store: Any) -> str:
+    site_id = store.create_site(display_name="Activate Prior Teardown Lab")
+    return store.enroll_router(
+        site_id=site_id,
+        display_name="Activate Prior Teardown Router",
+        vendor="Fake",
+        model="M1",
+        identity_fingerprint="digest:activate-prior-teardown",
+        host="127.0.0.1",
+    )
+
+
+def _seed_catalog_profile(store: Any, *, display_name: str, wg_id: str = "Wireguard5") -> str:
+    return store.import_profile(
+        display_name=display_name,
+        vpn_kind="AmneziaWG",
+        content_digest=f"digest-{display_name}",
+        metadata_json=json.dumps(
+            {
+                "wg_id": wg_id,
+                "peer_public_key": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
+                "peer_endpoint": "example.com:51820",
+                "peer_allow_ips": "0.0.0.0/0",
+                "asc9_args": list(_ASC_9),
+            }
+        ),
+    )
+
+
+def test_activate_prior_teardown_failed_fail_closed(
+    authed_client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Switching profiles must not report activate success when prior teardown fails."""
+    import router_control_host.routes as routes_mod
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
+    from types import SimpleNamespace
+
+    store = authed_client.app.state.host.runtime.store
+    router_id = _seed_catalog_router(store)
+    prior_profile_id = _seed_catalog_profile(store, display_name="prior-active")
+    next_profile_id = _seed_catalog_profile(store, display_name="next-target", wg_id="Wireguard6")
+    store.upsert_tunnel_assignment(
+        router_id=router_id,
+        profile_id=prior_profile_id,
+        desired_active=True,
+        observed_vendor_locator="Wireguard5",
+    )
+
+    apply_calls: list[object] = []
+
+    def _track_apply(*_args: object, **_kwargs: object) -> object:
+        apply_calls.append(True)
+        raise AssertionError("apply_wireguard_intent must not run after failed prior teardown")
+
+    def _failed_teardown(*_args: object, **_kwargs: object) -> object:
+        return SimpleNamespace(overall="failed")
+
+    monkeypatch.setattr(
+        wg_routes_mod,
+        "_validate_live_connection_fields",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(routes_mod, "apply_wireguard_intent", _track_apply)
+    monkeypatch.setattr(routes_mod, "teardown_wireguard", _failed_teardown)
+
+    resp = authed_client.post(
+        f"/api/router-control/v1/vpn-profiles/{next_profile_id}/activate",
+        json={
+            "confirm_live_apply": True,
+            "router_id": router_id,
+            "wg_id": "Wireguard6",
+        },
+    )
+    assert resp.status_code == 422
+    body = resp.json()
+    assert body["error"]["code"] == "profile.activate_failed"
+    assert "prior VPN profile teardown" in body["error"]["message"]
+    assert "overall=failed" in body["error"]["message"]
+    assert apply_calls == []
+    active = store.get_active_tunnel_assignment(router_id)
+    assert active is not None
+    assert str(active["profile_id"]) == prior_profile_id
+
+
+def test_teardown_prior_profile_assignment_live_dispatch_failed_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Live prior teardown with overall != applied must raise before activate continues."""
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from router_control.application.wireguard_apply_service import WireguardApplyServiceError
+    from router_control.persistence.connection import open_database
+    from router_control.persistence.store import PersistenceStore
+    from router_control_host.routes import (
+        VpnProfileActivateBody,
+        _teardown_prior_profile_assignment,
+    )
+    import router_control_host.wireguard_apply_routes as wg_routes_mod
+
+    store = PersistenceStore(open_database(tmp_path / "prior-teardown-live.sqlite3"))
+    router_id = _seed_catalog_router(store)
+    prior_profile_id = _seed_catalog_profile(store, display_name="prior-unit")
+    next_profile_id = _seed_catalog_profile(store, display_name="next-unit", wg_id="Wireguard6")
+    store.upsert_tunnel_assignment(
+        router_id=router_id,
+        profile_id=prior_profile_id,
+        desired_active=True,
+        observed_vendor_locator="Wireguard5",
+    )
+
+    host = MagicMock()
+    host.runtime.store = store
+    body = VpnProfileActivateBody(
+        confirm_live_apply=True,
+        router_id=router_id,
+        host="192.168.2.1",
+        username="admin",
+        router_credential_ref_id="cred_test",
+        ssh_host_key_sha256="SHA256:abc",
+        source_address="192.168.2.10",
+    )
+
+    monkeypatch.setattr(wg_routes_mod, "_should_use_live_path", lambda *_a, **_k: True)
+    monkeypatch.setattr(
+        wg_routes_mod,
+        "_dispatch_teardown_live",
+        lambda **_k: SimpleNamespace(overall="failed"),
+    )
+
+    with pytest.raises(WireguardApplyServiceError, match="prior VPN profile teardown"):
+        _teardown_prior_profile_assignment(
+            host=host,
+            request=MagicMock(),
+            body=body,
+            wg_routes=wg_routes_mod,
+            router_id=router_id,
+            profile_id=next_profile_id,
+            logical_role="primary",
+            live_params=object(),
+            trail_params=None,
+        )
+
+    active = store.get_active_tunnel_assignment(router_id)
+    assert active is not None
+    assert str(active["profile_id"]) == prior_profile_id
+

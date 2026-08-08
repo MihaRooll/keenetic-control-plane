@@ -3774,3 +3774,20 @@ def test_staff_wifi_standing_persist_failure_shows_warning_with_retry() -> None:
     assert "Нажмите «Повторить»" in persist_region
     assert "// Non-blocking" not in persist_region
     assert "catch {" not in persist_region
+
+
+def test_staff_wifi_standing_load_error_renders_inline_warning() -> None:
+    """Standing GET failure shows inline warning — empty defaults not silent."""
+    source = STAFF_WIFI_SCREEN_JS.read_text(encoding="utf-8")
+    load_body = _extract_function_body_from_staff_screen(source, "async function loadStandingFlow(")
+    assert load_body is not None
+    assert "standingError = error" in load_body
+    extra_sig = _extract_function_body_from_staff_screen(source, "function buildStaffExtraSignature(")
+    assert extra_sig is not None
+    assert "standingError && !isAborted(standingError)" in extra_sig
+    assert "standing-load-fail" in extra_sig
+    extra_render = _extract_function_body_from_staff_screen(source, "function renderExtraSlot(")
+    assert extra_render is not None
+    assert "Не удалось загрузить обычные настройки" in extra_render
+    assert "standingError && !isAborted(standingError)" in extra_render
+    assert "Значения по умолчанию могут быть пустыми." in extra_render

@@ -584,6 +584,9 @@ export function render(container, ctx) {
     if (!readiness.allowed && readiness.reasonText && adapterMode !== 'fake') {
       return `readiness|${readiness.reasonText}`;
     }
+    if (standingError && !isAborted(standingError)) {
+      return `standing-load-fail|${describePanelError(standingError).title}`;
+    }
     if (observed && observedError && !isAborted(observedError)) {
       return `observed-soft-fail|${describePanelError(observedError).title}`;
     }
@@ -1704,6 +1707,20 @@ export function render(container, ctx) {
             title: readiness.reasonText,
           }),
         );
+        return;
+      }
+      if (standingError && !isAborted(standingError)) {
+        const described = describePanelError(standingError);
+        extraSlot.appendChild(
+          createInlineState({
+            state: HubState.WARNING,
+            title: 'Не удалось загрузить обычные настройки',
+          }),
+        );
+        const note = document.createElement('p');
+        note.className = 'hub-wifi__note';
+        note.textContent = `${formatErrorDescription(described)} Значения по умолчанию могут быть пустыми.`;
+        extraSlot.appendChild(note);
         return;
       }
       if (observed && observedError && !isAborted(observedError)) {
